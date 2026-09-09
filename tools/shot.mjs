@@ -10,7 +10,7 @@ p.on('pageerror', e => errors.push('challenger pageerror: ' + e.message));
 await p.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
 await p.screenshot({ path: `${OUT}/01-title.png` });
 
-await p.getByRole('button', { name: /一人で試す/ }).click();
+await p.getByRole('button', { name: /一人で遊ぶ/ }).click();
 await p.waitForSelector('.choice');
 await p.screenshot({ path: `${OUT}/02-room.png` });
 

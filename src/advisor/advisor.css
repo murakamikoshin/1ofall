@@ -117,6 +117,10 @@ body { overflow: auto; }
 .cell span { font-size: 0.72rem; color: var(--paper); text-align: center; }
 
 .cell.is-correct { border-color: var(--rust); }
+/* 耳打ちが知っているのは死ぬ方。警告の色を使う */
+.cell.is-doomed { border-color: var(--blood); }
+.cell.is-doomed span { color: var(--paper-faint); }
+.cell-flag.is-doomed { color: var(--blood-lit); }
 .cell.is-correct span { color: var(--paper-bright); }
 
 .cell-flag {

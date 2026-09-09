@@ -18,7 +18,7 @@ await build({
                       export { setLocale } from './src/i18n';`, resolveDir: root, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent',
 });
-const { castSpeakers, castLiars, dealKnowledge, writeHint, liarBias, createRng, RUN, setLocale } =
+const { castSpeakers, castLiars, dealKnowledge, writeHint, voiceOf, liarBias, createRng, RUN, setLocale } =
   await import(pathToFileURL(out).href);
 setLocale('ja');
 
@@ -27,6 +27,7 @@ const rng = createRng(4242);
 const ADV = Array.from({ length: 12 }, (_, i) => ({ id: `ai_${i}`, name: `a${i}`, kind: 'ai' }));
 
 const HEDGE_RE = /たぶん|気がする|に見える|じゃないか|絞れた|決めきれん|どっちか/;
+const AVOID_RE = /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ/;
 
 /** 読み方いろいろ。weightPush / weightHedge をどう置くか */
 function decide(room, hints, wPush, wHedge) {
@@ -34,6 +35,11 @@ function decide(room, hints, wPush, wHedge) {
   const score = new Map(labels.map((c) => [c.id, 0]));
   for (const text of hints) {
     const touched = labels.filter((c) => text.includes(c.label));
+    // 「これは死ぬ」型は、触れた相手を潰す言い方
+    if (AVOID_RE.test(text)) {
+      for (const c of touched) score.set(c.id, (score.get(c.id) ?? 0) - 0.9);
+      continue;
+    }
     const hedging = touched.length >= 2 || HEDGE_RE.test(text);
     for (const c of touched) score.set(c.id, (score.get(c.id) ?? 0) + (hedging ? wHedge : wPush));
   }
@@ -42,16 +48,17 @@ function decide(room, hints, wPush, wHedge) {
   return top[Math.floor(rng() * top.length)];
 }
 
-function runSection(slots, rooms, wPush, wHedge, candidates) {
+function runSection(slots, rooms, wPush, wHedge, mix) {
   const speakerIds = castSpeakers({ advisors: ADV, slots, mode: 'lottery', rng });
   const liarIds = castLiars(speakerIds, rng);
   let alive = 0;
   for (let r = 0; r < rooms; r++) {
     const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
-    const knowledge = dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, candidates);
+    const knowledge = dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix);
     const hints = speakerIds.map((id) => {
       const honesty = 0.55 - Math.min(0.4, liarBias(id) * 0.16);
-      return writeHint({ choices: room.choices, knowledge: knowledge.get(id), rng, liarHonestyRate: honesty });
+      return writeHint({ choices: room.choices, knowledge: knowledge.get(id), rng,
+                         liarHonestyRate: honesty, voice: voiceOf(id) });
     });
     if (decide(room, hints, wPush, wHedge) === room.correct) alive++;
   }
@@ -61,10 +68,10 @@ function runSection(slots, rooms, wPush, wHedge, candidates) {
 function measure(label, wPush, wHedge, trials = 4000) {
   const perSlot = {};
   RUN.slotsBySection.forEach((slots, i) => {
-    const c = RUN.candidatesBySection[i];
+    const mix = RUN.knowledgeBySection[i];
     let s = 0;
-    for (let t = 0; t < trials; t++) s += runSection(slots, 6, wPush, wHedge, c);
-    perSlot[`区画${i + 1}(${slots}人/${c}択)`] = (s / trials * 100);
+    for (let t = 0; t < trials; t++) s += runSection(slots, 6, wPush, wHedge, mix);
+    perSlot[`区画${i + 1}(${slots}人)`] = (s / trials * 100);
   });
   const avg = Object.values(perSlot).reduce((a, b) => a + b, 0) / 4;
   console.log(
@@ -88,16 +95,17 @@ function fullRun(wPush, wHedge) {
   let lives = RUN.lives, section = 0, attempts = 0, cleared = 0;
   while (lives > 0 && section < RUN.sections) {
     const slots = RUN.slotsBySection[section];
-    const cands = RUN.candidatesBySection[section];
+    const mix = RUN.knowledgeBySection[section];
     const speakerIds = castSpeakers({ advisors: ADV, slots, mode: 'lottery', rng });
     const liarIds = castLiars(speakerIds, rng);
     let inSection = 0;
     while (inSection < RUN.roomsPerSection && lives > 0) {
       const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
-      const knowledge = dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, cands);
+      const knowledge = dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix);
       const hints = speakerIds.map((id) => {
         const honesty = 0.55 - Math.min(0.4, liarBias(id) * 0.16);
-        return writeHint({ choices: room.choices, knowledge: knowledge.get(id), rng, liarHonestyRate: honesty });
+        return writeHint({ choices: room.choices, knowledge: knowledge.get(id), rng,
+                         liarHonestyRate: honesty, voice: voiceOf(id) });
       });
       attempts++;
       if (decide(room, hints, wPush, wHedge) === room.correct) { inSection++; cleared++; }

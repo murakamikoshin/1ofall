@@ -62,18 +62,28 @@ class RehearsalConnection implements AdvisorConnection {
       i += 1;
       if (!room) return;
       const wrong = room.choices.filter((c) => c.id !== room.correct);
-      const decoy = wrong[i % wrong.length];
-      const isLiar = i % 3 === 0;
+      const pickWrong = () => wrong[Math.floor(Math.random() * wrong.length)];
+      const decoy = pickWrong();
+      const isLiar = Math.random() < 0.25;
+      const roll = Math.random();
       const view: AdvisorView = {
         roundId: `${room.id}#${i}`,
         roomId: room.id,
         theme: room.theme,
         prompt: localized(room.prompt),
         choices: room.choices,
+        // 素振り用。実際の配分は core/limits.ts の knowledgeBySection が決める
         knowledge: isLiar
-          ? { kind: 'liar', correct: room.correct }
-          : { kind: 'honest', candidates: [room.correct, decoy?.id ?? room.correct] },
-        isSpeaker: i % 4 !== 0,
+          ? { kind: 'liar' as const, correct: room.correct }
+          : roll < 0.2
+            ? { kind: 'doomed' as const, doomed: decoy?.id ?? room.correct }
+            : roll < 0.45
+              ? {
+                  kind: 'honest' as const,
+                  candidates: [room.correct, decoy?.id ?? room.correct, pickWrong()?.id ?? room.correct],
+                }
+              : { kind: 'honest' as const, candidates: [room.correct, decoy?.id ?? room.correct] },
+        isSpeaker: Math.random() < 0.8,
       };
       this.latest = view;
       for (const l of this.listeners) l(view);
@@ -176,24 +186,30 @@ function renderBoard(): void {
     }
 
     const T = strings();
-    const isLiar = view.knowledge.kind === 'liar';
+    const k = view.knowledge;
+    const isLiar = k.kind === 'liar';
     frame.classList.toggle('is-liar', isLiar);
     roleTitle.textContent = isLiar ? T.advisor.youAreLiar : T.advisor.youAreHonest;
     roleTitle.classList.toggle('is-liar', isLiar);
     roleNote.textContent = isLiar
       ? T.advisor.youAreLiarNote
-      : `${T.advisor.youAreHonestNote}　${T.advisor.youDontKnow}`;
+      : k.kind === 'doomed'
+        ? `${T.advisor.youAreHonestNote}　${T.advisor.youKnowDoomed}`
+        : `${T.advisor.youAreHonestNote}　${T.advisor.youDontKnow}`;
 
     prompt.textContent = view.prompt;
-    // 嘘つきには正解が1つ、協力者には候補が2つ光る
-    const marked = view.knowledge.kind === 'liar'
-      ? [view.knowledge.correct]
-      : [...view.knowledge.candidates];
+    // 何が光るかは、その人が何を知っているかで変わる
+    //   嘘つき   正解が1つ
+    //   目利き   絞れている候補が2つか3つ
+    //   耳打ち   死ぬ選択肢が1つ（赤く光る）
+    const marked = k.kind === 'liar' ? [k.correct] : k.kind === 'honest' ? [...k.candidates] : [];
+    const doomed = k.kind === 'doomed' ? [k.doomed] : [];
 
     grid.innerHTML = '';
     for (const choice of view.choices) {
       const lit = marked.includes(choice.id);
-      const cell = el('div', `cell${lit ? ' is-correct' : ''}${lit && !isLiar ? ' is-maybe' : ''}`);
+      const dead = doomed.includes(choice.id);
+      const cell = el('div', `cell${lit ? ' is-correct' : ''}${dead ? ' is-doomed' : ''}`);
       const img = el('img');
       img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
       img.alt = '';
@@ -201,9 +217,15 @@ function renderBoard(): void {
       const label = el('span');
       label.textContent = localized(choice.label);
       cell.append(img, label);
-      if (lit) {
-        const flag = el('span', 'cell-flag');
-        flag.textContent = isLiar ? T.advisor.correctIs : T.advisor.maybeIs;
+      if (lit || dead) {
+        const flag = el('span', `cell-flag${dead ? ' is-doomed' : ''}`);
+        flag.textContent = dead
+          ? T.advisor.doomedIs
+          : isLiar
+            ? T.advisor.correctIs
+            : marked.length > 2
+              ? T.advisor.maybeIsWide
+              : T.advisor.maybeIs;
         cell.append(flag);
       }
       grid.append(cell);

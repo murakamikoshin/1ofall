@@ -46,10 +46,12 @@ function renderTitle(): void {
   tagline.textContent = strings().tagline;
 
   const menu = el('div', 'menu');
+  const T = strings();
   menu.append(
-    menuItem(strings().menu.solo, strings().menu.soloNote, false, () => startGame()),
-    menuItem(strings().menu.host, strings().menu.hostNote, true),
-    menuItem(strings().menu.advisor, '', true),
+    menuItem(T.menu.solo, T.menu.soloNote, false, () => startGame()),
+    // 野良と賭場は通信層（段階4）が入ってから開く
+    menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
+    menuItem(T.menu.host, `${T.menu.hostNote}（${T.menu.comingSoon}）`, true),
   );
 
   const head = el('div');
@@ -158,6 +160,8 @@ function startGame(): void {
   engine?.dispose();
   shell = buildShell();
 
+  // ソロは全員 AI。野良になっても本体はこの境界の先を知らない
+  //（CompositeAdvisorGateway が人間と AI を混ぜて同じ顔で渡す）
   engine = new GameEngine({ pack, gateway: new AiAdvisorGateway({ count: 12 }) });
   unsubscribe = engine.subscribe((state) => render(state));
   engine.start();

@@ -24,7 +24,16 @@ export const RUN = {
   /** 区画ごとに、これ以上の択がある部屋を優先して出す */
   minChoicesBySection: [5, 6, 6, 6],
   /** 区画ごとに、協力者が正解を何択まで絞れているか。多いほど手掛かりが薄い */
-  candidatesBySection: [2, 2, 2, 3],
+  /**
+   * 区画ごとの、協力者の知識の配り方。
+   * 先へ行くほど二択の目利きが減り、三択と耳打ちが増える＝助言が頼りなくなる。
+   */
+  knowledgeBySection: [
+    { narrow2: 0.80, narrow3: 0.15, doomed: 0.05 },
+    { narrow2: 0.70, narrow3: 0.20, doomed: 0.10 },
+    { narrow2: 0.60, narrow3: 0.25, doomed: 0.15 },
+    { narrow2: 0.45, narrow3: 0.30, doomed: 0.25 },
+  ],
 } as const;
 
 /**
@@ -57,8 +66,8 @@ export function liarCountFor(speakerCount: number): number {
  */
 export const CANDIDATE_COUNT = 2;
 
-export function candidatesForSection(sectionIndex: number): number {
-  return RUN.candidatesBySection[sectionIndex] ?? CANDIDATE_COUNT;
+export function knowledgeForSection(sectionIndex: number) {
+  return RUN.knowledgeBySection[sectionIndex] ?? RUN.knowledgeBySection[0];
 }
 
 /** 助言はすべて挑戦者に見える。伏せない（伏せると運ゲーになる） */

@@ -8,11 +8,14 @@ export const ja = {
   tagline: '答えを知っているのは、君以外の全員だ。',
 
   menu: {
-    solo: '一人で試す',
-    soloNote: '助言者なし。部屋と死だけを確かめる',
+    solo: '一人で遊ぶ',
+    soloNote: '助言者はすべて AI。いつでも始められる',
+    random: '野良で遊ぶ',
+    randomNote: '見知らぬ助言者と。足りないぶんは AI が埋める',
     host: '賭場を開く',
     hostNote: '観客を助言者として招く',
     advisor: '助言者として入る',
+    comingSoon: '準備中',
   },
 
   hud: {
@@ -68,7 +71,10 @@ export const ja = {
     youAreHonestNote: '挑戦者を生かせば勝ち',
     correctIs: '生きる方',
     maybeIs: 'このどちらか',
-    youDontKnow: 'どちらかは分からない。知っているのは嘘つきだけ',
+    maybeIsWide: 'この三つのどれか',
+    doomedIs: 'これは死ぬ',
+    youDontKnow: 'どれかは分からない。知っているのは嘘つきだけ',
+    youKnowDoomed: '分かるのは死ぬ方だけ。生きる方は知らない',
     speaking: '発言できる',
     notSpeaking: '今回は発言できない',
     notSpeakingNote: '見えていても言えない',

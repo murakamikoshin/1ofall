@@ -11,10 +11,13 @@ export const en: Strings = {
 
   menu: {
     solo: 'Play alone',
-    soloNote: 'Advisors are played by the machine',
+    soloNote: 'Every advisor is a machine. Starts at once',
+    random: 'Play with strangers',
+    randomNote: 'Machines fill the seats nobody took',
     host: 'Open a den',
     hostNote: 'Invite your audience as advisors',
     advisor: 'Enter as an advisor',
+    comingSoon: 'Not yet',
   },
 
   hud: {
@@ -69,8 +72,11 @@ export const en: Strings = {
     youAreHonest: 'You are an ally',
     youAreHonestNote: 'You win if the challenger lives',
     correctIs: 'Lives',
-    maybeIs: 'One of these',
+    maybeIs: 'One of these two',
+    maybeIsWide: 'One of these three',
+    doomedIs: 'This one kills',
     youDontKnow: 'You do not know which. Only the liars do',
+    youKnowDoomed: 'You only know what kills. Not what lives',
     speaking: 'You can speak',
     notSpeaking: 'You cannot speak this round',
     notSpeakingNote: 'You can see it and you cannot say it',

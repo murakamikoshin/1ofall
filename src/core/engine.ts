@@ -1,5 +1,5 @@
 import type { AdvisorInfo, Hint, PublicRoom, Room, RoomPack } from './schema';
-import { RUN, candidatesForSection } from './limits';
+import { RUN, knowledgeForSection } from './limits';
 import { localized } from '../i18n';
 import {
   checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard,
@@ -414,7 +414,7 @@ export class GameEngine {
 
     // 誰が何を知っているかを配る。正解が入るのは嘘つきの手元と、協力者の候補の中だけ
     const knowledge = dealKnowledge(
-      choices, source.correct, casting, this.rng, candidatesForSection(this.sectionIndex),
+      choices, source.correct, casting, this.rng, knowledgeForSection(this.sectionIndex),
     );
     this.gateway.openRound({ roundId, room: fullRoom, casting, knowledge, deadlineAt });
     this.emit();

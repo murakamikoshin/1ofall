@@ -9,7 +9,7 @@ const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
 await p.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded' });
 
 const runStart = Date.now();
-await p.getByRole('button', { name: /一人で試す/ }).click();
+await p.getByRole('button', { name: /一人で遊ぶ/ }).click();
 await p.waitForSelector('.choice:not([disabled])');
 
 const rooms = [];

@@ -13,7 +13,7 @@ for (let i = 0; i < RUNS; i++) {
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   p.on('pageerror', (e) => errors.push(e.message));
   await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'domcontentloaded' });
-  await p.getByRole('button', { name: /一人で試す/ }).click();
+  await p.getByRole('button', { name: /一人で遊ぶ/ }).click();
   await p.waitForSelector('.choice:not([disabled])');
 
   const t0 = Date.now();
@@ -45,8 +45,13 @@ for (let i = 0; i < RUNS; i++) {
     const score = new Map();
     for (const c of labels) score.set(c.id, 0);
     // 協力者は正解を知らないので断言できない。断言は嘘つきを疑う。
+    // 「これは死ぬ」型は、触れた相手を潰す言い方として扱う。
     for (const tx of texts) {
       const touched = labels.filter((c) => c.label && tx.includes(c.label));
+      if (/やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ/.test(tx)) {
+        for (const c of touched) score.set(c.id, (score.get(c.id) ?? 0) - 0.9);
+        continue;
+      }
       const hedging = touched.length >= 2 || /たぶん|気がする|に見える|じゃないか|絞れた|決めきれん|どっちか/.test(tx);
       for (const c of touched) {
         score.set(c.id, (score.get(c.id) ?? 0) + (hedging ? 1.0 : 0.45));

@@ -5,7 +5,7 @@ const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const missing = [];
 
 await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
-await p.getByRole('button', { name: /一人で試す|Play alone/ }).click();
+await p.getByRole('button', { name: /一人で遊ぶ|Play alone/ }).click();
 await p.waitForSelector('.choice');
 await p.waitForTimeout(1200);
 

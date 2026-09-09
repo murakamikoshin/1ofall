@@ -15,7 +15,7 @@ const watch = (p, tag) => {
 const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
 watch(p, 'challenger');
 await p.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded' });
-await p.getByRole('button', { name: /一人で試す/ }).click();
+await p.getByRole('button', { name: /一人で遊ぶ/ }).click();
 await p.waitForSelector('.choice');
 
 const leaked = await p.evaluate(() => document.body.innerHTML.includes('deathMessage'));
@@ -63,7 +63,7 @@ if (await p.locator('.end-screen').count()) {
 const ms = await b.newPage({ viewport: { width: 375, height: 812 } });
 watch(ms, 'challenger-mobile');
 await ms.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded' });
-await ms.getByRole('button', { name: /一人で試す/ }).click();
+await ms.getByRole('button', { name: /一人で遊ぶ/ }).click();
 await ms.waitForSelector('.choice');
 await ms.screenshot({ path: `${OUT}/22-challenger-375.png` });
 const overflow = await ms.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
@@ -73,7 +73,7 @@ console.log('挑戦者375px 横スクロール:', overflow ? 'あり(問題)' : 
 const rm = await b.newPage({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
 watch(rm, 'reduced-motion');
 await rm.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded' });
-await rm.getByRole('button', { name: /一人で試す/ }).click();
+await rm.getByRole('button', { name: /一人で遊ぶ/ }).click();
 await rm.waitForSelector('.choice');
 const t0 = Date.now();
 await rm.locator('.choice').first().click();

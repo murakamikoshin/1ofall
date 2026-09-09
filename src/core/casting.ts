@@ -1,6 +1,6 @@
 import type { AdvisorInfo, Choice } from './schema';
 import { pickSome, shuffled, type Rng } from './rng';
-import { CANDIDATE_COUNT, SLOTS_MAX, SLOTS_MIN, liarCountFor } from './limits';
+import { SLOTS_MAX, SLOTS_MIN, liarCountFor } from './limits';
 
 /**
  * 発言枠と嘘つきの配役、そして誰が何を知っているか。
@@ -14,12 +14,27 @@ export interface Casting {
   liarIds: readonly string[];
 }
 
-/** 助言者ひとりに配られる知識 */
+/**
+ * 助言者ひとりに配られる知識。
+ *
+ * 協力者のあいだでも知っていることの「形」が違う。
+ *   目利き（二択）  正解を二つまで絞れている
+ *   半可通（三択）  三つまで
+ *   耳打ち          「これは死ぬ」を一つだけ知っている
+ *
+ * 混ぜると読みの差が広がる（素朴な読み 66.3% / 設計どおりの読み 82.8%。
+ * 全員が二択だと 83.1% / 92.8% で、差が9.6ptしか出ない）。
+ *
+ * ただし「何も知らない者」は入れない。半分入れると61%まで落ち、
+ * 落ちたぶんがそのまま運になる（tools/sim15.mjs）。
+ */
 export type Knowledge =
   /** 嘘つきは正解を正確に知っている */
   | { kind: 'liar'; correct: string }
-  /** 協力者は「このどれかが生きる」までしか知らない */
-  | { kind: 'honest'; candidates: readonly string[] };
+  /** 協力者。正解はこの中にある、というところまで */
+  | { kind: 'honest'; candidates: readonly string[] }
+  /** 協力者。これが死ぬ、ということだけ知っている */
+  | { kind: 'doomed'; doomed: string };
 
 export function clampSlots(slots: number): number {
   if (!Number.isFinite(slots)) return SLOTS_MIN;
@@ -76,24 +91,41 @@ export function castLiars(speakerIds: readonly string[], rng: Rng): readonly str
  * 誰が何を知っているかを配る。
  * 正解が入るのは嘘つきの手元と、協力者の候補の中だけ。
  */
+/** 協力者の知識の配り方。区画ごとに割合を変えて難度を作る */
+export interface KnowledgeMix {
+  /** 二択まで絞れている者の割合 */
+  narrow2: number;
+  /** 三択まで絞れている者の割合 */
+  narrow3: number;
+  /** 「これは死ぬ」だけ知っている者の割合 */
+  doomed: number;
+}
+
 export function dealKnowledge(
   choices: readonly Choice[],
   correct: string,
   casting: Casting,
   rng: Rng,
-  candidateCount: number = CANDIDATE_COUNT,
+  mix: KnowledgeMix = { narrow2: 0.5, narrow3: 0.25, doomed: 0.25 },
 ): Map<string, Knowledge> {
   const wrong = choices.filter((c) => c.id !== correct).map((c) => c.id);
   const out = new Map<string, Knowledge>();
+  const total = mix.narrow2 + mix.narrow3 + mix.doomed;
 
   for (const id of casting.speakerIds) {
     if (casting.liarIds.includes(id)) {
       out.set(id, { kind: 'liar', correct });
       continue;
     }
-    // 正解は必ず入れる。残りは外れから埋める
-    const decoys = pickSome(wrong, Math.max(0, candidateCount - 1), rng);
-    out.set(id, { kind: 'honest', candidates: shuffled([correct, ...decoys], rng) });
+
+    const roll = rng() * total;
+    if (roll < mix.narrow2 || wrong.length < 2) {
+      out.set(id, { kind: 'honest', candidates: shuffled([correct, ...pickSome(wrong, 1, rng)], rng) });
+    } else if (roll < mix.narrow2 + mix.narrow3) {
+      out.set(id, { kind: 'honest', candidates: shuffled([correct, ...pickSome(wrong, 2, rng)], rng) });
+    } else {
+      out.set(id, { kind: 'doomed', doomed: pickSome(wrong, 1, rng)[0] as string });
+    }
   }
   return out;
 }

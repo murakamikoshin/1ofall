@@ -1,7 +1,7 @@
 import type { AdvisorInfo, Hint } from './schema';
 import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { createRng, shuffled, type Rng } from './rng';
-import { writeHint } from './hint-writer';
+import { writeHint, voiceOf } from './hint-writer';
 import { liarBias } from './casting';
 
 /**
@@ -63,6 +63,8 @@ export class AiAdvisorGateway implements AdvisorGateway {
         knowledge,
         rng: this.rng,
         liarHonestyRate: honesty,
+        // 話し方の癖は人ごとに固定。区画のあいだ同じ顔ぶれなので読みが積める
+        voice: voiceOf(id),
       });
       const delay = this.minDelay + this.rng() * (this.maxDelay - this.minDelay);
 
@@ -82,7 +84,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
     }
   }
 
-  closeRound(): void {
+  closeRound(_roundId?: string): void {
     this.openRoundId = null;
     this.clearTimers();
   }
