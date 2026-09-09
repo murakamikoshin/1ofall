@@ -129,6 +129,7 @@ export const ja = {
     youNarrowedTo: (n: number) => `生きる方は光った${n}つのどれか。それ以上は分からない`,
     youOnlyKnowTrap: '知っているのは罠だけ。生きる方は分からない',
     youKnowDoomed: '分かるのは死ぬ方だけ。生きる方は知らない',
+    nothingDealt: '今回は何も配られていない',
     speaking: '発言できる',
     notSpeaking: '今回は発言できない',
     notSpeakingNote: '見えていても言えない',

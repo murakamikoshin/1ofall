@@ -188,6 +188,48 @@ function drawLiars(speakerIds: readonly string[], count: number, rng: Rng): stri
  * 挑戦者自身に配る部分情報。全員挑戦者モードで使う。
  * 全員を疑っても手詰まりにならないための最低限の足場。
  */
+/**
+ * 発言枠の外にいる助言者にも、同じ形の知識を配る。
+ *
+ * 「見えているのに言えない」がこのゲームの手触りの芯なので、
+ * 枠外の人の画面が空だと成立しない。
+ *
+ * **勝敗には一切効かない。** 枠外の助言は挑戦者に届かないし、
+ * 発言枠は区画のあいだ動かないので、ここで配ったものが
+ * あとから盤面に混ざることもない。
+ * だから乱数も本編とは別に持つ（本編の目が動くと均衡が変わる）。
+ */
+export function dealAudienceKnowledge(
+  choices: readonly Choice[],
+  correct: string,
+  trap: string,
+  audienceIds: readonly string[],
+  rng: Rng,
+  mix: KnowledgeMix = { narrow2: 0.5, narrow3: 0.25, doomed: 0.25 },
+  liarFraction = 0.5,
+  trapperLiars = false,
+): Map<string, Knowledge> {
+  const wrong = choices.filter((c) => c.id !== correct).map((c) => c.id);
+  const out = new Map<string, Knowledge>();
+  const total = mix.narrow2 + mix.narrow3 + mix.doomed;
+
+  for (const id of audienceIds) {
+    if (rng() < liarFraction) {
+      out.set(id, trapperLiars ? { kind: 'trapper', trap } : { kind: 'liar', correct, trap });
+      continue;
+    }
+    const roll = rng() * total;
+    if (roll < mix.narrow2) {
+      out.set(id, { kind: 'honest', candidates: shuffled([correct, ...pickSome(wrong, 1, rng)], rng) });
+    } else if (roll < mix.narrow2 + mix.narrow3) {
+      out.set(id, { kind: 'honest', candidates: shuffled([correct, ...pickSome(wrong, 2, rng)], rng) });
+    } else {
+      out.set(id, { kind: 'doomed', doomed: pickSome(wrong, 1, rng)[0] as string });
+    }
+  }
+  return out;
+}
+
 export function dealOwnKnowledge(
   choices: readonly Choice[],
   correct: string,

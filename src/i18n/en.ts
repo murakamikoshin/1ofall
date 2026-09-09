@@ -129,6 +129,7 @@ export const en: Strings = {
     youNarrowedTo: (n: number) => `The safe one is among the ${n} lit here. No further than that`,
     youOnlyKnowTrap: 'You only know the trap. You do not know the safe one',
     youKnowDoomed: 'You only know what kills. Not what lives',
+    nothingDealt: 'Nothing was dealt to you this room',
     speaking: 'You can speak',
     notSpeaking: 'You cannot speak this round',
     notSpeakingNote: 'You can see it and you cannot say it',

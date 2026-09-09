@@ -1,12 +1,12 @@
-import type { AdvisorInfo, Hint, PublicRoom, Room, RoomPack } from './schema';
-import { RUN, knowledgeForSection, STANDARD, type ModeConfig } from './limits';
+import type { AdvisorInfo, Hint, Knowledge, PublicRoom, Room, RoomPack } from './schema';
+import { LIAR_FRACTION, RUN, knowledgeForSection, STANDARD, type ModeConfig } from './limits';
 import { localized } from '../i18n';
 import {
   checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard, wasTruthful,
   type HintGuardState, type ReportBook,
 } from './moderation';
 import {
-  castLiars, castSpeakers, clampSlots, dealKnowledge, dealOwnKnowledge,
+  castLiars, castSpeakers, clampSlots, dealAudienceKnowledge, dealKnowledge, dealOwnKnowledge,
   type Casting, type SelectionMode,
 } from './casting';
 import { createRng, shuffled, pickSome, type Rng } from './rng';
@@ -115,6 +115,24 @@ export interface EngineState {
 }
 
 export const HUSH_MS = 800;
+
+/** その部屋の罠を、配り終えた知識から読み戻す（配役の中にしか無い） */
+function trapFrom(knowledge: ReadonlyMap<string, Knowledge>): string | null {
+  for (const k of knowledge.values()) {
+    if (k.kind === 'liar' || k.kind === 'trapper') return k.trap;
+  }
+  return null;
+}
+
+/** 部屋ごとに別の乱数を立てるための種。本編の目を消費しない */
+function hashString(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 type Listener = (state: EngineState) => void;
 
@@ -461,6 +479,21 @@ export class GameEngine {
       knowledgeForSection(this.sectionIndex), this.mode.loneHonest,
       !!this.mode.allChallengers,
     );
+
+    // 発言枠の外の人にも同じものを配る。「見えているのに言えない」を作るため。
+    // 勝敗には効かない（枠外の助言は届かず、枠は区画のあいだ動かない）ので、
+    // 本編の目が動かないよう乱数は別に持つ
+    const outsiders = eligible.map((a) => a.id).filter((id) => !knowledge.has(id));
+    if (outsiders.length > 0) {
+      const trap = trapFrom(knowledge) ?? choices.find((c) => c.id !== source.correct)?.id ?? source.correct;
+      const side = createRng(hashString(roundId));
+      for (const [id, k] of dealAudienceKnowledge(
+        choices, source.correct, trap, outsiders, side,
+        knowledgeForSection(this.sectionIndex), LIAR_FRACTION, !!this.mode.allChallengers,
+      )) {
+        knowledge.set(id, k);
+      }
+    }
 
     // 全員挑戦者モードでは、挑戦者自身にも部分情報が配られる
     this.ownCandidates = this.mode.allChallengers

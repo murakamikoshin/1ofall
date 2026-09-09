@@ -10,6 +10,7 @@ import {
 import type { Choice } from '@/core/schema';
 import { strings, localized, detectLocale, setLocale } from '@/i18n';
 import type { Knowledge } from '@/core/casting';
+import { LiveConnection } from './live-connection';
 
 /**
  * 助言者ページ。無料・ブラウザ・URLを開くだけ。
@@ -30,8 +31,10 @@ export interface AdvisorView {
   /**
    * 自分に配られた知識。
    * 嘘つきは正解そのもの、協力者は「このどちらかが生きる」までしか受け取らない。
+   * null は「今回は何も配られていない」。起こらない想定だが、
+   * 線の向こうが黙ったときに嘘の文言を出さないための逃げ道。
    */
-  knowledge: Knowledge;
+  knowledge: Knowledge | null;
   isSpeaker: boolean;
 }
 
@@ -40,6 +43,12 @@ export interface AdvisorConnection {
   onView(listener: (view: AdvisorView | null) => void): () => void;
   sendHint(roundId: string, text: string): void;
   volunteer(roundId: string): void;
+  /**
+   * サーバーから返る知らせ（弾かれた・黙らされた・切れた）。
+   * 送る前の検査は画面側でもやっているが、最後に決めるのはサーバーなので、
+   * 断られた理由を本人へ出す口が要る。
+   */
+  onNotice?(listener: (code: string) => void): () => void;
 }
 
 /**
@@ -128,7 +137,14 @@ if (!app) throw new Error('#app が無い');
 
 setLocale(detectLocale());
 
-const connection: AdvisorConnection = new RehearsalConnection();
+/**
+ * 繋ぎ先が設定されていれば本物の線、無ければ素振り。
+ * 画面側はどちらか知らない（AdvisorConnection の先を見ない）。
+ */
+const PARTY_HOST = import.meta.env['VITE_PARTY_HOST'] ?? '';
+const connection: AdvisorConnection = PARTY_HOST
+  ? new LiveConnection(PARTY_HOST)
+  : new RehearsalConnection();
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -203,6 +219,27 @@ function renderBoard(): void {
 
     const T = strings();
     const k = view.knowledge;
+    if (!k) {
+      // 何も配られていないのに「2つのどれか」などと書かない
+      roleTitle.textContent = T.advisor.youAreHonest;
+      roleTitle.classList.remove('is-liar');
+      frame.classList.remove('is-liar');
+      roleNote.textContent = T.advisor.nothingDealt;
+      prompt.textContent = view.prompt;
+      grid.innerHTML = '';
+      for (const choice of view.choices) {
+        const cell = el('div', 'cell');
+        const img = el('img');
+        img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
+        img.alt = '';
+        const label = el('span');
+        label.textContent = localized(choice.label);
+        cell.append(img, label);
+        grid.append(cell);
+      }
+      renderCompose(compose, view, () => current);
+      return;
+    }
     // 全員挑戦者モードの裏切り者（trapper）は、正解は知らないが罠は知っている。
     // 立場は嘘つき側。ここで honest 扱いにすると本人に嘘つきだと伝わらない
     const isLiar = k.kind === 'liar' || k.kind === 'trapper';
@@ -298,6 +335,23 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   const counter = el('p', 'counter');
   const status = el('p', 'status');
   const labels = view.choices.map((c) => localized(c.label));
+
+  // 最後に決めるのはサーバー。断られた理由はここに出す
+  connection.onNotice?.((code) => {
+    const T = strings();
+    const known: Record<string, string> = {
+      blocked: T.errors.blocked,
+      pointing: T.errors.pointing,
+      tooManyChoices: T.errors.tooManyChoices,
+      tooLong: T.errors.tooLong,
+      rateLimited: T.errors.rateLimited,
+      silenced: T.advisor.silenced,
+    };
+    const message = known[code];
+    if (!message) return;
+    status.textContent = message;
+    status.classList.add('is-error');
+  });
 
   // 送れないものは、送らせない。押してから断るのでは遅い
   const sync = (): void => {

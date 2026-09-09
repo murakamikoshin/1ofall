@@ -17,7 +17,7 @@
     "test": "node tools/test-moderation.mjs && node tools/test-composite.mjs && node tools/test-locale.mjs && node tools/test-wire.mjs && node tools/test-party.mjs",
     "sim": "node tools/sim10.mjs 38",
     "party": "partykit dev --port 1999",
-    "test:live": "node tools/party-live.mjs"
+    "test:live": "node tools/party-live.mjs && node tools/advisor-live.mjs /tmp"
   },
   "dependencies": {
     "howler": "^2.2.4",
