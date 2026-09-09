@@ -37,25 +37,26 @@ for (let i = 0; i < RUNS; i++) {
 
     opened += await p.locator('.hint-text').count();
 
-    const texts = await p.locator('.hint-text').allTextContents();
+    // 名前・記録・本文をまとめて取る。記録を読むのが新設計の要
+    const rows = await p.$$eval('.hint-row', (els) => els.map((e) => ({
+      rec: e.querySelector('.hint-record')?.textContent ?? '',
+      text: e.querySelector('.hint-text')?.textContent ?? '',
+    })));
     const labels = await p.$$eval('.choice', (els) =>
       els.map((e) => ({ id: e.dataset.choiceId, label: e.getAttribute('aria-label') ?? '' })));
     // 「どっちか」と迷っている助言は、触れた両方に薄く点を入れる。
     // 正解は全協力者の候補に必ず入るので、迷いを数えると浮かび上がる。
     const score = new Map();
     for (const c of labels) score.set(c.id, 0);
-    // 協力者は正解を知らないので断言できない。断言は嘘つきを疑う。
-    // 「これは死ぬ」型は、触れた相手を潰す言い方として扱う。
-    for (const tx of texts) {
-      const touched = labels.filter((c) => c.label && tx.includes(c.label));
-      if (/やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ/.test(tx)) {
-        for (const c of touched) score.set(c.id, (score.get(c.id) ?? 0) - 0.9);
-        continue;
-      }
-      const hedging = touched.length >= 2 || /たぶん|気がする|に見える|じゃないか|絞れた|決めきれん|どっちか/.test(tx);
-      for (const c of touched) {
-        score.set(c.id, (score.get(c.id) ?? 0) + (hedging ? 1.0 : 0.45));
-      }
+    // その人の記録（正n 嘘n）で重みを付けて数える。
+    // 嘘つき全員が同じ罠へ誘うので、素朴に数えると罠を掴まされる。
+    for (const r of rows) {
+      const m = r.rec.match(/正(\d+)\s*嘘(\d+)/);
+      const hit = m ? Number(m[1]) : 0;
+      const miss = m ? Number(m[2]) : 0;
+      const w = (hit + 1) / (hit + miss + 2);
+      const touched = labels.filter((c) => c.label && r.text.includes(c.label));
+      for (const c of touched) score.set(c.id, (score.get(c.id) ?? 0) + w);
     }
     let best = labels[0]?.id, bestV = -Infinity;
     for (const [id, v] of score) if (v > bestV) { bestV = v; best = id; }
