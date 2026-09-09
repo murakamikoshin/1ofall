@@ -295,6 +295,24 @@
 
 .hint-row.is-open .hint-name { color: var(--paper); }
 .hint-record { margin-left: 0.4rem; font-size: 0.7rem; color: var(--paper-faint); }
+.hint-row.is-dead { opacity: 0.5; }
+.hint-row.is-dead .hint-text { color: var(--blood-lit); }
+
+/* 全員挑戦者モードで、自分が知っている範囲の印 */
+.choice.is-known { border-color: var(--paper-faint); }
+
+.choice-known {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  color: var(--paper-faint);
+}
+
+.choice.is-known:hover:not(:disabled) .choice-known,
+.choice.is-known:focus-visible .choice-known { color: var(--paper-bright); }
+
 .hint-text {
   color: var(--paper-bright);
   min-width: 0;

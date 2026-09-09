@@ -144,6 +144,23 @@ export function writeHint({
     return trySh(shapes, label, rng) ?? trySh(HEDGE, label, rng) ?? label;
   }
 
+  if (knowledge.kind === 'trapper') {
+    // 罠しか知らない。罠へ誘うか、罠を避けろと言って信用を作るか
+    const label = labelOf(choices, knowledge.trap);
+    if (rng() < liarHonestyRate) {
+      // 本当のことを言う回。罠を避けろ、は真実なので記録が良くなる
+      return trySh(AVOID, label, rng) ?? `${label}はだめだ`;
+    }
+    if (rng() < liarMimicRate) {
+      const other = choices.filter((c) => c.id !== knowledge.trap);
+      const b = other.length ? localized((other[Math.floor(rng() * other.length)] as Choice).label) : '';
+      const narrowed = writeNarrow(label, b, rng);
+      if (narrowed) return narrowed;
+    }
+    const shapes = rng() < voice.assertive ? PUSH : HEDGE;
+    return trySh(shapes, label, rng) ?? label;
+  }
+
   if (knowledge.kind === 'doomed') {
     // 「これが死ぬ」ことしか知らない。潰すことしかできない
     const label = labelOf(choices, knowledge.doomed);

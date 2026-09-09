@@ -5,7 +5,10 @@ import {
   checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard, wasTruthful,
   type HintGuardState, type ReportBook,
 } from './moderation';
-import { castLiars, castSpeakers, clampSlots, dealKnowledge, type Casting, type SelectionMode } from './casting';
+import {
+  castLiars, castSpeakers, clampSlots, dealKnowledge, dealOwnKnowledge,
+  type Casting, type Knowledge, type SelectionMode,
+} from './casting';
 import { createRng, shuffled, pickSome, type Rng } from './rng';
 import type { AdvisorGateway, Unsubscribe } from './advisor-gateway';
 import { NullAdvisorGateway } from './advisor-gateway';
@@ -52,6 +55,13 @@ export interface RoundState {
   /** 届いた助言。すべて見える */
   advice: readonly Advice[];
   silenceUsed: boolean;
+  /**
+   * 全員挑戦者モードで、挑戦者自身に配られた部分情報。
+   * 「このどれかが生きる」。全員を疑っても手詰まりにならないための足場。
+   */
+  ownCandidates: readonly string[];
+  /** 死んで今回休んでいる仲間 */
+  restingIds: readonly string[];
 }
 
 export interface Verdict {
@@ -65,6 +75,11 @@ export interface Verdict {
   fatal: boolean;
   /** この部屋で嘘をついていた面々（開封の有無にかかわらず開示する） */
   liars: readonly AdvisorInfo[];
+  /**
+   * 全員挑戦者モードで、仲間がそれぞれ何を選んだか。
+   * 言ったことと選んだことのずれが、ここで見える。
+   */
+  party: readonly { id: string; name: string; chosenId: string; survived: boolean }[];
 }
 
 export interface EngineConfig {
@@ -134,6 +149,10 @@ export class GameEngine {
   private currentCasting: Casting = { speakerIds: [], liarIds: [] };
   /** 区画のあいだの当たり外れ。配役が固定なので手掛かりになる */
   private records = new Map<string, { hit: number; miss: number }>();
+  /** 全員挑戦者モードで、死んで次の部屋を休む仲間 */
+  private resting = new Set<string>();
+  private currentKnowledge = new Map<string, Knowledge>();
+  private ownCandidates: readonly string[] = [];
   /** 区画のあいだ据え置く配役 */
   private sectionCasting: Casting | null = null;
   private sectionCastingIndex = -1;
@@ -217,6 +236,7 @@ export class GameEngine {
     this.totalCleared = 0;
     this.muted.clear();
     this.records.clear();
+    this.resting.clear();
     this.sectionCasting = null;
     this.liarLog = [];
     this.nextRoundPenaltyMs = 0;
@@ -402,9 +422,24 @@ export class GameEngine {
     this.currentCasting = casting;
     resetGuard(this.guard);
 
-    const speakers = casting.speakerIds
+    // 死んで休んでいる仲間はこの部屋では喋らない
+    const speakingIds = casting.speakerIds.filter((id) => !this.resting.has(id));
+    const speakers = speakingIds
       .map((id) => eligible.find((a) => a.id === id))
       .filter((a): a is AdvisorInfo => !!a);
+
+    // 配る前に決める。round に載せるので順序を間違えると前の部屋の値が残る
+    const knowledge = dealKnowledge(
+      choices, source.correct, casting, this.rng,
+      knowledgeForSection(this.sectionIndex), this.mode.loneHonest,
+      !!this.mode.allChallengers,
+    );
+    this.currentKnowledge = knowledge;
+
+    // 全員挑戦者モードでは、挑戦者自身にも部分情報が配られる
+    this.ownCandidates = this.mode.allChallengers
+      ? dealOwnKnowledge(choices, source.correct, this.mode.ownCandidates ?? 3, this.rng)
+      : [];
 
     const deadlineAt = this.now() + timeLimitMs;
     this.round = {
@@ -418,17 +453,19 @@ export class GameEngine {
       speakers,
       advice: [],
       silenceUsed: false,
+      ownCandidates: this.ownCandidates,
+      restingIds: [...this.resting],
     };
     this.liarLog = [...this.liarLog, { roundId, liarIds: casting.liarIds }];
     this.verdict = null;
     this.phase = 'choosing';
 
     // 誰が何を知っているかを配る。正解が入るのは嘘つきの手元と、協力者の候補の中だけ
-    const knowledge = dealKnowledge(
-      choices, source.correct, casting, this.rng,
-      knowledgeForSection(this.sectionIndex), this.mode.loneHonest,
-    );
-    this.gateway.openRound({ roundId, room: fullRoom, casting, knowledge, deadlineAt });
+    this.gateway.openRound({
+      roundId, room: fullRoom,
+      casting: { speakerIds: speakingIds, liarIds: casting.liarIds },
+      knowledge, deadlineAt,
+    });
     this.emit();
   }
 
@@ -485,6 +522,10 @@ export class GameEngine {
       .map((id) => this.advisors.find((a) => a.id === id))
       .filter((a): a is AdvisorInfo => !!a);
 
+    // 全員挑戦者モード：仲間もそれぞれ選ぶ。結果で言行のずれが見える
+    const party = this.mode.allChallengers ? this.resolveParty(round, correctId) : [];
+    this.resting = new Set(party.filter((p) => !p.survived).map((p) => p.id));
+
     this.verdict = {
       roundId: round.roundId,
       chosenId,
@@ -495,9 +536,44 @@ export class GameEngine {
       livesLeft: Math.max(0, this.lives),
       fatal: !survived && this.lives <= 0,
       liars,
+      party,
     };
     this.phase = 'hush';
     this.emit();
+  }
+
+  /**
+   * 仲間が何を選ぶかを決める。
+   * 自分の持ち情報と、他人の助言を足して選ぶ。挑戦者と同じ理屈で動く。
+   * 罠だけを知っている嘘つきは、罠を避けたうえで他人の話に乗る。
+   */
+  private resolveParty(
+    round: RoundState,
+    correctId: string,
+  ): { id: string; name: string; chosenId: string; survived: boolean }[] {
+    const ids = round.room.choices.map((c) => c.id);
+    return round.speakers.map((speaker) => {
+      const own = this.currentKnowledge.get(speaker.id);
+      const score = new Map(ids.map((id) => [id, 0]));
+
+      // 自分が知っていることを重く見る
+      if (own?.kind === 'honest') for (const id of own.candidates) score.set(id, (score.get(id) ?? 0) + 2.5);
+      if (own?.kind === 'doomed') score.set(own.doomed, (score.get(own.doomed) ?? 0) - 3);
+      if (own?.kind === 'trapper') score.set(own.trap, (score.get(own.trap) ?? 0) - 99);
+      if (own?.kind === 'liar') score.set(own.correct, (score.get(own.correct) ?? 0) + 99);
+
+      // 他人の助言も聞く
+      for (const advice of round.advice) {
+        if (advice.advisorId === speaker.id) continue;
+        for (const c of round.room.choices) {
+          if (advice.text.includes(localized(c.label))) score.set(c.id, (score.get(c.id) ?? 0) + 0.6);
+        }
+      }
+      const max = Math.max(...score.values());
+      const best = ids.filter((id) => score.get(id) === max);
+      const chosenId = best[Math.floor(this.rng() * best.length)] ?? (ids[0] as string);
+      return { id: speaker.id, name: speaker.name, chosenId, survived: chosenId === correctId };
+    });
   }
 
   private afterVerdict(): void {

@@ -51,6 +51,7 @@ function renderTitle(): void {
   menu.append(
     menuItem(T.menu.solo, T.menu.soloNote, false, () => startGame('standard')),
     menuItem(T.menu.brink, T.menu.brinkNote, false, () => startGame('brink')),
+    menuItem(T.menu.party, T.menu.partyNote, false, () => startGame('party')),
     // 野良と賭場は通信層（段階4）が入ってから開く
     menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
     menuItem(T.menu.host, `${T.menu.hostNote}（${T.menu.comingSoon}）`, true),
@@ -195,7 +196,7 @@ function render(state: EngineState): void {
   shell.prompt.textContent = localized(round.room.prompt);
 
   resetStage(shell.refs);
-  renderChoices(round.room.theme, round.room.id, round.room.choices, shell);
+  renderChoices(round.room.theme, round.room.id, round.room.choices, shell, round.ownCandidates);
   renderHints(state, shell);
 }
 
@@ -218,6 +219,7 @@ function renderChoices(
   roomId: string,
   choices: readonly Choice[],
   s: Shell,
+  ownCandidates: readonly string[] = [],
 ): void {
   s.choices.innerHTML = '';
   s.choices.dataset['count'] = String(choices.length);
@@ -225,7 +227,9 @@ function renderChoices(
   const buttons: HTMLElement[] = [];
   choices.forEach((choice, i) => {
     const btn = document.createElement('button');
-    btn.className = 'choice';
+    // 全員挑戦者モードでは、自分が知っている範囲に印が付く
+    const known = ownCandidates.includes(choice.id);
+    btn.className = `choice${known ? ' is-known' : ''}`;
     btn.dataset['choiceId'] = choice.id;
     btn.setAttribute('aria-label', localized(choice.label));
 
@@ -240,6 +244,11 @@ function renderChoices(
     label.textContent = localized(choice.label);
 
     btn.append(key, img, label);
+    if (known) {
+      const mark = el('span', 'choice-known');
+      mark.textContent = strings().challenger.ownMark;
+      btn.append(mark);
+    }
     btn.addEventListener('pointerenter', () => audio.play('hover'));
     btn.addEventListener('click', () => commit(choice.id));
     s.choices.append(btn);
@@ -372,7 +381,10 @@ async function runResolution(): Promise<void> {
     shell.choices.querySelector<HTMLElement>(`[data-choice-id="${CSS.escape(verdict.correctId)}"]`) ?? null;
 
   markLosingLife(verdict);
-  await playResolution(shell.refs, verdict, { advance: () => engine?.advancePresentation() });
+  await playResolution(shell.refs, verdict, {
+    advance: () => engine?.advancePresentation(),
+    showParty: () => renderPartyResult(verdict),
+  });
 
   resolving = false;
   const next = engine.snapshot();
@@ -384,6 +396,37 @@ async function runResolution(): Promise<void> {
     audio.play('room-open');
     startTimerLoop();
   }
+}
+
+/** 仲間がそれぞれ何を選んだかを助言欄に開く */
+function renderPartyResult(verdict: Verdict): void {
+  if (!shell || verdict.party.length === 0) return;
+  const T = strings();
+  const round = engine?.snapshot().round;
+  const labelOf = (id: string): string => {
+    const choice = round?.room.choices.find((c) => c.id === id);
+    return choice ? localized(choice.label) : '';
+  };
+
+  shell.hints.innerHTML = '';
+  const head = el('div', 'hints-head');
+  const dead = verdict.party.filter((p) => !p.survived).length;
+  const count = el('span', 'hints-count');
+  count.textContent = dead > 0 ? T.challenger.partyDied(dead) : T.challenger.partyLived;
+  head.append(count);
+  shell.hints.append(head);
+
+  const list = el('div', 'hints-list');
+  for (const member of verdict.party) {
+    const row = el('div', `hint-row${member.survived ? '' : ' is-dead'}`);
+    const name = el('span', 'hint-name');
+    name.textContent = member.name;
+    const text = el('span', 'hint-text');
+    text.textContent = T.challenger.partyPicked(member.name, labelOf(member.chosenId));
+    row.append(name, text);
+    list.append(row);
+  }
+  shell.hints.append(list);
 }
 
 function markLosingLife(verdict: Verdict): void {

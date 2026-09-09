@@ -40,6 +40,8 @@ export interface ResolutionRefs {
 export interface ResolutionHooks {
   /** hush → reveal → verdict と本体の phase を進める */
   advance: () => void;
+  /** 全員挑戦者モードで、仲間が何を選んだかを見せる */
+  showParty?: () => void;
 }
 
 export async function playResolution(
@@ -84,6 +86,9 @@ export async function playResolution(
 
   /* ── 3. 結果 ──────────────────────────────────────────────── */
   hooks.advance();
+
+  // 仲間が何を選んだかを開く。言ったことと選んだことのずれがここで見える
+  hooks.showParty?.();
 
   if (verdict.survived) {
     // 正解時は短く抑える

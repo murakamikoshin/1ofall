@@ -106,7 +106,7 @@ export const HINTS_ARE_VISIBLE = true;
 
 /* ───────────────────────────── 遊び方 ───────────────────────────── */
 
-export type ModeId = 'standard' | 'brink';
+export type ModeId = 'standard' | 'brink' | 'party';
 
 export interface ModeConfig {
   id: ModeId;
@@ -116,6 +116,13 @@ export interface ModeConfig {
   slotsBySection: readonly number[];
   /** 正直者をただ一人にする。その一人だけが正解を正確に知っている */
   loneHonest: boolean;
+  /**
+   * 全員挑戦者。助言者ではなく、同じ部屋を歩く仲間として扱う。
+   * 仲間も選び、死ぬ。挑戦者自身にも部分的な情報が配られる。
+   */
+  allChallengers?: boolean;
+  /** 全員挑戦者のとき、挑戦者自身が正解を何択まで絞れているか */
+  ownCandidates?: number;
   /** 嘘つきが本当のことを言う率 */
   liarHonesty: number;
   /** 嘘つきが迷ったふりをする率 */
@@ -164,4 +171,41 @@ export const BRINK: ModeConfig = {
   liarMimic: 0.2,
 };
 
-export const MODES: Record<ModeId, ModeConfig> = { standard: STANDARD, brink: BRINK };
+
+
+
+/**
+ * 全員挑戦者。
+ *
+ * 助言者モードでは助言者に危険が無く、嘘をつくコストがゼロだった。
+ * ここでは全員が同じ部屋を歩くので、嘘つきにも命が懸かる。
+ *
+ * 効いている点：
+ *  - **他人の話の価値が +39pt**（自分の情報だけなら33%、他人の話も読むと73%）。
+ *    助言者モードの腕の差が10pt前後なので、桁が違う
+ *  - 挑戦者にも部分的な情報があるので、全員を疑っても手詰まりにならない
+ *  - 同時に選んで結果が開くので、**言ったことと選んだことのずれが見える**
+ *
+ * 嘘つきは**どれが死ぬかを知っていて、正解は知らない**。
+ * 正解を知る形にすると嘘つきが一度も死なず、8部屋で丸わかりになる
+ * （死亡回数の差 2.16回 → 0.12回。tools/sim25.mjs）。
+ *
+ * 死んだ仲間は次の部屋を休む。嘘つきが「自分も罠に落ちて見せる」camouflage を
+ * 選ぶと、次の部屋で声を失う。
+ *
+ * 実測：正直者の生存率73〜76% / 他人の話の価値 +39〜42pt
+ */
+export const PARTY: ModeConfig = {
+  id: 'party',
+  lives: 4,
+  sections: 4,
+  roomsPerSection: 8,
+  slotsBySection: [6, 6, 6, 6],
+  loneHonest: false,
+  allChallengers: true,
+  ownCandidates: 3,
+  liarHonesty: 0.25,
+  liarMimic: 0.2,
+};
+
+export const MODES: Record<ModeId, ModeConfig> = { standard: STANDARD, brink: BRINK, party: PARTY };

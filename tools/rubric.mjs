@@ -36,21 +36,24 @@ const AVOID = /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ
 /** 打ち手いろいろ。最良が一つに固まっていないかも見る */
 const PLAYERS = {
   '当てずっぽう': ({ labels }) => pick(labels).id,
+  '自分の情報だけ': ({ labels, own }) => (own?.length ? pick(own) : pick(labels).id),
   '数えるだけ': ({ labels, rows }) => {
     const s = new Map(labels.map((c) => [c.id, 0]));
     for (const r of rows) for (const c of labels) if (r.text.includes(c.label)) s.set(c.id, s.get(c.id) + 1);
     return top(s);
   },
-  '記録で重み付け': ({ labels, rows }) => {
+  '記録で重み付け': ({ labels, rows, own }) => {
     const s = new Map(labels.map((c) => [c.id, 0]));
+    for (const id of own ?? []) s.set(id, (s.get(id) ?? 0) + 2.5);
     for (const r of rows) {
       const w = (r.rec.hit + 1) / (r.rec.hit + r.rec.miss + 2);
       for (const c of labels) if (r.text.includes(c.label)) s.set(c.id, s.get(c.id) + w);
     }
     return top(s);
   },
-  '迷いを信じ記録も見る': ({ labels, rows }) => {
+  '迷いを信じ記録も見る': ({ labels, rows, own }) => {
     const s = new Map(labels.map((c) => [c.id, 0]));
+    for (const id of own ?? []) s.set(id, (s.get(id) ?? 0) + 2.5);
     for (const r of rows) {
       const w = (r.rec.hit + 1) / (r.rec.hit + r.rec.miss + 2);
       const t = labels.filter((c) => r.text.includes(c.label));
@@ -95,7 +98,7 @@ function playSection(slots, mix, mode, players, acc) {
   const PER = mode.rooms ?? C.RUN.roomsPerSection;
   for (let r = 0; r < PER; r++) {
     const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
-    const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, !!mode.loneKnows);
+    const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
     const labels = room.choices.map((c) => ({ id: c.id, label: c.label.ja }));
     const texts = speakerIds.map((id) => C.writeHint({
       choices: room.choices, knowledge: kn.get(id), rng,
@@ -114,10 +117,13 @@ function playSection(slots, mix, mode, players, acc) {
       }
     }
 
+    const own = mode.ownCandidates
+      ? C.dealOwnKnowledge(room.choices, room.correct, mode.ownCandidates, rng)
+      : [];
     for (const p of players) {
       const rec = recs.get(p);
       const rows = speakerIds.map((id, i) => ({ id, text: texts[i], rec: rec.get(id) ?? { hit: 0, miss: 0 } }));
-      if (PLAYERS[p]({ labels, rows }) === room.correct) alive.set(p, alive.get(p) + 1);
+      if (PLAYERS[p]({ labels, rows, own }) === room.correct) alive.set(p, alive.get(p) + 1);
     }
     // 記録は振る舞いで（本体と同じ）
     const cl = labels.find((c) => c.id === room.correct).label;
@@ -165,14 +171,17 @@ function fullRun(mode, player) {
     while (done < PER && lives > 0) {
       const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
       const live = speakerIds.filter((id) => !muted.has(id));
-      const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds: live, liarIds }, rng, mix, !!mode.loneKnows);
+      const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds: live, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
       const labels = room.choices.map((c) => ({ id: c.id, label: c.label.ja }));
       const texts = live.map((id) => C.writeHint({
         choices: room.choices, knowledge: kn.get(id), rng,
         liarHonestyRate: mode.honesty(C.liarBias(id)), liarMimicRate: mode.mimic, voice: C.voiceOf(id) }));
       const rows = live.map((id, i) => ({ id, text: texts[i], rec: rec.get(id) ?? { hit: 0, miss: 0 } }));
+      const own = mode.ownCandidates
+        ? C.dealOwnKnowledge(room.choices, room.correct, mode.ownCandidates, rng)
+        : [];
       attempts++;
-      if (PLAYERS[player]({ labels, rows }) === room.correct) done++; else { lives--; done = 0; }
+      if (PLAYERS[player]({ labels, rows, own }) === room.correct) done++; else { lives--; done = 0; }
       const cl = labels.find((c) => c.id === room.correct).label;
       live.forEach((id, i) => {
         const x = rec.get(id) ?? { hit: 0, miss: 0 };
@@ -259,6 +268,13 @@ if ((process.argv[1] ?? '').endsWith('rubric.mjs')) {
   await evaluate('通常', {
     honesty: (b) => Math.max(0.05, Math.min(0.5, std.liarHonesty * b)),
     mimic: std.liarMimic,
+  });
+  await evaluate('全員挑戦者', {
+    slots: C.MODES.party.slotsBySection[0], rooms: C.MODES.party.roomsPerSection,
+    lives: C.MODES.party.lives, sections: C.MODES.party.sections,
+    ownCandidates: C.MODES.party.ownCandidates, trapper: true,
+    honesty: (b) => Math.max(0.05, Math.min(0.5, C.MODES.party.liarHonesty * b)),
+    mimic: C.MODES.party.liarMimic,
   });
   await evaluate('崖っぷち', {
     brink: true, loneKnows: true, slots: brk.slotsBySection[0],

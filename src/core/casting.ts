@@ -41,7 +41,13 @@ export type Knowledge =
   /** 協力者。正解はこの中にある、というところまで */
   | { kind: 'honest'; candidates: readonly string[] }
   /** 協力者。これが死ぬ、ということだけ知っている */
-  | { kind: 'doomed'; doomed: string };
+  | { kind: 'doomed'; doomed: string }
+  /**
+   * 全員挑戦者のときの嘘つき。
+   * どれが死ぬかは知っているが、正解は知らない。
+   * 正解まで知らせると一度も死なないので、8部屋で丸わかりになる。
+   */
+  | { kind: 'trapper'; trap: string };
 
 export function clampSlots(slots: number): number {
   if (!Number.isFinite(slots)) return SLOTS_MIN;
@@ -125,6 +131,8 @@ export function dealKnowledge(
   mix: KnowledgeMix = { narrow2: 0.5, narrow3: 0.25, doomed: 0.25 },
   /** 崖っぷち：ただ一人の正直者は正解を正確に知っている */
   loneHonest = false,
+  /** 全員挑戦者：嘘つきは正解ではなく罠だけを知る */
+  trapperLiars = false,
 ): Map<string, Knowledge> {
   const wrong = choices.filter((c) => c.id !== correct).map((c) => c.id);
   const out = new Map<string, Knowledge>();
@@ -135,7 +143,7 @@ export function dealKnowledge(
 
   for (const id of casting.speakerIds) {
     if (casting.liarIds.includes(id)) {
-      out.set(id, { kind: 'liar', correct, trap });
+      out.set(id, trapperLiars ? { kind: 'trapper', trap } : { kind: 'liar', correct, trap });
       continue;
     }
 
@@ -186,4 +194,19 @@ function drawLiars(speakerIds: readonly string[], count: number, rng: Rng): stri
     if (picked.length === n) picked.push(rest[0] as string);
   }
   return picked;
+}
+
+
+/**
+ * 挑戦者自身に配る部分情報。全員挑戦者モードで使う。
+ * 全員を疑っても手詰まりにならないための最低限の足場。
+ */
+export function dealOwnKnowledge(
+  choices: readonly Choice[],
+  correct: string,
+  count: number,
+  rng: Rng,
+): readonly string[] {
+  const wrong = choices.filter((c) => c.id !== correct).map((c) => c.id);
+  return shuffled([correct, ...pickSome(wrong, Math.max(0, count - 1), rng)], rng);
 }
