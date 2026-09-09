@@ -116,4 +116,36 @@ export const en: Strings = {
   language: {
     label: 'Language',
   },
+
+  hints: {
+    push: [
+      (l: string) => `It's ${l}`,
+      (l: string) => `Take ${l}`,
+      (l: string) => `${l} lives`,
+      (l: string) => `${l}. Certain`,
+      (l: string) => `Don't think. ${l}`,
+    ],
+    hedge: [
+      (l: string) => `Maybe ${l}`,
+      (l: string) => `Looks like ${l}`,
+      (l: string) => `${l}, I think`,
+      (l: string) => `Feels like ${l}`,
+    ],
+    avoid: [
+      (l: string) => `Not ${l}`,
+      (l: string) => `${l} kills`,
+      (l: string) => `Stay off ${l}`,
+      (l: string) => `${l} is a trap`,
+      (l: string) => `Anything but ${l}`,
+    ],
+    narrow: [
+      (a: string, b: string) => `${a} or ${b}`,
+      (a: string, b: string) => `Either ${a} or ${b}`,
+      (a: string, b: string) => `Down to ${a}, ${b}`,
+      (a: string, b: string) => `${a} or ${b}. Can't tell`,
+    ],
+    // テンプレートと必ず揃えること（冠詞を外したとき合わせ忘れて英語の記録が壊れた）
+    avoidPattern: /\bnot\b|kills|stay off|is a trap|anything but|avoid|don't touch/i,
+    hedgePattern: /maybe|looks like|i think|feels like|either|down to|can't tell|or /i,
+  },
 };

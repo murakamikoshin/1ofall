@@ -1,5 +1,6 @@
 import type { Choice } from './schema';
-import { HINT_MAX_LENGTH } from './limits';
+import { strings, getLocale } from '../i18n';
+import { HINT_LIMIT_BY_LOCALE } from '../i18n/locales';
 import type { Knowledge } from './casting';
 import type { Rng } from './rng';
 import { localized } from '../i18n';
@@ -14,44 +15,13 @@ import { localized } from '../i18n';
 
 type Shape = (label: string) => string;
 
-/** 一つに賭けて押す言い方 */
-const PUSH: Shape[] = [
-  (l) => `${l}だ`,
-  (l) => `${l}にしろ`,
-  (l) => `${l}が生きる`,
-  (l) => `${l}で間違いない`,
-  (l) => `迷うな、${l}`,
-];
+/** 言語ごとの上限。英語のラベルは長いので枠が要る */
+const limit = (): number => HINT_LIMIT_BY_LOCALE[getLocale()] ?? 20;
 
-/** 迷いを込めた言い方 */
-const HEDGE: Shape[] = [
-  (l) => `たぶん${l}`,
-  (l) => `${l}に見える`,
-  (l) => `${l}じゃないか`,
-  (l) => `${l}な気がする`,
-];
-
-/** 「これは死ぬ」と伝える言い方 */
-const AVOID: Shape[] = [
-  (l) => `${l}はやめろ`,
-  (l) => `${l}は死ぬ`,
-  (l) => `${l}に手を出すな`,
-  (l) => `${l}は罠だ`,
-  (l) => `${l}だけは違う`,
-];
-
-/** 二つに絞れている、と伝える言い方 */
-const NARROW: ((a: string, b: string) => string)[] = [
-  (a, b) => `${a}か${b}のどっちか`,
-  (a, b) => `${a}か${b}だ`,
-  (a, b) => `${a}と${b}まで絞れた`,
-  (a, b) => `${a}か${b}。決めきれん`,
-];
-
-const fit = (text: string): string | null => ([...text].length <= HINT_MAX_LENGTH ? text : null);
+const fit = (text: string): string | null => ([...text].length <= limit() ? text : null);
 
 function trySh(shapes: readonly Shape[], label: string, rng: Rng): string | null {
-  for (const shape of shapes.slice().sort(() => rng() - 0.5)) {
+  for (const shape of [...shapes].sort(() => rng() - 0.5)) {
     const text = fit(shape(label));
     if (text) return text;
   }
@@ -123,7 +93,7 @@ export function writeHint({
       const b = decoy ? localized(decoy.label) : '';
       const narrowed = writeNarrow(a, b, rng);
       if (narrowed) return narrowed;
-      return trySh(HEDGE, a, rng) ?? a;
+      return trySh(strings().hints.hedge, a, rng) ?? a;
     }
     // 迷ったふり。外れ二つを挙げて、絞れていない協力者に見せかける
     if (rng() < liarMimicRate) {
@@ -136,12 +106,12 @@ export function writeHint({
     // 耳打ちのふりをして正解を「死ぬ」と潰す
     if (rng() < 0.25) {
       const label = labelOf(choices, knowledge.correct);
-      return trySh(AVOID, label, rng) ?? `${label}はだめだ`;
+      return trySh(strings().hints.avoid, label, rng) ?? `${label}はだめだ`;
     }
     // 罠へ誘う。嘘つき全員が同じ罠を見ているので、ここで力が集まる
     const label = labelOf(choices, knowledge.trap);
-    const shapes = rng() < voice.assertive ? PUSH : HEDGE;
-    return trySh(shapes, label, rng) ?? trySh(HEDGE, label, rng) ?? label;
+    const shapes = rng() < voice.assertive ? strings().hints.push : strings().hints.hedge;
+    return trySh(shapes, label, rng) ?? trySh(strings().hints.hedge, label, rng) ?? label;
   }
 
   if (knowledge.kind === 'trapper') {
@@ -149,7 +119,7 @@ export function writeHint({
     const label = labelOf(choices, knowledge.trap);
     if (rng() < liarHonestyRate) {
       // 本当のことを言う回。罠を避けろ、は真実なので記録が良くなる
-      return trySh(AVOID, label, rng) ?? `${label}はだめだ`;
+      return trySh(strings().hints.avoid, label, rng) ?? `${label}はだめだ`;
     }
     if (rng() < liarMimicRate) {
       const other = choices.filter((c) => c.id !== knowledge.trap);
@@ -157,14 +127,14 @@ export function writeHint({
       const narrowed = writeNarrow(label, b, rng);
       if (narrowed) return narrowed;
     }
-    const shapes = rng() < voice.assertive ? PUSH : HEDGE;
+    const shapes = rng() < voice.assertive ? strings().hints.push : strings().hints.hedge;
     return trySh(shapes, label, rng) ?? label;
   }
 
   if (knowledge.kind === 'doomed') {
     // 「これが死ぬ」ことしか知らない。潰すことしかできない
     const label = labelOf(choices, knowledge.doomed);
-    return trySh(AVOID, label, rng) ?? `${label}はだめだ`;
+    return trySh(strings().hints.avoid, label, rng) ?? `${label}はだめだ`;
   }
 
   // 協力者。絞れているところまでしか言えないので、賭けるか、迷いを見せるか
@@ -179,13 +149,13 @@ export function writeHint({
   }
   const bet = rng() < 0.5 ? a : b || a;
   // 言い切りやすい者は、絞れていなくても言い切ってしまう
-  const shapes = rng() < voice.assertive ? PUSH : HEDGE;
-  return trySh(shapes, bet, rng) ?? trySh(HEDGE, bet, rng) ?? bet;
+  const shapes = rng() < voice.assertive ? strings().hints.push : strings().hints.hedge;
+  return trySh(shapes, bet, rng) ?? trySh(strings().hints.hedge, bet, rng) ?? bet;
 }
 
 function writeNarrow(a: string, b: string, rng: Rng): string | null {
   if (!a || !b) return null;
-  for (const shape of NARROW.slice().sort(() => rng() - 0.5)) {
+  for (const shape of [...strings().hints.narrow].sort(() => rng() - 0.5)) {
     const text = fit(shape(a, b));
     if (text) return text;
   }

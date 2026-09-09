@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto('http://127.0.0.1:4173/?lang=en', { waitUntil: 'domcontentloaded' });
+await p.getByRole('button', { name: /Play alone/ }).click();
+await p.waitForSelector('.choice');
+await p.waitForTimeout(4200);
+console.log('prompt:', await p.locator('.prompt').textContent());
+const rows = await p.$$eval('.hint-row', (e) => e.map((x) => x.querySelector('.hint-text')?.textContent ?? ''));
+console.log('hints:');
+for (const r of rows) console.log('  ' + r);
+await b.close();

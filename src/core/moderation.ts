@@ -1,4 +1,6 @@
 import { HINT_MAX_LENGTH } from './limits';
+import { strings, getLocale } from '../i18n';
+import { HINT_LIMIT_BY_LOCALE } from '../i18n/locales';
 
 /**
  * 助言の検閲。
@@ -71,6 +73,10 @@ const POINTING = [
   /(番目|ばんめ)/,
   /(左|右|真ん中|まんなか|中央|端|はし|上から|下から|手前|奥から)/,
   /[①-⑧]/,
+  // 英語でも同じ抜け道を塞ぐ
+  /\b(first|second|third|fourth|fifth|sixth|seventh|eighth|last)\b/i,
+  /\b(left|right|middle|centre|center|top|bottom|edge|end|far|near)\b/i,
+  /\b(one|two|three|four|five|six|seven|eight)\b/i,
 ];
 
 /**
@@ -123,7 +129,9 @@ export function checkHint(
 ): Rejection {
   const text = raw.trim();
   if (text.length === 0) return { ok: false, reason: 'empty' };
-  if ([...text].length > HINT_MAX_LENGTH) return { ok: false, reason: 'tooLong' };
+  if ([...text].length > (HINT_LIMIT_BY_LOCALE[getLocale()] ?? HINT_MAX_LENGTH)) {
+    return { ok: false, reason: 'tooLong' };
+  }
   if (containsBlocked(text)) return { ok: false, reason: 'blocked' };
   if (isPointing(text, labels)) return { ok: false, reason: 'pointing' };
   if (labels.length && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) {
@@ -214,8 +222,8 @@ export function reportCount(book: ReportBook, targetId: string): number {
 
 /* ───────────────────── 助言が正しかったかの判定 ───────────────────── */
 
-/** 「これは死ぬ」型の言い回し */
-const AVOID_FORMS = /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ|はずれ/;
+/** 「これは死ぬ」型かどうかは言語ごとの言い回しで判定する */
+const avoidForms = (): RegExp => strings().hints.avoidPattern;
 
 /**
  * その助言が結果として正しかったかを判定する。
@@ -228,7 +236,7 @@ export function wasTruthful(text: string, correctLabel: string, allLabels: reado
   const mentionsCorrect = correctLabel.length > 0 && text.includes(correctLabel);
   const mentionsAnyWrong = allLabels.some((l) => l !== correctLabel && l.length > 0 && text.includes(l));
 
-  if (AVOID_FORMS.test(text)) {
+  if (avoidForms().test(text)) {
     // 外れを避けろと言ったなら正しい。正解を避けろと言ったなら嘘
     return !mentionsCorrect && mentionsAnyWrong;
   }

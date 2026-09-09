@@ -22,16 +22,16 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(tmpdir(), `rub-${process.pid}-${Date.now()}.mjs`);
 await build({ stdin: { contents: `export * from './src/core/casting';
   export * from './src/core/hint-writer'; export * from './src/core/limits';
-  export * from './src/core/rng'; export { setLocale } from './src/i18n';`, resolveDir: root, loader: 'ts' },
+  export * from './src/core/rng'; export { setLocale, strings, localized } from './src/i18n';`, resolveDir: root, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent' });
 const C = await import(pathToFileURL(out).href);
-C.setLocale('ja');
+C.setLocale(process.env.LOCALE ?? 'ja');
 const pack = JSON.parse(readFileSync(resolve(root, 'data/rooms.core.json'), 'utf8'));
 const rng = C.createRng(Number(process.env.SEED ?? 1234));
 const pick = (a) => a[Math.floor(rng() * a.length)];
 const ADV = Array.from({ length: 12 }, (_, i) => ({ id: `ai_${i}`, name: `a${i}`, kind: 'ai' }));
-const HEDGE = /たぶん|気がする|に見える|じゃないか|絞れた|決めきれん|どっちか/;
-const AVOID = /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ/;
+const HEDGE = C.strings().hints.hedgePattern;
+const AVOID = C.strings().hints.avoidPattern;
 
 /** 打ち手いろいろ。最良が一つに固まっていないかも見る */
 const PLAYERS = {
@@ -99,7 +99,7 @@ function playSection(slots, mix, mode, players, acc) {
   for (let r = 0; r < PER; r++) {
     const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
     const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
-    const labels = room.choices.map((c) => ({ id: c.id, label: c.label.ja }));
+    const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
     const texts = speakerIds.map((id) => C.writeHint({
       choices: room.choices, knowledge: kn.get(id), rng,
       liarHonestyRate: mode.honesty(C.liarBias(id)), liarMimicRate: mode.mimic, voice: C.voiceOf(id),
@@ -172,7 +172,7 @@ function fullRun(mode, player) {
       const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
       const live = speakerIds.filter((id) => !muted.has(id));
       const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds: live, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
-      const labels = room.choices.map((c) => ({ id: c.id, label: c.label.ja }));
+      const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
       const texts = live.map((id) => C.writeHint({
         choices: room.choices, knowledge: kn.get(id), rng,
         liarHonestyRate: mode.honesty(C.liarBias(id)), liarMimicRate: mode.mimic, voice: C.voiceOf(id) }));

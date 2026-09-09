@@ -69,5 +69,13 @@ fileReport(book, { reporterId: 'b', targetId: 'z', roundId: 'r', text: '', at: 3
 const third = fileReport(book, { reporterId: 'c', targetId: 'z', roundId: 'r', text: '', at: 4 });
 check(`${AUTO_MUTE_REPORTS}人集まると自動で黙る`, third.autoMuted, true);
 
+
+// 英語でも同じ抜け道を塞げているか
+check('英語の序数で指せない', isPointing('the second one'), true);
+check('英語の位置語で指せない（left）', isPointing('take the left one'), true);
+check('英語の位置語で指せない（middle）', isPointing('avoid the middle'), true);
+check('英語の数詞で指せない', isPointing('two and three are traps'), true);
+check('英語の名前指定は通る', isPointing('Grilled fish lives', ['Grilled fish', 'White bread']), false);
+
 console.log(`\n${pass} 通過 / ${fail} 失敗`);
 process.exit(fail ? 1 : 0);
