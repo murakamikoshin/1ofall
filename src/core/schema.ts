@@ -319,3 +319,34 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;
+
+/* ─────────────────────────── 待合室（野良） ─────────────────────────── */
+
+/**
+ * 知らない人同士を突き合わせる待合。部屋そのものとは別の場所に立てる。
+ * ここでやるのは「合言葉を配ること」だけで、ゲームは知らない。
+ */
+export const LobbyClientMessageSchema = z.discriminatedUnion('t', [
+  z.object({ t: z.literal('lobby/wait'), mode: ModeIdSchema, name: AdvisorNameSchema.optional() }),
+  z.object({ t: z.literal('lobby/cancel') }),
+]);
+
+export const LobbyServerMessageSchema = z.discriminatedUnion('t', [
+  z.object({
+    t: z.literal('lobby/waiting'),
+    waiting: z.number().int().nonnegative(),
+    need: z.number().int().positive(),
+    /** これを過ぎたら人数が足りなくても始める */
+    startsBy: z.number().int(),
+    serverNow: z.number().int(),
+  }),
+  z.object({
+    t: z.literal('lobby/found'),
+    roomCode: z.string().length(ROOM_CODE_LENGTH),
+    /** この人が部屋を開ける。ほかは入るだけ */
+    host: z.boolean(),
+  }),
+]);
+
+export type LobbyClientMessage = z.infer<typeof LobbyClientMessageSchema>;
+export type LobbyServerMessage = z.infer<typeof LobbyServerMessageSchema>;

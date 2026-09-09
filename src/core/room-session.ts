@@ -160,6 +160,8 @@ export class RoomSession {
         return;
 
       case 'challenger/start': {
+        // 野良では誰が最初に繋がるか決められないので、全員が言い出す。
+        // 実際に開けるのは最初に繋いだ一人だけで、残りは黙って断られる
         if (!isChallenger) return this.fail(connectionId, 'notChallenger');
         this.locale = msg.locale ?? this.locale;
         setLocale(this.locale);

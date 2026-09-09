@@ -70,7 +70,12 @@ function renderTitle(): void {
       !PARTY_HOST,
       PARTY_HOST ? () => renderJoin() : undefined,
     ),
-    menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
+    menuItem(
+      T.menu.random,
+      PARTY_HOST ? T.menu.randomNote : `${T.menu.randomNote}（${T.menu.comingSoon}）`,
+      !PARTY_HOST,
+      PARTY_HOST ? () => renderMatchmaking() : undefined,
+    ),
     // 賭場は通信先が設定されているときだけ開く
     menuItem(
       T.menu.host,
@@ -593,6 +598,82 @@ function renderLobby(code: string, remote: RemoteGame, socket: WebSocket): void 
 
   screen.append(heading, codeBox, where, count, nameRow, modes, begin, back);
   app!.append(screen);
+}
+
+/**
+ * 野良。待合室に並んで、知らない人と突き合わせてもらう。
+ * 揃わなくても30秒で始まる（足りないぶんは AI が埋める）。
+ */
+function renderMatchmaking(): void {
+  const T = strings();
+  app!.innerHTML = '';
+  const screen = el('div', 'title-screen grain vignette');
+
+  const heading = el('h2', 'lobby-heading');
+  heading.textContent = T.lobby.matchHeading;
+  const count = el('p', 'lobby-count');
+  count.textContent = T.lobby.joining;
+  const note = el('p', 'lobby-where');
+  note.textContent = T.lobby.matchNote;
+
+  const back = document.createElement('button');
+  back.className = 'brief-link';
+  back.textContent = T.briefing.close;
+
+  const scheme = PARTY_HOST.startsWith('localhost') || PARTY_HOST.startsWith('127.') ? 'ws' : 'wss';
+  const socket = new WebSocket(`${scheme}://${PARTY_HOST}/parties/lobby/main`);
+  let cancelled = false;
+
+  back.addEventListener('click', () => {
+    cancelled = true;
+    socket.close();
+    renderTitle();
+  });
+
+  socket.addEventListener('open', () => {
+    socket.send(JSON.stringify({ t: 'lobby/wait', mode: 'party' }));
+  });
+  socket.addEventListener('error', () => {
+    if (!cancelled) count.textContent = T.errors.roomNotFound;
+  });
+  socket.addEventListener('message', (event) => {
+    if (typeof event.data !== 'string' || cancelled) return;
+    let msg: { t?: string; waiting?: number; need?: number; roomCode?: string; host?: boolean };
+    try {
+      msg = JSON.parse(event.data) as typeof msg;
+    } catch {
+      return;
+    }
+    if (msg.t === 'lobby/waiting') {
+      count.textContent = T.lobby.matchWaiting(msg.waiting ?? 0, msg.need ?? 1);
+      return;
+    }
+    if (msg.t !== 'lobby/found' || !msg.roomCode) return;
+    socket.close();
+    enterMatchedRoom(msg.roomCode, count);
+  });
+
+  screen.append(heading, count, note, back);
+  app!.append(screen);
+}
+
+/** 突き合わされた部屋へ入る。誰が主かは部屋が決めるので、全員が始めようとする */
+function enterMatchedRoom(roomCode: string, status: HTMLElement): void {
+  const T = strings();
+  status.textContent = T.lobby.joining;
+  void openRoomSocket(PARTY_HOST, roomCode)
+    .then((socket) => {
+      const name = companionNames()[Math.floor(Math.random() * companionNames().length)];
+      socket.send(JSON.stringify({ t: 'advisor/join', roomCode, ...(name ? { name } : {}) }));
+      // 全員が言い出して、実際に開けるのは最初に繋いだ一人だけ
+      window.setTimeout(() => {
+        socket.send(JSON.stringify({ t: 'challenger/start', mode: 'party', locale: currentLocale }));
+      }, 1200);
+      waitForParty(socket, status);
+    })
+    .catch(() => {
+      status.textContent = T.errors.roomNotFound;
+    });
 }
 
 /** 合言葉で他人の部屋に入る。全員挑戦者はここから */
