@@ -31,6 +31,7 @@ let engine: GameEngine | null = null;
 let unsubscribe: (() => void) | null = null;
 let timerHandle = 0;
 let resolving = false;
+let currentMode: ModeId = 'standard';
 let lastTickSecond = -1;
 
 /* ────────────────────────────── 表題 ────────────────────────────── */
@@ -49,9 +50,9 @@ function renderTitle(): void {
   const menu = el('div', 'menu');
   const T = strings();
   menu.append(
-    menuItem(T.menu.solo, T.menu.soloNote, false, () => startGame('standard')),
-    menuItem(T.menu.brink, T.menu.brinkNote, false, () => startGame('brink')),
-    menuItem(T.menu.party, T.menu.partyNote, false, () => startGame('party')),
+    menuItem(T.menu.solo, T.menu.soloNote, false, () => enterMode('standard')),
+    menuItem(T.menu.brink, T.menu.brinkNote, false, () => enterMode('brink')),
+    menuItem(T.menu.party, T.menu.partyNote, false, () => enterMode('party')),
     // 野良と賭場は通信層（段階4）が入ってから開く
     menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
     menuItem(T.menu.host, `${T.menu.hostNote}（${T.menu.comingSoon}）`, true),
@@ -59,8 +60,161 @@ function renderTitle(): void {
 
   const head = el('div');
   head.append(mark, ruby);
-  screen.append(head, tagline, menu, renderLanguagePicker());
+  screen.append(head, tagline, menu, renderBriefingLink(), renderLanguagePicker());
   app!.append(screen);
+}
+
+/* ───────────────────────────── 手引き ───────────────────────────── */
+
+/**
+ * 一部屋目に入る前に、そのモードで何が起きるかを一度だけ渡す。
+ * 「嘘つきは区画のあいだ変わらない」「多数決は罠」の二つを知らずに入ると、
+ * 初回はほぼ確実に死ぬ。読んだかどうかはモードごとに覚える。
+ */
+function briefingSeenKey(modeId: ModeId): string {
+  return `briefed:${modeId}`;
+}
+
+function hasBeenBriefed(modeId: ModeId): boolean {
+  try {
+    return window.localStorage.getItem(briefingSeenKey(modeId)) === '1';
+  } catch {
+    return false; // 保存できない環境では毎回出す。出しすぎる方がまだ親切
+  }
+}
+
+function markBriefed(modeId: ModeId): void {
+  try {
+    window.localStorage.setItem(briefingSeenKey(modeId), '1');
+  } catch {
+    // 保存できなくても進行には関わらない
+  }
+}
+
+function enterMode(modeId: ModeId): void {
+  if (hasBeenBriefed(modeId)) {
+    startGame(modeId);
+    return;
+  }
+  renderBriefing(modeId, () => {
+    markBriefed(modeId);
+    startGame(modeId);
+  });
+}
+
+function renderBriefingLink(): HTMLElement {
+  const wrap = el('div', 'brief-link-row');
+  const btn = document.createElement('button');
+  btn.className = 'brief-link';
+  btn.textContent = strings().briefing.open;
+  btn.addEventListener('click', () => renderBriefing(null, renderTitle));
+  wrap.append(btn);
+  return wrap;
+}
+
+/**
+ * modeId が null なら全モードぶんを並べる（表題から読むとき）。
+ * onDone は「入る」「戻る」どちらでも呼ばれる。
+ */
+function renderBriefing(modeId: ModeId | null, onDone: () => void): void {
+  const T = strings().briefing;
+  app!.innerHTML = '';
+  const screen = el('div', 'brief-screen grain vignette');
+  screen.setAttribute('role', 'dialog');
+  screen.setAttribute('aria-modal', 'true');
+
+  const sheet = el('div', 'brief-sheet');
+  const heading = el('h2', 'brief-heading');
+  heading.textContent = T.heading;
+  sheet.append(heading);
+
+  sheet.append(briefBlock(T.rulesHeading, T.rules));
+
+  const modeNames = strings().menu;
+  const blocks: ReadonlyArray<readonly [ModeId, string]> = [
+    ['standard', modeNames.solo],
+    ['brink', modeNames.brink],
+    ['party', modeNames.party],
+  ];
+  for (const [id, name] of blocks) {
+    if (modeId !== null && id !== modeId) continue;
+    sheet.append(briefBlock(name, T.modes[id]));
+  }
+
+  const note = el('p', 'brief-note');
+  note.textContent = modeId === null ? '' : T.onceNote;
+  if (note.textContent) sheet.append(note);
+
+  const go = document.createElement('button');
+  go.className = 'brief-go';
+  go.textContent = modeId === null ? T.close : T.begin;
+  go.addEventListener('click', onDone);
+  sheet.append(go);
+
+  screen.append(sheet);
+  app!.append(screen);
+  go.focus();
+}
+
+function briefBlock(heading: string, lines: readonly string[]): HTMLElement {
+  const block = el('section', 'brief-block');
+  const h = el('h3', 'brief-block-head');
+  h.textContent = heading;
+  const list = document.createElement('ul');
+  list.className = 'brief-list';
+  for (const line of lines) {
+    const li = document.createElement('li');
+    li.textContent = line;
+    list.append(li);
+  }
+  block.append(h, list);
+  return block;
+}
+
+/** 対局中に読み返す。持ち時間は止める */
+function openBriefingDuringRun(modeId: ModeId): void {
+  if (!engine || resolving) return;
+  const T = strings().briefing;
+  engine.pause();
+  stopTimerLoop();
+
+  const veil = el('div', 'brief-veil');
+  veil.setAttribute('role', 'dialog');
+  veil.setAttribute('aria-modal', 'true');
+
+  const sheet = el('div', 'brief-sheet');
+  const heading = el('h2', 'brief-heading');
+  heading.textContent = T.heading;
+  const paused = el('p', 'brief-note');
+  paused.textContent = T.pausedNote;
+  sheet.append(heading, paused, briefBlock(T.rulesHeading, T.rules), briefBlock(labelForMode(modeId), T.modes[modeId]));
+
+  const close = document.createElement('button');
+  close.className = 'brief-go';
+  close.textContent = T.close;
+  const dismiss = (): void => {
+    veil.remove();
+    document.removeEventListener('keydown', onKey);
+    engine?.resume();
+    if (engine?.snapshot().phase === 'choosing') startTimerLoop();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      dismiss();
+    }
+  };
+  close.addEventListener('click', dismiss);
+  document.addEventListener('keydown', onKey);
+  sheet.append(close);
+  veil.append(sheet);
+  app!.append(veil);
+  close.focus();
+}
+
+function labelForMode(modeId: ModeId): string {
+  const m = strings().menu;
+  return modeId === 'brink' ? m.brink : modeId === 'party' ? m.party : m.solo;
 }
 
 function renderLanguagePicker(): HTMLElement {
@@ -126,7 +280,16 @@ function buildShell(): Shell {
   const roomCount = el('div', 'room-count');
   const timer = el('div', 'timer');
   timer.setAttribute('role', 'timer');
-  hud.append(lives, roomCount, timer);
+  const right = el('div', 'hud-right');
+  const guide = document.createElement('button');
+  guide.className = 'hud-guide';
+  guide.type = 'button';
+  guide.textContent = '?';
+  guide.title = strings().briefing.open;
+  guide.setAttribute('aria-label', strings().briefing.open);
+  guide.addEventListener('click', () => openBriefingDuringRun(currentMode));
+  right.append(timer, guide);
+  hud.append(lives, roomCount, right);
 
   const stage = el('main', 'stage grain vignette');
   const choices = el('div', 'choices');
@@ -159,6 +322,7 @@ function buildShell(): Shell {
 }
 
 function startGame(modeId: ModeId): void {
+  currentMode = modeId;
   audio.load();
   engine?.dispose();
   shell = buildShell();

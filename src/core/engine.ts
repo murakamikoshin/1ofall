@@ -134,6 +134,7 @@ export class GameEngine {
   private clearedInSection = 0;
   private totalCleared = 0;
   private round: RoundState | null = null;
+  private pausedAt: number | null = null;
   private verdict: Verdict | null = null;
   private selectionMode: SelectionMode = 'lottery';
   private muted = new Set<string>();
@@ -310,6 +311,30 @@ export class GameEngine {
     this.settle(round, null, true);
   }
 
+  /**
+   * 手引きを開いているあいだ持ち時間を止める。
+   * 締切をそのぶん後ろへずらすだけで、盤面は動かさない。
+   * 助言者側の締切は延ばさない（読んでいるあいだも助言は届いてよい）。
+   */
+  pause(): void {
+    if (this.pausedAt !== null) return;
+    if (this.phase !== 'choosing' || !this.round) return;
+    this.pausedAt = this.now();
+  }
+
+  resume(): void {
+    if (this.pausedAt === null) return;
+    const elapsed = this.now() - this.pausedAt;
+    this.pausedAt = null;
+    if (!this.round || this.phase !== 'choosing') return;
+    this.round = { ...this.round, deadlineAt: this.round.deadlineAt + elapsed };
+    this.emit();
+  }
+
+  get isPaused(): boolean {
+    return this.pausedAt !== null;
+  }
+
   /** 死亡演出の各段を UI から進める。「間」は本体が持つ */
   advancePresentation(): void {
     switch (this.phase) {
@@ -441,6 +466,7 @@ export class GameEngine {
       : [];
 
     const deadlineAt = this.now() + timeLimitMs;
+    this.pausedAt = null;
     this.round = {
       roundId,
       room,

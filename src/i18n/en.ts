@@ -24,6 +24,40 @@ export const en: Strings = {
     comingSoon: 'Not yet',
   },
 
+  briefing: {
+    heading: 'How this works',
+    begin: 'Go in',
+    close: 'Back',
+    open: 'How this works',
+    onceNote: 'Shown once. After that, open it from "How this works"',
+    pausedNote: 'Your clock stops while this is open',
+    rulesHeading: 'True in every mode',
+    rules: [
+      'Each room has exactly one way out alive.',
+      'Liars are mixed in among the advisors. Who is lying does not change within a block.',
+      'Liars know the answer, and they steer you to one shared trap. The most-named door is not the safe one.',
+      'Honest advisors do not know the whole answer either. Some only see it narrowed to two.',
+      'The truth-and-lie record clears at every block. Credit does not carry over.',
+    ],
+    modes: {
+      standard: [
+        'Four lives, four blocks.',
+        'The advisors, and who among them lies, are recast at every block.',
+        'The deeper the block, the fewer advisors who can name the answer outright.',
+      ],
+      brink: [
+        'Exactly one advisor can be trusted. Every other one is lying.',
+        'That one knows the answer. Find them and they carry you to the end of the block.',
+        'Six lives. Room to probe, but not forever.',
+      ],
+      party: [
+        'Your companions walk the same rooms. Every one of them is betting their own life.',
+        'What you can see, only you can see. Nobody learns it unless you say it.',
+        'A traitor is among them. Traitors die too, but they want to take you with them.',
+      ],
+    },
+  },
+
   hud: {
     lives: 'Lives',
     room: (n: number) => `Room ${n}`,
