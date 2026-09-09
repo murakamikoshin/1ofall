@@ -7,6 +7,7 @@ import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
 import { RemoteGame, type GameHandle } from './remote-game';
 import { PartyBoard } from './party-board';
+import { LocalPartySource } from './local-party';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
 import { MODES, type ModeId } from '@/core/limits';
@@ -377,6 +378,7 @@ function startGame(modeId: ModeId): void {
   if (modeId === 'party') {
     partyBoard = new PartyBoard({
       root: app!,
+      source: new LocalPartySource(),
       onExit: () => {
         partyBoard?.dispose();
         partyBoard = null;

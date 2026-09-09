@@ -778,11 +778,15 @@
 /* 全員挑戦者では HUD に命が無い（人ごとに名簿へ出る）ので2列にする */
 .hud.party-hud { grid-template-columns: 1fr auto; }
 
-/* 「これは死ぬ」は「このどれか」より長く、右上で切れていた */
+/* 「これは死ぬ」は「このどれか」より長く、右上で切れていた。
+   絵の上に重なるので、下地を敷かないと読めない */
 .choice-known {
   max-width: calc(100% - 1rem);
   text-align: right;
   line-height: 1.25;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
 }
 
 .choice.is-fatal .choice-known { color: var(--blood-lit); }
@@ -800,3 +804,50 @@
   /* 名前の下に記録を落とす。横に並べると必ず溢れる */
   .hint-record { display: block; margin-left: 0; }
 }
+
+/* 全員挑戦者：自分も助言を書く */
+.party-compose {
+  padding: 0.5rem clamp(0.75rem, 3vw, 1.75rem);
+  border-top: var(--edge);
+  background: var(--soot);
+}
+
+.party-compose .compose-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.party-compose .field {
+  flex: 1;
+  min-width: 0;
+  border: var(--edge);
+  background: transparent;
+  color: var(--paper-bright);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.party-compose .field:focus-visible { border-color: var(--rust); outline: none; }
+
+.party-compose .primary {
+  border: var(--edge);
+  background: transparent;
+  color: var(--paper);
+  padding: 0.55rem 1rem;
+  letter-spacing: 0.1em;
+  min-height: 36px;
+}
+
+.party-compose .primary:hover:not(:disabled),
+.party-compose .primary:focus-visible:not(:disabled) { border-color: var(--rust); color: var(--paper-bright); }
+.party-compose .primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.party-compose .status {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  color: var(--paper-faint);
+  min-height: 1.1em;
+}
+
+.party-compose .status.is-error { color: var(--blood-lit); }

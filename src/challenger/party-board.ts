@@ -1,11 +1,14 @@
-import { PartyEngine, type PartyMember, type PartyState } from '@/core/party-engine';
-import { PARTY, PARTY_MIN_SEATS } from '@/core/limits';
-import { corePackage } from '@/core/pack';
+import type { PartyState } from '@/core/party-engine';
+import type { Knowledge } from '@/core/schema';
+import { PARTY } from '@/core/limits';
 import { strings, localized } from '@/i18n';
 import { choiceArt } from '@/ui/placeholder';
 import { playResolution, resetStage, type ResolutionRefs } from '@/ui/death-sequence';
 import { audio } from '@/ui/audio';
-import { companionNames } from '@/core/companion-names';
+import {
+  containsBlocked, isPointing, countChoicesMentioned, MAX_CHOICES_PER_HINT,
+} from '@/core/moderation';
+import { HINT_MAX_LENGTH } from '@/core/limits';
 
 /**
  * 全員挑戦者モードの盤面。
@@ -17,10 +20,29 @@ import { companionNames } from '@/core/companion-names';
 
 const KEYCAPS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
+/**
+ * 盤面に流し込む側。ローカルの PartyEngine でも、遠くの部屋でも同じ顔をする。
+ * 描画側はどちらで動いているかを知らない。
+ */
+export interface PartySource {
+  /** 自分の席の id */
+  readonly meId: string;
+  /** 演出の段を自分で進めるか（遠くの部屋ではサーバーが進める） */
+  readonly drivesPresentation: boolean;
+  subscribe(listener: (state: PartyState) => void): () => void;
+  snapshot(): PartyState;
+  knowledgeForMe(): Knowledge | null;
+  hint(text: string): void;
+  pick(choiceId: string): void;
+  /** 締切が来た。ローカルなら自分で閉じる */
+  timeUp(): void;
+  advance(): void;
+  dispose(): void;
+}
+
 export interface PartyBoardOptions {
   root: HTMLElement;
-  /** 人間の仲間。ソロなら空。足りないぶんは AI が埋める */
-  humans?: readonly PartyMember[];
+  source: PartySource;
   onExit(): void;
 }
 
@@ -31,7 +53,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ''): HTML
 }
 
 export class PartyBoard {
-  private readonly engine: PartyEngine;
+  private readonly source: PartySource;
   private readonly root: HTMLElement;
   private readonly onExit: () => void;
 
@@ -40,6 +62,7 @@ export class PartyBoard {
   private choicesHost = el('div', 'choices');
   private prompt = el('h2', 'prompt');
   private hintsHost = el('section', 'hints');
+  private composeHost = el('section', 'party-compose');
   private hud = el('header', 'hud');
   private timer = el('div', 'timer');
   private roomCount = el('div', 'room-count');
@@ -49,27 +72,13 @@ export class PartyBoard {
   private myPick: string | null = null;
   private resolving = false;
   private timerHandle = 0;
-  private aiTimers: ReturnType<typeof setTimeout>[] = [];
   private unsubscribe: (() => void) | null = null;
+  private playedRound: string | null = null;
 
   constructor(options: PartyBoardOptions) {
     this.root = options.root;
     this.onExit = options.onExit;
-
-    const humans = options.humans ?? [];
-    const members: PartyMember[] = [
-      { id: 'me', name: strings().party.you, kind: 'human' },
-      ...humans,
-    ];
-    // 4人だと正直な声が2つしか無く運任せになる。足りないぶんは AI で埋める
-    const names = companionNames();
-    let i = 0;
-    while (members.length < PARTY_MIN_SEATS) {
-      members.push({ id: `ai_${i}`, name: names[i % names.length] ?? `AI${i}`, kind: 'ai' });
-      i += 1;
-    }
-
-    this.engine = new PartyEngine({ pack: corePackage(), members, mode: PARTY });
+    this.source = options.source;
 
     const lamp = el('div', 'lamp');
     const blackout = el('div', 'blackout');
@@ -84,21 +93,19 @@ export class PartyBoard {
     this.stage.append(this.choicesHost, this.prompt);
     this.hintsHost.setAttribute('aria-live', 'polite');
     this.root.innerHTML = '';
-    this.root.append(this.hud, this.roster, this.stage, this.hintsHost, lamp, blackout, banner);
+    this.root.append(this.hud, this.roster, this.stage, this.composeHost, this.hintsHost, lamp, blackout, banner);
   }
 
   start(): void {
     audio.load();
-    this.unsubscribe = this.engine.subscribe((state) => this.render(state));
-    this.engine.start();
+    this.unsubscribe = this.source.subscribe((state) => this.render(state));
     audio.play('room-open');
   }
 
   dispose(): void {
     this.unsubscribe?.();
     this.stopTimer();
-    this.clearAiTimers();
-    this.engine.dispose();
+    this.source.dispose();
   }
 
   /* ───────────────────────────── 描画 ───────────────────────────── */
@@ -109,6 +116,13 @@ export class PartyBoard {
       return;
     }
     this.renderRoster(state);
+
+    // 判定が立ったら演出を流す。誰が段を進めるかは供給源が決める
+    if (state.verdict && state.verdict.roundId !== this.playedRound && state.phase !== 'choosing') {
+      this.playedRound = state.verdict.roundId;
+      void this.playOut(state);
+      return;
+    }
     if (state.phase !== 'choosing' || !state.round) return;
 
     const round = state.round;
@@ -121,7 +135,7 @@ export class PartyBoard {
       this.prompt.textContent = localized(round.room.prompt);
       resetStage(this.refs);
       this.renderChoices(state);
-      this.scheduleAi();
+      this.renderCompose(state);
       this.startTimer();
     }
     this.renderHints(state);
@@ -134,7 +148,7 @@ export class PartyBoard {
     for (const member of state.members) {
       const row = el('div', `party-seat${member.out ? ' is-out' : ''}${member.hasPicked ? ' is-ready' : ''}`);
       const name = el('span', 'party-name');
-      name.textContent = member.id === 'me' ? T.party.you : member.name;
+      name.textContent = member.id === this.source.meId ? T.party.you : member.name;
       const pips = el('span', 'party-lives');
       for (let i = 0; i < PARTY.lives; i++) {
         const pip = el('span', `pip${i < member.lives ? '' : ' is-lost'}`);
@@ -150,7 +164,7 @@ export class PartyBoard {
   private renderChoices(state: PartyState): void {
     const round = state.round;
     if (!round) return;
-    const own = this.engine.knowledgeFor('me');
+    const own = this.source.knowledgeForMe();
     const known =
       own?.kind === 'honest' ? own.candidates : own?.kind === 'trapper' ? [] : [];
     const doomed = own?.kind === 'doomed' ? [own.doomed] : own?.kind === 'trapper' ? [own.trap] : [];
@@ -186,6 +200,65 @@ export class PartyBoard {
       buttons.push(btn);
     });
     this.refs.others = buttons;
+  }
+
+  /**
+   * 自分も助言を書く。全員挑戦者は「お互いに情報をあげながら進む」遊びなので、
+   * 書けないと何も渡せない。
+   * 送れないものは送らせない（押してから断るのでは遅い）。
+   */
+  private renderCompose(state: PartyState): void {
+    const T = strings();
+    const round = state.round;
+    this.composeHost.innerHTML = '';
+    if (!round) return;
+
+    const labels = round.room.choices.map((c) => localized(c.label));
+    const row = el('div', 'compose-row');
+    const input = document.createElement('input');
+    input.className = 'field';
+    input.placeholder = T.advisor.hintPlaceholder;
+    input.maxLength = HINT_MAX_LENGTH;
+    input.setAttribute('aria-label', T.advisor.hintPlaceholder);
+
+    const send = document.createElement('button');
+    send.className = 'primary';
+    send.textContent = T.advisor.send;
+
+    const status = el('p', 'status');
+
+    const sync = (): void => {
+      const text = input.value.trim();
+      const len = [...input.value].length;
+      let reason = '';
+      if (len > HINT_MAX_LENGTH) reason = T.errors.tooLong;
+      else if (text && containsBlocked(text)) reason = T.errors.blocked;
+      else if (text && isPointing(text, labels)) reason = T.errors.pointing;
+      else if (text && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) reason = T.errors.tooManyChoices;
+      status.textContent = reason;
+      status.classList.toggle('is-error', !!reason);
+      send.disabled = text.length === 0 || !!reason;
+    };
+
+    const submit = (): void => {
+      const text = input.value.trim();
+      if (!text || send.disabled) return;
+      this.source.hint(text);
+      input.value = '';
+      sync();
+      status.textContent = T.advisor.sent;
+      status.classList.remove('is-error');
+    };
+
+    input.addEventListener('input', sync);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submit();
+    });
+    send.addEventListener('click', submit);
+    sync();
+
+    row.append(input, send);
+    this.composeHost.append(row, status);
   }
 
   private renderHints(state: PartyState): void {
@@ -234,30 +307,20 @@ export class PartyBoard {
     const chosen = this.choicesHost.querySelector<HTMLElement>(`[data-choice-id="${CSS.escape(choiceId)}"]`);
     chosen?.classList.add('is-chosen');
     for (const btn of this.choicesHost.querySelectorAll('button')) btn.disabled = true;
-    this.engine.pick('me', choiceId);
-    void this.settleWhenReady();
+    this.stopTimer();
+    this.source.pick(choiceId);
   }
 
-  /** 仲間が決めるのを待ってから開く */
-  private async settleWhenReady(): Promise<void> {
+  private async playOut(state: PartyState): Promise<void> {
     if (this.resolving) return;
     this.resolving = true;
     this.stopTimer();
-    // AI の仲間はここで一斉に決める（人間が待たされないよう短く）
-    await new Promise((r) => setTimeout(r, 700));
-    for (const [id, choice] of this.engine.aiPicks()) this.engine.pick(id, choice);
-    this.engine.timeUp();
-    await this.playOut();
-  }
-
-  private async playOut(): Promise<void> {
-    const state = this.engine.snapshot();
     const verdict = state.verdict;
     if (!verdict) {
       this.resolving = false;
       return;
     }
-    const mine = verdict.results.find((r) => r.id === 'me');
+    const mine = verdict.results.find((r) => r.id === this.source.meId);
     this.refs.chosen = this.choicesHost.querySelector<HTMLElement>(
       `[data-choice-id="${CSS.escape(mine?.chosenId ?? '')}"]`,
     );
@@ -288,15 +351,14 @@ export class PartyBoard {
         })),
       },
       {
-        advance: () => this.engine.advancePresentation(),
+        advance: () => this.source.advance(),
         showParty: () => this.showResults(verdict.results, verdict.correctId),
       },
     );
 
     this.resolving = false;
-    this.engine.advancePresentation();
-    const after = this.engine.snapshot();
-    if (after.phase === 'choosing') audio.play('room-open');
+    this.source.advance();
+    if (this.source.snapshot().phase === 'choosing') audio.play('room-open');
   }
 
   /** 誰が何を選んで、誰が死んだか */
@@ -305,7 +367,7 @@ export class PartyBoard {
     correctId: string,
   ): void {
     const T = strings();
-    const round = this.engine.snapshot().round;
+    const round = this.source.snapshot().round;
     const labelOf = (id: string | null): string => {
       const choice = round?.room.choices.find((c) => c.id === id);
       return choice ? localized(choice.label) : T.party.noPick;
@@ -324,9 +386,9 @@ export class PartyBoard {
     for (const r of results) {
       const row = el('div', `hint-row${r.survived ? '' : ' is-dead'}`);
       const name = el('span', 'hint-name');
-      name.textContent = r.id === 'me' ? T.party.you : r.name;
+      name.textContent = r.id === this.source.meId ? T.party.you : r.name;
       const text = el('span', 'hint-text');
-      text.textContent = T.challenger.partyPicked(r.id === 'me' ? T.party.you : r.name, labelOf(r.chosenId));
+      text.textContent = T.challenger.partyPicked(r.id === this.source.meId ? T.party.you : r.name, labelOf(r.chosenId));
       row.append(name, text);
       list.append(row);
     }
@@ -335,9 +397,8 @@ export class PartyBoard {
 
   private renderEnd(state: PartyState): void {
     this.stopTimer();
-    this.clearAiTimers();
     const T = strings();
-    const me = state.members.find((m) => m.id === 'me');
+    const me = state.members.find((m) => m.id === this.source.meId);
     const won = me ? !me.out : false;
     audio.play(won ? 'survive' : 'gameover');
 
@@ -349,12 +410,12 @@ export class PartyBoard {
     stat.textContent = T.party.reached(state.roomNumber - 1, state.totalRooms);
 
     const survivors = el('p', 'end-stat');
-    const alive = state.members.filter((m) => !m.out).map((m) => (m.id === 'me' ? T.party.you : m.name));
+    const alive = state.members.filter((m) => !m.out).map((m) => (m.id === this.source.meId ? T.party.you : m.name));
     survivors.textContent = alive.length ? T.party.survivors(alive.join(T.verdict.nameSeparator)) : T.party.noSurvivors;
 
     const traitors = el('p', 'end-stat');
     traitors.textContent = state.traitors.length
-      ? T.party.traitorsWere(state.traitors.map((t) => (t.id === 'me' ? T.party.you : t.name)).join(T.verdict.nameSeparator))
+      ? T.party.traitorsWere(state.traitors.map((t) => (t.id === this.source.meId ? T.party.you : t.name)).join(T.verdict.nameSeparator))
       : T.verdict.revealNone;
 
     const again = document.createElement('button');
@@ -372,29 +433,10 @@ export class PartyBoard {
 
   /* ───────────────────────────── 時計と AI ───────────────────────────── */
 
-  private scheduleAi(): void {
-    this.clearAiTimers();
-    const hints = this.engine.aiHints();
-    hints.forEach((hint, i) => {
-      // 一斉に出ると読めない。順に置く
-      const delay = 900 + i * (700 + Math.random() * 900);
-      this.aiTimers.push(
-        setTimeout(() => {
-          this.engine.hint(hint.memberId, hint.text);
-        }, delay),
-      );
-    });
-  }
-
-  private clearAiTimers(): void {
-    for (const t of this.aiTimers) clearTimeout(t);
-    this.aiTimers = [];
-  }
-
   private startTimer(): void {
     this.stopTimer();
     const step = (): void => {
-      const state = this.engine.snapshot();
+      const state = this.source.snapshot();
       if (state.phase !== 'choosing' || !state.round) return;
       const left = Math.max(0, state.round.deadlineAt - Date.now());
       const seconds = Math.ceil(left / 1000);
@@ -402,7 +444,7 @@ export class PartyBoard {
       this.timer.classList.toggle('is-low', seconds <= 10);
       if (left <= 0) {
         this.stopTimer();
-        if (!this.myPick) void this.settleWhenReady();
+        this.source.timeUp();
         return;
       }
       this.timerHandle = requestAnimationFrame(step);

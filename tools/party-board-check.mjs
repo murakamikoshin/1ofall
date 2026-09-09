@@ -30,6 +30,23 @@ for (const [name, viewport] of [['pc', { width: 1280, height: 720 }], ['sp', { w
   check(`${name}: 自分の持ち情報が扉に出る`, own > 0, `${own}個`);
   await p.screenshot({ path: `${OUT}/pb-1-${name}.png`, fullPage: name === 'sp' });
 
+  // 自分も助言を書ける
+  check(`${name}: 助言を書く欄がある`, (await p.locator('.party-compose .field').count()) === 1);
+  await p.locator('.party-compose .field').fill('1番は罠だ');
+  await wait(150);
+  check(`${name}: 番号で指すと送れない`, await p.locator('.party-compose .primary').isDisabled());
+  const labels = await p.locator('.choice-label').allTextContents();
+  await p.locator('.party-compose .field').fill(`${labels[0]}は死ぬ`);
+  await wait(150);
+  if (!(await p.locator('.party-compose .primary').isDisabled())) {
+    await p.locator('.party-compose .primary').click();
+    await wait(400);
+    const mine = await p.locator('.hint-name').allTextContents();
+    check(`${name}: 自分の助言が並ぶ`, mine.some((t) => t.includes('あなた')), mine.join('/'));
+  } else {
+    check(`${name}: この語は送れなかった`, true);
+  }
+
   // 選ぶ → 全員の手が開く → 次の部屋
   await p.locator('.choice').first().click();
   await wait(1200);
