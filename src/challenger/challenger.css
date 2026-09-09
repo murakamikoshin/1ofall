@@ -357,16 +357,37 @@
 .hint-open:hover:not(:disabled) { border-color: var(--rust); color: var(--paper-bright); }
 .hint-open:disabled { opacity: 0.3; cursor: not-allowed; }
 
-.hint-silence {
+.hint-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* 押し間違いが痛い二つ（黙らせる・通報）なので、
+   触れる的は 28px を下回らせない。指では 32px */
+.hint-silence,
+.hint-report {
+  min-height: 28px;
   border: 1px solid var(--dim);
+  background: transparent;
   color: var(--paper-faint);
   font-size: 0.72rem;
   padding: 0.2rem 0.6rem;
+  white-space: nowrap;
   transition: border-color 140ms, color 140ms;
 }
 
-.hint-silence:hover:not(:disabled) { border-color: var(--blood); color: var(--blood-lit); }
-.hint-silence:disabled { opacity: 0.35; cursor: not-allowed; }
+.hint-silence:hover:not(:disabled),
+.hint-silence:focus-visible:not(:disabled) { border-color: var(--blood); color: var(--blood-lit); }
+.hint-report:hover:not(:disabled),
+.hint-report:focus-visible:not(:disabled) { border-color: var(--rust); color: var(--paper-bright); }
+.hint-silence:disabled,
+.hint-report:disabled { opacity: 0.35; cursor: not-allowed; }
+
+@media (pointer: coarse), (max-width: 560px) {
+  .hint-silence,
+  .hint-report { min-height: 32px; padding-inline: 0.7rem; }
+}
 
 .hints-empty {
   padding: 1.15rem clamp(0.75rem, 3vw, 1.75rem);
