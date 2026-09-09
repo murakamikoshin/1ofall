@@ -1,6 +1,7 @@
 import type { AdvisorInfo, Hint } from './schema';
 import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { AiAdvisorGateway } from './ai-advisors';
+import type { ModeConfig } from './limits';
 
 /**
  * 人間の助言者と AI の助言者を混ぜる。
@@ -22,6 +23,8 @@ export interface CompositeOptions {
   /** AI を入れる上限。人が増えたら AI は減る */
   maxFill?: number;
   aiSeed?: number;
+  /** AI の嘘のつき方はモードで変わる。渡さないと通常モードの癖になる */
+  mode?: ModeConfig;
 }
 
 export class CompositeAdvisorGateway implements AdvisorGateway {
@@ -43,6 +46,7 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     this.ai = new AiAdvisorGateway({
       count: this.maxFill,
       ...(options.aiSeed !== undefined ? { seed: options.aiSeed } : {}),
+      ...(options.mode ? { mode: options.mode } : {}),
     });
 
     if (this.human) {

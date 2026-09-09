@@ -28,7 +28,8 @@ export const HINT_COOLDOWN_MS = 2_500;
 
 /**
  * 伏せ字や記号での回避を潰すための正規化。
- * 全角英数を半角へ、記号と空白を落とし、長音・繰り返しを畳む。
+ * 全角英数を半角へ、記号と空白を落とし、長音・繰り返しを畳み、
+ * カタカナはひらがなに寄せる（「シネ」で抜けられないように）。
  */
 export function normalize(text: string): string {
   return text
@@ -36,6 +37,7 @@ export function normalize(text: string): string {
     .toLowerCase()
     .replace(/[\s　]+/g, '')
     .replace(/[!-/:-@[-`{-~｡-ﾟ、。・…ー~〜*＊]/g, '')
+    .replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
     .replace(/(.)\1{2,}/g, '$1$1');
 }
 
@@ -45,12 +47,21 @@ export function normalize(text: string): string {
  * 罵倒・差別・個人情報の誘導・宣伝に絞る。ここは運用しながら足す前提。
  */
 const BLOCKED = [
-  'しね', 'ころす', 'きえろ', 'くたばれ', 'ごみくず',
-  'きちがい', 'かたわ', 'めくら',
-  'まんこ', 'ちんこ', 'せっくす',
-  'http', 'www', 'discord', 'ライン交換', 'lineこうかん',
-  '住所', '本名', '電話番号',
+  // 漢字とひらがなの両方を書く。正規化はカタカナしか寄せない
+  'しね', '死ね', 'ころす', '殺す', '殺せ', 'きえろ', '消えろ',
+  'くたばれ', 'ごみくず', 'ぞうきん',
+  'くびつれ', '首吊', 'じさつしろ', '自殺しろ',
+  'きちがい', '基地外', 'かたわ', 'めくら', 'つんぼ', 'ぶさいく',
+  'まんこ', 'ちんこ', 'ちんぽ', 'せっくす',
+  'http', 'www', '.com', '.net', 'discord', 'twitter',
+  'ライン交換', 'lineこうかん', 'あいでぃー', 'dm',
+  '住所', 'じゅうしょ', '本名', 'ほんみょう', '電話番号', 'でんわばんごう',
 ];
+
+/**
+ * 「死ぬ」は部屋の言葉そのものなので通す。止めるのは命令形の「死ね」だけ。
+ * 「殺す」は落とすほうに倒した。助言としては「死ぬ」で足りる。
+ */
 
 export function containsBlocked(text: string): boolean {
   const n = normalize(text);

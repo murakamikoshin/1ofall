@@ -26,6 +26,17 @@ check('伏せ字でも止まる', containsBlocked('し ね'), true);
 check('全角でも止まる', containsBlocked('ｈｔｔｐ://x'), true);
 check('引き伸ばしでも止まる', containsBlocked('しねええええ'), true);
 check('無関係な語は通る', containsBlocked('魚は絶対ない'), false);
+// ここは実際に抜けていた。ひらがなだけ書いてあり、漢字とカタカナが素通りしていた
+check('漢字の罵倒も止まる', containsBlocked('死ね'), true);
+check('カタカナの罵倒も止まる', containsBlocked('シネ'), true);
+check('漢字の「殺す」も止まる', containsBlocked('殺す'), true);
+check('カタカナの「ゴミクズ」も止まる', containsBlocked('ゴミクズ'), true);
+check('自殺の誘導は止まる', containsBlocked('首吊れ'), true);
+check('連絡先の誘導は止まる', containsBlocked('DMして'), true);
+check('宣伝は止まる', containsBlocked('example.comを見て'), true);
+// 「死ぬ」は部屋の言葉そのもの。止めてはいけない
+check('「死ぬ」は通る', containsBlocked('鉄の扉は死ぬ'), false);
+check('「死ぬ方」は通る', containsBlocked('こっちが死ぬ方だ'), false);
 
 const g = createHintGuard();
 checkHint(g, 'a', '魚だ', 1000);

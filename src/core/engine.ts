@@ -158,6 +158,7 @@ export class GameEngine {
   private sectionCastingIndex = -1;
   /** 文字数・連投・NGワードの検査。段階4のサーバーも同じものを通す */
   private guard: HintGuardState = createHintGuard();
+  private rejectionListeners = new Set<(advisorId: string, reason: string) => void>();
   /** 通報。一定数集まったらその人の助言は届かなくなる */
   private reports: ReportBook = createReportBook();
 
@@ -363,6 +364,7 @@ export class GameEngine {
   dispose(): void {
     for (const u of this.unsubs) u();
     this.unsubs = [];
+    this.rejectionListeners.clear();
     this.listeners.clear();
     this.gateway.dispose();
   }
@@ -494,16 +496,36 @@ export class GameEngine {
     this.emit();
   }
 
+  /**
+   * 助言が弾かれたことを外へ知らせる。
+   * ローカルでは要らない（送る前に同じ検査を通しているので画面に出ている）が、
+   * ネットワーク越しだと弾いたのはサーバーなので、本人に返す口が要る。
+   */
+  onHintRejected(listener: (advisorId: string, reason: string) => void): Unsubscribe {
+    this.rejectionListeners.add(listener);
+    return () => this.rejectionListeners.delete(listener);
+  }
+
+  private rejectHint(advisorId: string, reason: string): void {
+    for (const l of this.rejectionListeners) l(advisorId, reason);
+  }
+
   private receiveHint(hint: Hint): void {
     const round = this.round;
     if (!round || this.phase !== 'choosing') return;
     if (hint.roundId !== round.roundId) return;
     if (this.muted.has(hint.advisorId)) return;
-    if (!this.currentCasting.speakerIds.includes(hint.advisorId)) return;
+    if (!this.currentCasting.speakerIds.includes(hint.advisorId)) {
+      this.rejectHint(hint.advisorId, 'notSpeaking');
+      return;
+    }
 
     const labels = round.room.choices.map((c) => localized(c.label));
     const checked = checkHint(this.guard, hint.advisorId, hint.text, this.now(), labels);
-    if (!checked.ok) return;
+    if (!checked.ok) {
+      this.rejectHint(hint.advisorId, checked.reason);
+      return;
+    }
     const text = checked.text;
 
     // 1部屋につき1人1通。書き直しは最新で上書きする

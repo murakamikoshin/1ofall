@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { LOCALES } from '../i18n/locales';
-import { ADVISOR_NAME_MAX, HINT_MAX_LENGTH, MODE_IDS, ROOM_CODE_LENGTH, SLOTS_MAX, SLOTS_MIN } from './limits';
+import { ADVISOR_NAME_MAX, HINT_MAX_LENGTH, MODE_IDS, ROOM_CODE_LENGTH, SLOTS_MAX } from './limits';
 
 /**
  * 部屋データと通信メッセージの唯一の正。
@@ -105,6 +105,7 @@ export type Knowledge = z.infer<typeof KnowledgeSchema>;
 export { HINT_MAX_LENGTH } from './limits';
 
 export const ModeIdSchema = z.enum(MODE_IDS);
+export const LocaleSchema = z.enum(LOCALES);
 
 /* ───────────────────────── クライアント→サーバー ───────────────────────── */
 
@@ -121,13 +122,15 @@ export const ClientMessageSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('advisor/report'), targetId: AdvisorIdSchema, roundId: z.string(), text: z.string().max(HINT_MAX_LENGTH) }),
   /** 全員挑戦者モード。助言者席の人間も自分の扉を選ぶ */
   z.object({ t: z.literal('party/pick'), roundId: z.string(), choiceId: z.string().min(1) }),
-  z.object({ t: z.literal('challenger/start'), mode: ModeIdSchema }),
+  z.object({ t: z.literal('challenger/start'), mode: ModeIdSchema, locale: LocaleSchema.optional() }),
   z.object({ t: z.literal('challenger/choose'), choiceId: z.string(), roundId: z.string() }),
   z.object({ t: z.literal('challenger/silence'), advisorId: AdvisorIdSchema, roundId: z.string() }),
   z.object({ t: z.literal('challenger/report'), advisorId: AdvisorIdSchema, roundId: z.string(), text: z.string().max(HINT_MAX_LENGTH) }),
-  z.object({ t: z.literal('challenger/setSpeakerSlots'), slots: z.number().int().min(SLOTS_MIN).max(SLOTS_MAX) }),
   z.object({ t: z.literal('challenger/setSelectionMode'), mode: z.enum(['lottery', 'nominate']) }),
-  z.object({ t: z.literal('challenger/kick'), advisorId: AdvisorIdSchema }),
+  /** 指名方式のとき、次の区画で喋らせる面々 */
+  z.object({ t: z.literal('challenger/nominate'), advisorIds: z.array(AdvisorIdSchema).max(SLOTS_MAX) }),
+  /** 死亡演出の段を進める。「間」は本体が持つので合図だけ送る */
+  z.object({ t: z.literal('challenger/advance') }),
 ]);
 
 /* ───────────────────────── サーバー→クライアント ───────────────────────── */
@@ -148,6 +151,8 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
     roundId: z.string(),
     room: PublicRoomSchema,
     deadlineAt: z.number().int(),
+    /** 送った時点のサーバー時刻。端末の時計がずれていても残り時間が合う */
+    serverNow: z.number().int(),
     /**
      * **助言者ひとりひとりに宛てて送る**。挑戦者クライアントには絶対に乗せない。
      * 目利き（候補2〜3）・耳打ち（死ぬ方だけ）・裏切り者（罠だけ）を

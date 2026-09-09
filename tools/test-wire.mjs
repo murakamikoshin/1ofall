@@ -62,6 +62,7 @@ for (const modeId of C.MODE_IDS) {
       roundId: round.roundId,
       room: round.room,
       deadlineAt: round.deadlineAt,
+      serverNow: 1,
       ...(round.ownCandidates?.length ? { ownCandidates: [...round.ownCandidates] } : {}),
       ...(round.restingIds?.length ? { restingIds: [...round.restingIds] } : {}),
     };
@@ -86,6 +87,7 @@ for (const modeId of C.MODE_IDS) {
         roundId: round.roundId,
         room: round.room,
         deadlineAt: round.deadlineAt,
+        serverNow: 1,
         knowledge: k,
         isSpeaker: round.speakers.some((s) => s.id === advisor.id),
       };
@@ -141,8 +143,8 @@ const bad = [
   ['助言が長すぎる', { t: 'advisor/hint', text: 'あ'.repeat(500), roundId: 'r1' }],
   ['合言葉の桁が違う', { t: 'advisor/join', roomCode: 'AB' }],
   ['名前が空', { t: 'advisor/join', roomCode: 'ABC123', name: '' }],
-  ['発言枠が範囲外', { t: 'challenger/setSpeakerSlots', slots: 9999 }],
-  ['発言枠が小数', { t: 'challenger/setSpeakerSlots', slots: 3.5 }],
+  ['指名が多すぎる', { t: 'challenger/nominate', advisorIds: Array.from({ length: 30 }, (_, i) => `a${i}`) }],
+  ['言語が未知', { t: 'challenger/start', mode: 'party', locale: 'xx' }],
   ['モードが未知', { t: 'challenger/start', mode: 'godmode' }],
   ['選んだ扉が空', { t: 'party/pick', roundId: 'r1', choiceId: '' }],
   ['通報の相手がいない', { t: 'challenger/report', roundId: 'r1', text: 'x' }],
