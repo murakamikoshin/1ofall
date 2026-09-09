@@ -75,7 +75,9 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 
 ## 段階4（通信層）の入り口
 
-**PartyKit で書く**と決めた（Cloudflare Workers 月5ドル〜を前提とする）。
+**PartyKit で書く**と決めた。費用の判断は要らない
+（SQLite バックエンドの Durable Objects は Workers 無料プランで使える。
+`docs/COST.md`）。
 `AdvisorGateway` の差し込み口はすでに空いているので、
 本体（`GameEngine`）には手を入れずに `PartyKitGateway` を1つ足すだけで入る。
 人間が抜けた席は `CompositeAdvisorGateway` が AI に引き継がせる仕組みが
