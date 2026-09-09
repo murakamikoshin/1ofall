@@ -1,4 +1,4 @@
-import type { AdvisorInfo, Choice } from './schema';
+import type { AdvisorInfo, Choice, Knowledge } from './schema';
 import { pickSome, shuffled, type Rng } from './rng';
 import { SLOTS_MAX, SLOTS_MIN, liarCountFor } from './limits';
 
@@ -27,27 +27,14 @@ export interface Casting {
  *
  * ただし「何も知らない者」は入れない。半分入れると61%まで落ち、
  * 落ちたぶんがそのまま運になる（tools/sim15.mjs）。
+ *
+ * 全員挑戦者モードの嘘つき（trapper）だけは、どれが死ぬかは知っていても
+ * 正解は知らない。正解まで知らせると一度も死なないので、8部屋で丸わかりになる。
+ *
+ * 形そのものは schema.ts の KnowledgeSchema が正。ネットワーク越しに
+ * 同じものを送るので、型と検証を二重管理しないためにあちらへ寄せてある。
  */
-export type Knowledge =
-  /**
-   * 嘘つきは正解を知っていて、さらに「罠」を見ている。
-   * 罠は嘘つき全員に共通。ここへ誘い込むのが仕事。
-   *
-   * 罠を共通にしないと、嘘つきの嘘が外れの数だけ散る。
-   * 散った嘘は集計で消えるので、正直者の声だけが集まって
-   * 「一番多く名前が挙がったものを選ぶ」で必ず当たってしまう。
-   */
-  | { kind: 'liar'; correct: string; trap: string }
-  /** 協力者。正解はこの中にある、というところまで */
-  | { kind: 'honest'; candidates: readonly string[] }
-  /** 協力者。これが死ぬ、ということだけ知っている */
-  | { kind: 'doomed'; doomed: string }
-  /**
-   * 全員挑戦者のときの嘘つき。
-   * どれが死ぬかは知っているが、正解は知らない。
-   * 正解まで知らせると一度も死なないので、8部屋で丸わかりになる。
-   */
-  | { kind: 'trapper'; trap: string };
+export type { Knowledge };
 
 export function clampSlots(slots: number): number {
   if (!Number.isFinite(slots)) return SLOTS_MIN;

@@ -106,7 +106,9 @@ export const HINTS_ARE_VISIBLE = true;
 
 /* ───────────────────────────── 遊び方 ───────────────────────────── */
 
-export type ModeId = 'standard' | 'brink' | 'party';
+/** モードの一覧。zod（schema.ts）からも読むので、依存を持たない側に置く */
+export const MODE_IDS = ['standard', 'brink', 'party'] as const;
+export type ModeId = (typeof MODE_IDS)[number];
 
 export interface ModeConfig {
   id: ModeId;
