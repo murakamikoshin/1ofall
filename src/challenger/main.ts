@@ -7,6 +7,7 @@ import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
+import { MODES, type ModeId } from '@/core/limits';
 
 import { audio } from '@/ui/audio';
 import { choiceArt } from '@/ui/placeholder';
@@ -48,7 +49,8 @@ function renderTitle(): void {
   const menu = el('div', 'menu');
   const T = strings();
   menu.append(
-    menuItem(T.menu.solo, T.menu.soloNote, false, () => startGame()),
+    menuItem(T.menu.solo, T.menu.soloNote, false, () => startGame('standard')),
+    menuItem(T.menu.brink, T.menu.brinkNote, false, () => startGame('brink')),
     // 野良と賭場は通信層（段階4）が入ってから開く
     menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
     menuItem(T.menu.host, `${T.menu.hostNote}（${T.menu.comingSoon}）`, true),
@@ -155,14 +157,15 @@ function buildShell(): Shell {
   };
 }
 
-function startGame(): void {
+function startGame(modeId: ModeId): void {
   audio.load();
   engine?.dispose();
   shell = buildShell();
 
   // ソロは全員 AI。野良になっても本体はこの境界の先を知らない
   //（CompositeAdvisorGateway が人間と AI を混ぜて同じ顔で渡す）
-  engine = new GameEngine({ pack, gateway: new AiAdvisorGateway({ count: 12 }) });
+  const mode = MODES[modeId];
+  engine = new GameEngine({ pack, mode, gateway: new AiAdvisorGateway({ count: 12, mode }) });
   unsubscribe = engine.subscribe((state) => render(state));
   engine.start();
   audio.play('room-open');

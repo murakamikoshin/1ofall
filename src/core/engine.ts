@@ -1,5 +1,5 @@
 import type { AdvisorInfo, Hint, PublicRoom, Room, RoomPack } from './schema';
-import { RUN, knowledgeForSection } from './limits';
+import { RUN, knowledgeForSection, STANDARD, type ModeConfig } from './limits';
 import { localized } from '../i18n';
 import {
   checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard, wasTruthful,
@@ -69,6 +69,7 @@ export interface Verdict {
 
 export interface EngineConfig {
   pack: RoomPack;
+  mode?: ModeConfig;
   lives?: number;
   sections?: number;
   roomsPerSection?: number;
@@ -110,6 +111,7 @@ export class GameEngine {
   private readonly cfg: Required<
     Pick<EngineConfig, 'lives' | 'sections' | 'roomsPerSection' | 'baseTimeMs' | 'penaltyTimeMs'>
   >;
+  private readonly mode: ModeConfig;
 
   private phase: Phase = 'title';
   private lives: number;
@@ -148,10 +150,11 @@ export class GameEngine {
     this.gateway = config.gateway ?? new NullAdvisorGateway();
     this.now = config.now ?? (() => Date.now());
     this.rng = createRng(config.seed ?? (Date.now() & 0xffffffff));
+    this.mode = config.mode ?? STANDARD;
     this.cfg = {
-      lives: config.lives ?? RUN.lives,
-      sections: config.sections ?? RUN.sections,
-      roomsPerSection: config.roomsPerSection ?? RUN.roomsPerSection,
+      lives: config.lives ?? this.mode.lives,
+      sections: config.sections ?? this.mode.sections,
+      roomsPerSection: config.roomsPerSection ?? this.mode.roomsPerSection,
       baseTimeMs: config.baseTimeMs ?? RUN.baseTimeMs,
       penaltyTimeMs: config.penaltyTimeMs ?? RUN.penaltyTimeMs,
     };
@@ -173,6 +176,10 @@ export class GameEngine {
     this.listeners.add(listener);
     listener(this.snapshot());
     return () => this.listeners.delete(listener);
+  }
+
+  modeId(): ModeConfig['id'] {
+    return this.mode.id;
   }
 
   snapshot(): EngineState {
@@ -319,7 +326,8 @@ export class GameEngine {
   /* ───────────────────────────── 内部 ───────────────────────────── */
 
   private slotsForSection(): number {
-    return clampSlots(RUN.slotsBySection[this.sectionIndex] ?? RUN.slotsBySection.at(-1) ?? 5);
+    const table = this.mode.slotsBySection;
+    return clampSlots(table[this.sectionIndex] ?? table.at(-1) ?? 5);
   }
 
   /**
@@ -343,7 +351,10 @@ export class GameEngine {
         rng: this.rng,
       });
       this.nominated = [];
-      this.sectionCasting = { speakerIds, liarIds: castLiars(speakerIds, this.rng) };
+      this.sectionCasting = {
+        speakerIds,
+        liarIds: castLiars(speakerIds, this.rng, this.mode.loneHonest),
+      };
       this.sectionCastingIndex = this.sectionIndex;
       this.records.clear();
     }
@@ -414,7 +425,8 @@ export class GameEngine {
 
     // 誰が何を知っているかを配る。正解が入るのは嘘つきの手元と、協力者の候補の中だけ
     const knowledge = dealKnowledge(
-      choices, source.correct, casting, this.rng, knowledgeForSection(this.sectionIndex),
+      choices, source.correct, casting, this.rng,
+      knowledgeForSection(this.sectionIndex), this.mode.loneHonest,
     );
     this.gateway.openRound({ roundId, room: fullRoom, casting, knowledge, deadlineAt });
     this.emit();

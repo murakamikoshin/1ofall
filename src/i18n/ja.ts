@@ -10,6 +10,8 @@ export const ja = {
   menu: {
     solo: '一人で遊ぶ',
     soloNote: '助言者はすべて AI。いつでも始められる',
+    brink: '崖っぷち',
+    brinkNote: '一人以外みな嘘つき。信じられる一人を探す',
     random: '野良で遊ぶ',
     randomNote: '見知らぬ助言者と。足りないぶんは AI が埋める',
     host: '賭場を開く',

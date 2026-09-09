@@ -12,6 +12,8 @@ export const en: Strings = {
   menu: {
     solo: 'Play alone',
     soloNote: 'Every advisor is a machine. Starts at once',
+    brink: 'The brink',
+    brinkNote: 'All but one are lying. Find the one',
     random: 'Play with strangers',
     randomNote: 'Machines fill the seats nobody took',
     host: 'Open a den',

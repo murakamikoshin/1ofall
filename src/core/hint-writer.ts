@@ -96,6 +96,12 @@ export interface WriteOptions {
   rng: Rng;
   /** 嘘つきが本当のことを言って信用を作りにいく確率 */
   liarHonestyRate?: number;
+  /**
+   * 嘘つきが「迷ったふり」をする確率。
+   * 外れ二つを挙げて「AかBのどっちか」と言う。
+   * これが無いと、二つ挙げている人＝正直者、と機械的に決まってしまう。
+   */
+  liarMimicRate?: number;
   /** 話し方の癖 */
   voice?: Voice;
 }
@@ -106,7 +112,7 @@ export interface WriteOptions {
  * ここぞで裏切るには、それまで信用されている必要がある。
  */
 export function writeHint({
-  choices, knowledge, rng, liarHonestyRate = 0.35, voice = DEFAULT_VOICE,
+  choices, knowledge, rng, liarHonestyRate = 0.35, liarMimicRate = 0.25, voice = DEFAULT_VOICE,
 }: WriteOptions): string {
   if (knowledge.kind === 'liar') {
     const wrong = choices.filter((c) => c.id !== knowledge.correct);
@@ -118,6 +124,14 @@ export function writeHint({
       const narrowed = writeNarrow(a, b, rng);
       if (narrowed) return narrowed;
       return trySh(HEDGE, a, rng) ?? a;
+    }
+    // 迷ったふり。外れ二つを挙げて、絞れていない協力者に見せかける
+    if (rng() < liarMimicRate) {
+      const a = labelOf(choices, knowledge.trap);
+      const other = wrong.filter((c) => c.id !== knowledge.trap);
+      const b = other.length ? localized((other[Math.floor(rng() * other.length)] as Choice).label) : '';
+      const narrowed = writeNarrow(a, b, rng);
+      if (narrowed) return narrowed;
     }
     // 耳打ちのふりをして正解を「死ぬ」と潰す
     if (rng() < 0.25) {

@@ -90,7 +90,16 @@ export function castSpeakers(input: SpeakerInput): readonly string[] {
  * 嘘つきは迷ったふりに紛れられる（実測：区画6部屋を通して 78% → 84%。
  * 読みは効くが、割れて終わりにはならない）。
  */
-export function castLiars(speakerIds: readonly string[], rng: Rng): readonly string[] {
+export function castLiars(
+  speakerIds: readonly string[],
+  rng: Rng,
+  loneHonest = false,
+): readonly string[] {
+  // 崖っぷち：正直者はただ一人。残りは全員嘘つき
+  if (loneHonest) {
+    const spared = pickSome(speakerIds, 1, rng)[0];
+    return speakerIds.filter((id) => id !== spared);
+  }
   return drawLiars(speakerIds, liarCountFor(speakerIds.length), rng);
 }
 
@@ -114,6 +123,8 @@ export function dealKnowledge(
   casting: Casting,
   rng: Rng,
   mix: KnowledgeMix = { narrow2: 0.5, narrow3: 0.25, doomed: 0.25 },
+  /** 崖っぷち：ただ一人の正直者は正解を正確に知っている */
+  loneHonest = false,
 ): Map<string, Knowledge> {
   const wrong = choices.filter((c) => c.id !== correct).map((c) => c.id);
   const out = new Map<string, Knowledge>();
@@ -125,6 +136,12 @@ export function dealKnowledge(
   for (const id of casting.speakerIds) {
     if (casting.liarIds.includes(id)) {
       out.set(id, { kind: 'liar', correct, trap });
+      continue;
+    }
+
+    if (loneHonest) {
+      // 見つけてもらえれば助かる。そのために正確に知っている必要がある
+      out.set(id, { kind: 'honest', candidates: [correct] });
       continue;
     }
 

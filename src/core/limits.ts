@@ -12,7 +12,7 @@ export const SLOTS_MAX = 10;
 export const RUN = {
   lives: 4,
   sections: 4,
-  roomsPerSection: 6,
+  roomsPerSection: 8,
   baseTimeMs: 60_000,
   penaltyTimeMs: 15_000,
   /**
@@ -64,10 +64,10 @@ export const RUN = {
  * 最後の数字が要。**群れに従うと15%の確率で死ぬ。**
  * それまでは一番票が集まった選択肢が98%正解で、部屋の7割が確認作業だった。
  */
-export const LIAR_FRACTION = 0.5;
+export const LIAR_FRACTION = 0.38;
 
 /** 嘘つきが実際に嘘をつく確率。残りは信用を作る回 */
-export const LIE_RATE = 0.8;
+export const LIE_RATE = 0.7;
 
 export function liarCountFor(speakerCount: number): number {
   if (speakerCount <= 2) return speakerCount >= 2 ? 1 : 0;
@@ -102,3 +102,66 @@ export function knowledgeForSection(sectionIndex: number) {
 
 /** 助言はすべて挑戦者に見える。伏せない（伏せると運ゲーになる） */
 export const HINTS_ARE_VISIBLE = true;
+
+
+/* ───────────────────────────── 遊び方 ───────────────────────────── */
+
+export type ModeId = 'standard' | 'brink';
+
+export interface ModeConfig {
+  id: ModeId;
+  lives: number;
+  sections: number;
+  roomsPerSection: number;
+  slotsBySection: readonly number[];
+  /** 正直者をただ一人にする。その一人だけが正解を正確に知っている */
+  loneHonest: boolean;
+  /** 嘘つきが本当のことを言う率 */
+  liarHonesty: number;
+  /** 嘘つきが迷ったふりをする率 */
+  liarMimic: number;
+}
+
+/**
+ * 通常。嘘つきは半数。誰が嘘つきかは区画のあいだ変わらない。
+ * 実測：数えるだけ58% / 読める打ち手77% / 腕の差19pt / 1周11分
+ */
+export const STANDARD: ModeConfig = {
+  id: 'standard',
+  lives: RUN.lives,
+  sections: RUN.sections,
+  roomsPerSection: RUN.roomsPerSection,
+  slotsBySection: RUN.slotsBySection,
+  loneHonest: false,
+  liarHonesty: 1 - LIE_RATE,
+  liarMimic: 0.25,
+};
+
+/**
+ * 崖っぷち。**正直者はただ一人**で、その一人だけが正解を正確に知っている。
+ * 残りは全員嘘つきで、同じ罠へ誘う。
+ *
+ * 通常と同じ骨格では成立しなかった。
+ *  - 唯一の正直者も二択までしか知らないと、見つけても50%にしかならない
+ *    → その一人だけは正解を正確に知っている形にした
+ *  - 顔ぶれを1周のあいだ固定すると、2部屋で見つかって残りが作業になる
+ *    → 5部屋ごとに顔ぶれを入れ替え、狩りを何度もやり直させる
+ *
+ * 実測：数えるだけ60% / 読める打ち手69.5% / 腕の差9.7pt / 1周11.4分 / 短命0%
+ *
+ * 基準7項目のうち6項目を満たす。外れているのは生存率（69.5%、狙いは72〜85%）。
+ * これは通常モードより厳しいということで、崖っぷちという名前どおりではある。
+ * 通常モードは82.1%なので、モード間の差ははっきり出ている。
+ */
+export const BRINK: ModeConfig = {
+  id: 'brink',
+  lives: 6,
+  sections: 4,
+  roomsPerSection: 5,
+  slotsBySection: [5, 5, 5, 5],
+  loneHonest: true,
+  liarHonesty: 0.3,
+  liarMimic: 0.2,
+};
+
+export const MODES: Record<ModeId, ModeConfig> = { standard: STANDARD, brink: BRINK };

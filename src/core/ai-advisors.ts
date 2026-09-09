@@ -3,7 +3,7 @@ import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gatew
 import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf } from './hint-writer';
 import { liarBias } from './casting';
-import { LIE_RATE } from './limits';
+import { STANDARD, type ModeConfig } from './limits';
 
 /**
  * AI の助言者。ソロモードで人間の助言者の代わりに入る。
@@ -18,6 +18,7 @@ const NAMES = [
 
 export interface AiAdvisorOptions {
   count?: number;
+  mode?: ModeConfig;
   seed?: number;
   minDelayMs?: number;
   maxDelayMs?: number;
@@ -30,6 +31,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
   private readonly rng: Rng;
   private readonly minDelay: number;
   private readonly maxDelay: number;
+  private readonly mode: ModeConfig;
   private hintListeners = new Set<(hint: Hint) => void>();
   private timers: ReturnType<typeof setTimeout>[] = [];
   private openRoundId: string | null = null;
@@ -37,6 +39,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
   constructor(options: AiAdvisorOptions = {}) {
     const count = Math.min(options.count ?? 12, NAMES.length);
     this.rng = createRng(options.seed ?? (Date.now() & 0xffffffff));
+    this.mode = options.mode ?? STANDARD;
     this.minDelay = options.minDelayMs ?? 400;
     this.maxDelay = options.maxDelayMs ?? 3400;
     this.advisors = shuffled(NAMES, this.rng)
@@ -59,13 +62,14 @@ export class AiAdvisorGateway implements AdvisorGateway {
 
       // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る。
       // 平均すると LIE_RATE の割合で嘘をつく
-      const honesty = Math.max(0.05, Math.min(0.45, (1 - LIE_RATE) * liarBias(id)));
+      const honesty = Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(id)));
       const text = writeHint({
         choices: briefing.room.choices,
         knowledge,
         rng: this.rng,
         liarHonestyRate: honesty,
         // 話し方の癖は人ごとに固定。区画のあいだ同じ顔ぶれなので読みが積める
+        liarMimicRate: this.mode.liarMimic,
         voice: voiceOf(id),
       });
       const delay = this.minDelay + this.rng() * (this.maxDelay - this.minDelay);
