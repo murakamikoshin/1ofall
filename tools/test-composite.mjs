@@ -31,7 +31,16 @@ function fakeHuman(names) {
     onRosterChange: (l) => { rosterListeners.add(l); return () => rosterListeners.delete(l); },
     volunteers: () => [],
     dispose() {},
-    _add(name) { roster.push({ id: `h_${roster.length}`, name, kind: 'human' }); for (const l of rosterListeners) l(roster); },
+    _add(name) {
+      const found = roster.find((a) => a.name === name);
+      if (!found) roster.push({ id: `h_${roster.length}`, name, kind: 'human' });
+      for (const l of rosterListeners) l(roster);
+    },
+    _leave(name) {
+      const i = roster.findIndex((a) => a.name === name);
+      if (i >= 0) roster.splice(i, 1);
+      for (const l of rosterListeners) l(roster);
+    },
   };
 }
 
@@ -64,6 +73,24 @@ const g = new CompositeAdvisorGateway({ human: watcher, minAdvisors: 5, aiSeed: 
 g.onRosterChange(() => notified++);
 watcher._add('い');
 check('入室が伝わる', notified, 1);
+
+
+// 抜けた席は AI が引き継ぐ。名前と記録が消えないこと
+const leavers = fakeHuman(['あ', 'い', 'う', 'え']);
+const g2 = new CompositeAdvisorGateway({ human: leavers, minAdvisors: 6, aiSeed: 9 });
+check('4人＋AI2人で6人', g2.roster().length, 6);
+const before = g2.roster().filter((a) => a.kind === 'human').map((a) => a.name);
+check('人間は4人', before, ['あ', 'い', 'う', 'え']);
+
+leavers._leave('い');
+const after = g2.roster();
+check('抜けても人数は変わらない', after.length, 6);
+check('抜けた人の名前は残る', after.some((a) => a.name === 'い'), true);
+check('抜けた席は AI が座る', after.find((a) => a.name === 'い')?.kind, 'ai');
+check('人間は3人に減る', g2.humanCount(), 3);
+
+leavers._add('い');
+check('戻ってきたら席を返す', g2.roster().find((a) => a.name === 'い')?.kind, 'human');
 
 console.log(`\n${pass} 通過 / ${fail} 失敗`);
 process.exit(fail ? 1 : 0);

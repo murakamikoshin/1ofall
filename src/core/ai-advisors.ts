@@ -29,6 +29,8 @@ export class AiAdvisorGateway implements AdvisorGateway {
   readonly kind = 'ai' as const;
 
   private readonly advisors: AdvisorInfo[];
+  /** 抜けた人の席を引き継いだぶん */
+  private adopted: AdvisorInfo[] = [];
   private readonly rng: Rng;
   private readonly minDelay: number;
   private readonly maxDelay: number;
@@ -52,7 +54,30 @@ export class AiAdvisorGateway implements AdvisorGateway {
   }
 
   roster(): readonly AdvisorInfo[] {
-    return this.advisors;
+    return [...this.advisors, ...this.adopted];
+  }
+
+  /**
+   * 抜けた人の席を引き継ぐ。
+   *
+   * ランダムマッチでは、裏切って負けた者が抜ける。
+   * 席ごと消すと、その人について積んだ記録も消えて読みが台無しになる。
+   * **名前と席をそのままに、中身だけ AI に替える。**
+   * 残った側から見れば、その人はまだそこにいる。
+   */
+  adopt(seat: AdvisorInfo): void {
+    if (this.adopted.some((a) => a.id === seat.id)) return;
+    this.adopted.push({ ...seat, kind: 'ai' });
+  }
+
+  /** 本人が戻ってきたら席を返す */
+  release(id: string): void {
+    this.adopted = this.adopted.filter((a) => a.id !== id);
+  }
+
+  /** いま AI が代わりに座っている席 */
+  adoptedSeats(): readonly AdvisorInfo[] {
+    return this.adopted;
   }
 
   openRound(briefing: RoundBriefing): void {

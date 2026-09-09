@@ -33,6 +33,8 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
   private readonly maxFill: number;
   private rosterListeners = new Set<(roster: readonly AdvisorInfo[]) => void>();
   private unsubs: Unsubscribe[] = [];
+  /** 一度でも見た人間の席。抜けても覚えておく */
+  private seats = new Map<string, AdvisorInfo>();
 
   constructor(options: CompositeOptions) {
     this.human = options.human ?? null;
@@ -46,18 +48,39 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     if (this.human) {
       this.unsubs.push(
         this.human.onRosterChange(() => {
-          // 人が増減したら埋める数が変わる
+          this.reconcileSeats();
           for (const l of this.rosterListeners) l(this.roster());
         }),
       );
+      this.reconcileSeats();
     }
   }
 
-  /** 人が足りないぶんだけ AI を混ぜた名簿 */
+  /**
+   * 抜けた席と、人が足りないぶんの席を突き合わせる。
+   *
+   * ランダムマッチでは、裏切って負けた者が抜ける。
+   * 席ごと消すと積んだ記録が消えて読みが台無しになるので、
+   * **名前と席をそのままに、中身だけ AI に替える。**
+   */
+  private reconcileSeats(): void {
+    const present = new Set((this.human?.roster() ?? []).map((a) => a.id));
+    for (const a of this.human?.roster() ?? []) this.seats.set(a.id, a);
+
+    for (const [id, seat] of this.seats) {
+      if (present.has(id)) this.ai.release(id);
+      else this.ai.adopt(seat);
+    }
+  }
+
+  /** 人が足りないぶんだけ AI を混ぜた名簿。抜けた席は AI が座ったまま残る */
   roster(): readonly AdvisorInfo[] {
     const humans = this.human?.roster() ?? [];
-    const need = Math.max(0, Math.min(this.maxFill, this.minAdvisors - humans.length));
-    return [...humans, ...this.ai.roster().slice(0, need)];
+    const taken = this.ai.adoptedSeats();
+    const filled = humans.length + taken.length;
+    const need = Math.max(0, Math.min(this.maxFill, this.minAdvisors - filled));
+    const fill = this.ai.roster().filter((a) => !taken.some((t) => t.id === a.id)).slice(0, need);
+    return [...humans, ...taken, ...fill];
   }
 
   /** いま何人が人間か。表に出す用ではなく、運用の記録用 */
