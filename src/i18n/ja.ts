@@ -119,8 +119,11 @@ export const ja = {
     maybeIs: 'このどちらか',
     maybeIsWide: 'この三つのどれか',
     doomedIs: 'これは死ぬ',
-    trapIs: '罠。ここへ誘え',
-    youDontKnow: 'どれかは分からない。知っているのは嘘つきだけ',
+    trapIs: 'ここへ誘え',
+    noteSeparator: '。',
+    /** 目利きは候補までは絞れている。「何も分からない」と読ませない */
+    youNarrowedTo: (n: number) => `生きる方は光った${n}つのどれか。それ以上は分からない`,
+    youOnlyKnowTrap: '知っているのは罠だけ。生きる方は分からない',
     youKnowDoomed: '分かるのは死ぬ方だけ。生きる方は知らない',
     speaking: '発言できる',
     notSpeaking: '今回は発言できない',

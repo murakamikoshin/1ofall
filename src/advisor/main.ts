@@ -64,8 +64,21 @@ class RehearsalConnection implements AdvisorConnection {
       const wrong = room.choices.filter((c) => c.id !== room.correct);
       const pickWrong = () => wrong[Math.floor(Math.random() * wrong.length)];
       const decoy = pickWrong();
-      const isLiar = Math.random() < 0.25;
+      // ?as=liar|trapper|honest2|honest3|doomed で立場を固定できる。
+      // 素振りと、画面の確認に使う
+      const forced = new URLSearchParams(location.search).get('as');
       const roll = Math.random();
+      const role =
+        forced ??
+        (Math.random() < 0.2
+          ? 'liar'
+          : Math.random() < 0.1
+            ? 'trapper'
+            : roll < 0.2
+              ? 'doomed'
+              : roll < 0.45
+                ? 'honest3'
+                : 'honest2');
       const view: AdvisorView = {
         roundId: `${room.id}#${i}`,
         roomId: room.id,
@@ -73,16 +86,19 @@ class RehearsalConnection implements AdvisorConnection {
         prompt: localized(room.prompt),
         choices: room.choices,
         // 素振り用。実際の配分は core/limits.ts の knowledgeBySection が決める
-        knowledge: isLiar
-          ? { kind: 'liar' as const, correct: room.correct, trap: decoy?.id ?? room.correct }
-          : roll < 0.2
-            ? { kind: 'doomed' as const, doomed: decoy?.id ?? room.correct }
-            : roll < 0.45
-              ? {
-                  kind: 'honest' as const,
-                  candidates: [room.correct, decoy?.id ?? room.correct, pickWrong()?.id ?? room.correct],
-                }
-              : { kind: 'honest' as const, candidates: [room.correct, decoy?.id ?? room.correct] },
+        knowledge:
+          role === 'liar'
+            ? { kind: 'liar' as const, correct: room.correct, trap: decoy?.id ?? room.correct }
+            : role === 'trapper'
+              ? { kind: 'trapper' as const, trap: decoy?.id ?? room.correct }
+              : role === 'doomed'
+                ? { kind: 'doomed' as const, doomed: decoy?.id ?? room.correct }
+                : role === 'honest3'
+                  ? {
+                      kind: 'honest' as const,
+                      candidates: [room.correct, decoy?.id ?? room.correct, pickWrong()?.id ?? room.correct],
+                    }
+                  : { kind: 'honest' as const, candidates: [room.correct, decoy?.id ?? room.correct] },
         isSpeaker: Math.random() < 0.8,
       };
       this.latest = view;
@@ -187,15 +203,20 @@ function renderBoard(): void {
 
     const T = strings();
     const k = view.knowledge;
-    const isLiar = k.kind === 'liar';
+    // 全員挑戦者モードの裏切り者（trapper）は、正解は知らないが罠は知っている。
+    // 立場は嘘つき側。ここで honest 扱いにすると本人に嘘つきだと伝わらない
+    const isLiar = k.kind === 'liar' || k.kind === 'trapper';
     frame.classList.toggle('is-liar', isLiar);
     roleTitle.textContent = isLiar ? T.advisor.youAreLiar : T.advisor.youAreHonest;
     roleTitle.classList.toggle('is-liar', isLiar);
-    roleNote.textContent = isLiar
-      ? T.advisor.youAreLiarNote
-      : k.kind === 'doomed'
-        ? `${T.advisor.youAreHonestNote}　${T.advisor.youKnowDoomed}`
-        : `${T.advisor.youAreHonestNote}　${T.advisor.youDontKnow}`;
+    roleNote.textContent =
+      k.kind === 'liar'
+        ? T.advisor.youAreLiarNote
+        : k.kind === 'trapper'
+          ? `${T.advisor.youAreLiarNote}${T.advisor.noteSeparator}${T.advisor.youOnlyKnowTrap}`
+          : k.kind === 'doomed'
+            ? `${T.advisor.youAreHonestNote}${T.advisor.noteSeparator}${T.advisor.youKnowDoomed}`
+            : `${T.advisor.youAreHonestNote}${T.advisor.noteSeparator}${T.advisor.youNarrowedTo(k.candidates.length)}`;
 
     prompt.textContent = view.prompt;
     // 何が光るかは、その人が何を知っているかで変わる
@@ -205,7 +226,7 @@ function renderBoard(): void {
     const marked = k.kind === 'liar' ? [k.correct] : k.kind === 'honest' ? [...k.candidates] : [];
     const doomed = k.kind === 'doomed' ? [k.doomed] : [];
     // 嘘つきには罠も見えている。仲間全員が同じ罠を見ている
-    const trap = k.kind === 'liar' ? [k.trap] : [];
+    const trap = k.kind === 'liar' || k.kind === 'trapper' ? [k.trap] : [];
 
     grid.innerHTML = '';
     for (const choice of view.choices) {
