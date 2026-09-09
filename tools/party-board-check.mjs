@@ -13,7 +13,7 @@ for (const [name, viewport] of [['pc', { width: 1280, height: 720 }], ['sp', { w
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await p.addInitScript(() => { for (const m of ['standard','brink','party']) localStorage.setItem(`briefed:${m}`, '1'); });
   await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
-  await p.getByRole('button', { name: /全員挑戦者/ }).click();
+  await p.getByRole('button', { name: /^全員挑戦者/ }).click();
   await p.waitForSelector('.choice', { timeout: 8000 });
 
   const seats = await p.locator('.party-seat').count();

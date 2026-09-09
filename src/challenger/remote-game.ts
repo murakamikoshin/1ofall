@@ -47,29 +47,20 @@ export class RemoteGame implements GameHandle {
   private skewMs = 0;
   private closed = false;
 
-  constructor(
-    private readonly host: string,
-    private readonly roomCode: string,
-    private readonly locale: string,
-  ) {}
-
-  connect(): Promise<void> {
-    const scheme = this.host.startsWith('localhost') || this.host.startsWith('127.') ? 'ws' : 'wss';
-    const socket = new WebSocket(`${scheme}://${this.host}/parties/main/${encodeURIComponent(this.roomCode)}`);
+  constructor(socket: WebSocket, private readonly locale: string) {
     this.socket = socket;
-    return new Promise((resolve, reject) => {
-      socket.addEventListener('open', () => {
-        this.setStatus('open');
-        resolve();
-      });
-      socket.addEventListener('message', (e) => {
-        if (typeof e.data === 'string') this.receive(e.data);
-      });
-      socket.addEventListener('close', () => {
-        if (!this.closed) this.setStatus('closed');
-      });
-      socket.addEventListener('error', () => reject(new Error('roomNotFound')));
+    this.setStatus('open');
+    socket.addEventListener('message', (e) => {
+      if (typeof e.data === 'string') this.receive(e.data);
     });
+    socket.addEventListener('close', () => {
+      if (!this.closed) this.setStatus('closed');
+    });
+  }
+
+  /** 全員挑戦者に切り替えるとき、線はそのまま渡す */
+  takeSocket(): WebSocket | null {
+    return this.socket;
   }
 
   /** 助言者が集まるまでの待合。集まったら start() で始める */

@@ -8,6 +8,9 @@ import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
 import { RemoteGame, type GameHandle } from './remote-game';
 import { PartyBoard } from './party-board';
 import { LocalPartySource } from './local-party';
+import { RemotePartySource } from './remote-party';
+import { openRoomSocket } from './room-socket';
+import { companionNames } from '@/core/companion-names';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
 import { MODES, type ModeId } from '@/core/limits';
@@ -61,6 +64,12 @@ function renderTitle(): void {
     menuItem(T.menu.brink, withBest('brink', T.menu.brinkNote), false, () => enterMode('brink')),
     menuItem(T.menu.party, withBest('party', T.menu.partyNote), false, () => enterMode('party')),
     // 野良と賭場は通信層（段階4）が入ってから開く
+    menuItem(
+      T.menu.join,
+      PARTY_HOST ? T.menu.joinNote : `${T.menu.joinNote}（${T.menu.comingSoon}）`,
+      !PARTY_HOST,
+      PARTY_HOST ? () => renderJoin() : undefined,
+    ),
     menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
     // 賭場は通信先が設定されているときだけ開く
     menuItem(
@@ -256,6 +265,44 @@ function openBriefingDuringRun(modeId: ModeId): void {
   close.focus();
 }
 
+/**
+ * 全員挑戦者の手引き。時間は止まらない（仲間が待っている）。
+ * 通常モードのものと同じ紙面を、覆いだけ変えて出す。
+ */
+function openPartyBriefing(): void {
+  const T = strings().briefing;
+  const veil = el('div', 'brief-veil');
+  veil.setAttribute('role', 'dialog');
+  veil.setAttribute('aria-modal', 'true');
+
+  const sheet = el('div', 'brief-sheet');
+  const heading = el('h2', 'brief-heading');
+  heading.textContent = T.heading;
+  const note = el('p', 'brief-note');
+  note.textContent = T.runningNote;
+  sheet.append(heading, note, briefBlock(T.rulesHeading, T.rules), briefBlock(strings().menu.party, T.modes.party));
+
+  const close = document.createElement('button');
+  close.className = 'brief-go';
+  close.textContent = T.close;
+  const dismiss = (): void => {
+    veil.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      dismiss();
+    }
+  };
+  close.addEventListener('click', dismiss);
+  document.addEventListener('keydown', onKey);
+  sheet.append(close);
+  veil.append(sheet);
+  app!.append(veil);
+  close.focus();
+}
+
 function labelForMode(modeId: ModeId): string {
   const m = strings().menu;
   return modeId === 'brink' ? m.brink : modeId === 'party' ? m.party : m.solo;
@@ -379,6 +426,7 @@ function startGame(modeId: ModeId): void {
     partyBoard = new PartyBoard({
       root: app!,
       source: new LocalPartySource(),
+      onGuide: () => openPartyBriefing(),
       onExit: () => {
         partyBoard?.dispose();
         partyBoard = null;
@@ -419,14 +467,20 @@ function newRoomCode(): string {
 
 function hostGame(): void {
   const code = newRoomCode();
-  const remote = new RemoteGame(PARTY_HOST, code, currentLocale);
   engine?.dispose();
-  engine = remote;
-  renderLobby(code, remote);
-  void remote.connect().catch(() => renderLobbyError(code));
+  engine = null;
+  partyBoard?.dispose();
+  partyBoard = null;
+  void openRoomSocket(PARTY_HOST, code)
+    .then((socket) => {
+      const remote = new RemoteGame(socket, currentLocale);
+      engine = remote;
+      renderLobby(code, remote, socket);
+    })
+    .catch(() => renderLobbyError(code));
 }
 
-function renderLobby(code: string, remote: RemoteGame): void {
+function renderLobby(code: string, remote: RemoteGame, socket: WebSocket): void {
   const T = strings();
   app!.innerHTML = '';
   const screen = el('div', 'title-screen grain vignette');
@@ -438,9 +492,31 @@ function renderLobby(code: string, remote: RemoteGame): void {
   codeBox.textContent = code;
 
   const where = el('p', 'lobby-where');
-  where.textContent = T.lobby.where(`${location.origin}/advisor.html`);
+  // 助言者として入る（配信）のと、仲間として入る（全員挑戦者）のでは入口が違う
+  const setWhere = (mode: ModeId): void => {
+    where.textContent =
+      mode === 'party'
+        ? T.lobby.whereParty(location.origin, T.menu.join)
+        : T.lobby.where(`${location.origin}/advisor.html`);
+  };
 
   const count = el('p', 'lobby-count');
+
+  // 全員挑戦者では主も一人の参加者。仲間に見える名前を決めてもらう
+  const nameRow = el('div', 'join-form');
+  const nameInput = document.createElement('input');
+  nameInput.className = 'field';
+  nameInput.maxLength = 12;
+  nameInput.placeholder = T.advisor.namePlaceholder;
+  nameInput.setAttribute('aria-label', T.advisor.namePlaceholder);
+  nameInput.value = companionNames()[Math.floor(Math.random() * companionNames().length)] ?? '';
+  const sendName = (): void => {
+    if (socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ t: 'advisor/join', roomCode: code, name: nameInput.value.trim() || undefined }));
+  };
+  nameInput.addEventListener('change', sendName);
+  nameRow.append(nameInput);
+  sendName();
 
   // 賭場でもモードは選べる。全員挑戦者なら、来た人も自分の扉を選ぶ
   let chosenMode: ModeId = 'standard';
@@ -457,21 +533,45 @@ function renderLobby(code: string, remote: RemoteGame): void {
     btn.addEventListener('click', () => {
       chosenMode = id;
       currentMode = id;
+      setWhere(id);
       for (const other of modeButtons) other.classList.toggle('is-on', other === btn);
     });
     modeButtons.push(btn);
     modes.append(btn);
   }
 
+  setWhere(chosenMode);
+
   const begin = document.createElement('button');
   begin.className = 'menu-item lobby-begin';
   begin.textContent = T.lobby.begin;
   begin.addEventListener('click', () => {
     currentMode = chosenMode;
+    sendName();
+    remote.start(chosenMode);
+
+    // 全員挑戦者は盤面の作りが違う。線はそのまま渡して差し替える
+    if (chosenMode === 'party') {
+      const socket = remote.takeSocket();
+      if (!socket) return;
+      partyBoard = new PartyBoard({
+        root: app!,
+        source: new RemotePartySource(socket),
+        onGuide: () => openPartyBriefing(),
+        onExit: () => {
+          partyBoard?.dispose();
+          partyBoard = null;
+          engine = null;
+          renderTitle();
+        },
+      });
+      partyBoard.start();
+      return;
+    }
+
     audio.load();
     shell = buildShell();
     unsubscribe = remote.subscribe((state) => render(state));
-    remote.start(chosenMode);
     audio.play('room-open');
     startTimerLoop();
   });
@@ -491,8 +591,98 @@ function renderLobby(code: string, remote: RemoteGame): void {
     begin.disabled = status === 'connecting' || status === 'closed';
   });
 
-  screen.append(heading, codeBox, where, count, modes, begin, back);
+  screen.append(heading, codeBox, where, count, nameRow, modes, begin, back);
   app!.append(screen);
+}
+
+/** 合言葉で他人の部屋に入る。全員挑戦者はここから */
+function renderJoin(): void {
+  const T = strings();
+  app!.innerHTML = '';
+  const screen = el('div', 'title-screen grain vignette');
+
+  const heading = el('h2', 'lobby-heading');
+  heading.textContent = T.lobby.joinHeading;
+
+  const form = document.createElement('form');
+  form.className = 'join-form';
+  const code = document.createElement('input');
+  code.className = 'field join-code';
+  code.placeholder = T.advisor.roomCodePlaceholder;
+  code.maxLength = 6;
+  code.autocapitalize = 'characters';
+  code.setAttribute('aria-label', T.advisor.roomCodePlaceholder);
+  const name = document.createElement('input');
+  name.className = 'field';
+  name.placeholder = T.advisor.namePlaceholder;
+  name.maxLength = 12;
+  name.setAttribute('aria-label', T.advisor.namePlaceholder);
+
+  const submit = document.createElement('button');
+  submit.className = 'menu-item lobby-begin';
+  submit.type = 'submit';
+  submit.textContent = T.menu.join;
+
+  const status = el('p', 'lobby-count');
+
+  form.append(code, name, submit);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const roomCode = code.value.trim().toUpperCase();
+    if (roomCode.length !== 6) return;
+    submit.disabled = true;
+    status.textContent = T.lobby.joining;
+    void openRoomSocket(PARTY_HOST, roomCode)
+      .then((socket) => {
+        socket.send(JSON.stringify({ t: 'advisor/join', roomCode, name: name.value.trim() || undefined }));
+        waitForParty(socket, status);
+      })
+      .catch(() => {
+        submit.disabled = false;
+        status.textContent = T.errors.roomNotFound;
+      });
+  });
+
+  const back = document.createElement('button');
+  back.className = 'brief-link';
+  back.textContent = T.briefing.close;
+  back.addEventListener('click', renderTitle);
+
+  screen.append(heading, form, status, back);
+  app!.append(screen);
+  code.focus();
+}
+
+/** 主が始めるまで待つ。始まったら盤面に切り替える */
+function waitForParty(socket: WebSocket, status: HTMLElement): void {
+  status.textContent = strings().lobby.waitingHost;
+  const onMessage = (event: MessageEvent): void => {
+    if (typeof event.data !== 'string') return;
+    let msg: { t?: string };
+    try {
+      msg = JSON.parse(event.data) as { t?: string };
+    } catch {
+      return;
+    }
+    if (msg.t !== 'party/view') return;
+    socket.removeEventListener('message', onMessage);
+    currentMode = 'party';
+    partyBoard = new PartyBoard({
+      root: app!,
+      source: new RemotePartySource(socket),
+      onGuide: () => openPartyBriefing(),
+      onExit: () => {
+        partyBoard?.dispose();
+        partyBoard = null;
+        renderTitle();
+      },
+    });
+    partyBoard.start();
+  };
+  socket.addEventListener('message', onMessage);
+  socket.addEventListener('close', () => {
+    status.textContent = strings().lobby.lost;
+  });
 }
 
 function renderLobbyError(code: string): void {

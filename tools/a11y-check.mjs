@@ -13,7 +13,7 @@ for (const [vname, viewport] of VIEWS) {
     p.on('console', m => { if (m.type() === 'error') problems.push(`${vname}/${id} console: ${m.text()}`); });
     await p.addInitScript(() => { for (const m of ['standard','brink','party']) localStorage.setItem(`briefed:${m}`, '1'); });
     await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
-    await p.getByRole('button', { name: new RegExp(label) }).click();
+    await p.getByRole('button', { name: new RegExp('^' + label) }).click();
     await p.waitForSelector('.choice');
     // 助言が出そろうまで待つ
     await p.waitForTimeout(6000);

@@ -199,7 +199,75 @@ export const ChallengerViewSchema = z.object({
 
 export type ChallengerView = z.infer<typeof ChallengerViewSchema>;
 
+/**
+ * 全員挑戦者モードの画面ぶん。**一人ずつ宛てて送る**（自分の知識が乗るため）。
+ * 命が人ごとにあるので、通常モードの room/view とは別の形。
+ */
+export const PartyViewSchema = z.object({
+  phase: z.string(),
+  meId: AdvisorIdSchema,
+  members: z.array(
+    z.object({
+      id: AdvisorIdSchema,
+      name: AdvisorNameSchema,
+      kind: z.enum(['human', 'ai']),
+      lives: z.number().int(),
+      out: z.boolean(),
+      hasPicked: z.boolean(),
+    }),
+  ),
+  round: z
+    .object({
+      roundId: z.string(),
+      room: PublicRoomSchema,
+      roomNumber: z.number().int(),
+      sectionIndex: z.number().int(),
+      timeLimitMs: z.number().int(),
+      deadlineAt: z.number().int(),
+      advice: z.array(
+        z.object({
+          memberId: AdvisorIdSchema,
+          memberName: AdvisorNameSchema,
+          text: z.string(),
+          sentAt: z.number().int(),
+          record: z.object({ hit: z.number().int(), miss: z.number().int() }),
+        }),
+      ),
+    })
+    .nullable(),
+  verdict: z
+    .object({
+      roundId: z.string(),
+      correctId: z.string(),
+      deathMessage: z.string(),
+      results: z.array(
+        z.object({
+          id: AdvisorIdSchema,
+          name: AdvisorNameSchema,
+          chosenId: z.string().nullable(),
+          survived: z.boolean(),
+          livesLeft: z.number().int(),
+          out: z.boolean(),
+        }),
+      ),
+    })
+    .nullable(),
+  sectionIndex: z.number().int(),
+  sectionCount: z.number().int(),
+  roomsPerSection: z.number().int(),
+  roomNumber: z.number().int(),
+  totalRooms: z.number().int(),
+  traitors: z.array(AdvisorInfoSchema),
+  /** その人自身に配られたもの。ほかの人には送らない */
+  knowledge: KnowledgeSchema.nullable(),
+  serverNow: z.number().int(),
+});
+
+export type PartyView = z.infer<typeof PartyViewSchema>;
+
 export const ServerMessageSchema = z.discriminatedUnion('t', [
+  /** 全員挑戦者モードの画面ぶん。宛先ごとに中身が違う */
+  z.object({ t: z.literal('party/view'), view: PartyViewSchema }),
   /** 挑戦者の画面ぶんまるごと。助言者には送らない */
   z.object({ t: z.literal('room/view'), view: ChallengerViewSchema }),
   z.object({

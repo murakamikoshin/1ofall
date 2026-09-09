@@ -19,12 +19,12 @@ async function run(label, opts) {
   await p.getByRole('button', { name: '戻る' }).click();
   await p.waitForSelector('.menu-item');
 
-  // 初回はモード別手引きが割り込む
-  await p.getByRole('button', { name: /全員挑戦者/ }).click();
+  // 初回はモード別手引きが割り込む（通常モード。ここは時間が止まる）
+  await p.getByRole('button', { name: /^一人で遊ぶ/ }).click();
   await p.waitForSelector('.brief-sheet');
-  const partyLines = await p.$$eval('.brief-list li', els => els.map(e => e.textContent));
-  log.push(`${label} 全員挑戦者手引き: ${partyLines.length}行`);
-  await p.screenshot({ path: `${OUT}/b2-${label}-guide-party.png`, fullPage: true });
+  const soloLines = await p.$$eval('.brief-list li', els => els.map(e => e.textContent));
+  log.push(`${label} 一人で遊ぶ手引き: ${soloLines.length}行`);
+  await p.screenshot({ path: `${OUT}/b2-${label}-guide-solo.png`, fullPage: true });
   await p.getByRole('button', { name: '入る' }).click();
   await p.waitForSelector('.choice');
 
@@ -46,10 +46,24 @@ async function run(label, opts) {
 
   // 二度目は割り込まない
   await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
-  await p.getByRole('button', { name: /全員挑戦者/ }).click();
+  await p.getByRole('button', { name: /^一人で遊ぶ/ }).click();
   await p.waitForTimeout(400);
   const skipped = (await p.locator('.choice').count()) > 0;
   log.push(`${label} 二度目は素通り=${skipped}`);
+
+  // 全員挑戦者では時間が止まらない。そう書いてあるか
+  await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
+  await p.getByRole('button', { name: /^全員挑戦者/ }).click();
+  // 全員挑戦者は初回なので手引きが割り込む
+  if (await p.locator('.brief-go').count()) await p.getByRole('button', { name: '入る' }).click();
+  await p.waitForSelector('.choice');
+  await p.locator('.hud-guide').click();
+  await p.waitForSelector('.brief-veil');
+  const partyNote = await p.locator('.brief-veil .brief-note').textContent();
+  log.push(`${label} 全員挑戦者の手引き: ${partyNote}`);
+  if (!partyNote?.includes('部屋は進む')) errors.push(`${label} 全員挑戦者で「時間が止まる」と嘘を書いている: ${partyNote}`);
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(150);
 
   // 焦点が見えるか
   await p.keyboard.press('Tab');

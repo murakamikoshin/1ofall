@@ -659,10 +659,16 @@
   .menu-item span { font-size: 0.75rem; }
 }
 
-@media (max-height: 620px) {
+@media (max-height: 700px) {
+  /* 項目が6つになったので、説明を落とさないと入りきらない */
   .title-screen { gap: 0.8rem; }
-  .title-ruby, .title-tagline { display: none; }
+  .title-tagline { display: none; }
   .menu-item span { display: none; }
+  .menu-item { padding: 0.5rem 0.9rem; }
+}
+
+@media (max-height: 560px) {
+  .title-ruby { display: none; }
 }
 
 .end-stat.is-best {
@@ -851,3 +857,28 @@
 }
 
 .party-compose .status.is-error { color: var(--blood-lit); }
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(20rem, 100%);
+}
+
+.join-form .field {
+  border: var(--edge);
+  background: transparent;
+  color: var(--paper-bright);
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  text-align: center;
+}
+
+.join-form .field:focus-visible { border-color: var(--rust); outline: none; }
+
+.join-code {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}

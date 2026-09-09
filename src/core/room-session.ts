@@ -1,7 +1,9 @@
 import { GameEngine, type EngineState } from './engine';
 import { SocketAdvisorGateway } from './socket-gateway';
 import { CompositeAdvisorGateway } from './composite-gateway';
-import { MODES, type ModeId } from './limits';
+import { MODES, PARTY, PARTY_MIN_SEATS, PARTY_MAX_SEATS, type ModeId } from './limits';
+import { PartyEngine, type PartyMember, type PartyState } from './party-engine';
+import { companionNames } from './companion-names';
 import { ClientMessageSchema, PublicRoomSchema, type RoomPack, type ServerMessage } from './schema';
 import { setLocale, type Locale } from '../i18n';
 import type { RoundBriefing } from './advisor-gateway';
@@ -40,6 +42,10 @@ export class RoomSession {
   private readonly seed: number | undefined;
 
   private engine: GameEngine | null = null;
+  private party: PartyEngine | null = null;
+  private partyTimers: ReturnType<typeof setTimeout>[] = [];
+  private partyRoundPlanned: string | null = null;
+  private partyRushRound: string | null = null;
   private humans = new SocketAdvisorGateway();
   private locale: Locale = 'ja';
   private modeId: ModeId = 'standard';
@@ -47,6 +53,8 @@ export class RoomSession {
   /** 最初に繋いだ者が挑戦者。以降は助言者 */
   private challengerId: string | null = null;
   private connections = new Set<string>();
+  /** 名乗った名前。主も含めて覚える */
+  private names = new Map<string, string>();
   private briefing: RoundBriefing | null = null;
   private deadlineTimer: number | null = null;
   private unsubs: (() => void)[] = [];
@@ -75,7 +83,9 @@ export class RoomSession {
 
   disconnect(connectionId: string): void {
     this.connections.delete(connectionId);
+    this.names.delete(connectionId);
     this.humans.leave(connectionId);
+    this.party?.leave(connectionId);
     if (this.challengerId === connectionId) {
       // 挑戦者が落ちたら部屋は畳む。残った者に AI が続きを見せても意味がない
       this.challengerId = null;
@@ -114,23 +124,39 @@ export class RoomSession {
 
     switch (msg.t) {
       case 'advisor/join': {
-        if (isChallenger) return;
+        // 名乗りは主も含めて受ける。全員挑戦者では主も一人の参加者
+        const chosen = msg.name?.trim();
+        if (chosen) this.names.set(connectionId, chosen);
+        if (isChallenger) {
+          this.pushState();
+          return;
+        }
         this.humans.join(connectionId, msg.name, this.defaultName(connectionId));
         this.pushState();
         this.pushRoundTo(connectionId);
         return;
       }
       case 'advisor/hint':
+        if (this.party) {
+          const result = this.party.hint(connectionId, msg.text);
+          if (!result.ok) this.fail(connectionId, result.reason);
+          return;
+        }
         this.humans.hint(connectionId, msg.roundId, msg.text);
         return;
       case 'advisor/volunteer':
         this.humans.volunteer(connectionId, msg.roundId);
         return;
       case 'party/pick':
+        if (this.party) {
+          this.party.pick(connectionId, msg.choiceId);
+          return;
+        }
         this.humans.pick(connectionId, msg.roundId, msg.choiceId);
         return;
       case 'advisor/report':
-        this.engine?.report(connectionId, msg.targetId, msg.text);
+        if (this.party) this.party.report(connectionId, msg.targetId, msg.text);
+        else this.engine?.report(connectionId, msg.targetId, msg.text);
         return;
 
       case 'challenger/start': {
@@ -163,7 +189,8 @@ export class RoomSession {
         return;
       case 'challenger/advance':
         if (!isChallenger) return this.fail(connectionId, 'notChallenger');
-        this.engine?.advancePresentation();
+        // 全員挑戦者では段を刻むのはサーバー。画面からの合図は取らない
+        if (!this.party) this.engine?.advancePresentation();
         return;
     }
   }
@@ -172,6 +199,10 @@ export class RoomSession {
 
   private start(): void {
     this.stop();
+    if (this.modeId === 'party') {
+      this.startParty();
+      return;
+    }
     const mode = MODES[this.modeId];
     const gateway = new CompositeAdvisorGateway({
       human: this.humans,
@@ -219,8 +250,141 @@ export class RoomSession {
     this.deadlineTimer = null;
   }
 
+  /* ───────────────────── 全員挑戦者モード（対等） ───────────────────── */
+
+  /**
+   * 全員挑戦者は命が人ごとで、演出も全員で揃える必要がある。
+   * だから**段を進めるのもサーバー**。挑戦者の画面任せにしない。
+   */
+  private startParty(): void {
+    const names = companionNames();
+    const members: PartyMember[] = [...this.connections]
+      .slice(0, PARTY_MAX_SEATS)
+      .map((id, i) => ({
+        id,
+        name:
+          this.names.get(id) ??
+          this.humans.roster().find((a) => a.id === id)?.name ??
+          names[i % names.length] ??
+          `?${i}`,
+        kind: 'human' as const,
+      }));
+    // 4人だと正直な声が2つしか無く運任せになる。足りないぶんは AI で埋める
+    let i = 0;
+    while (members.length < PARTY_MIN_SEATS) {
+      members.push({ id: `ai_${i}`, name: names[(members.length + i) % names.length] ?? `AI${i}`, kind: 'ai' });
+      i += 1;
+    }
+
+    const party = new PartyEngine({ pack: this.pack, members, mode: PARTY, now: this.now });
+    this.party = party;
+    this.unsubs.push(party.subscribe((state) => this.onPartyState(state)));
+    party.start();
+  }
+
+  private onPartyState(state: PartyState): void {
+    for (const id of this.connections) this.pushPartyView(id, state);
+
+    const round = state.round;
+    if (state.phase === 'choosing' && round && round.roundId !== this.partyRoundPlanned) {
+      this.partyRoundPlanned = round.roundId;
+      this.planPartyRound(round.roundId, round.deadlineAt);
+    }
+    // 人間が全員決めたら AI も決める。待たせても何も起きない
+    if (state.phase === 'choosing' && round) {
+      const humansReady = state.members
+        .filter((m) => m.kind === 'human' && !m.out)
+        .every((m) => m.hasPicked);
+      const aiPending = state.members.some((m) => m.kind === 'ai' && !m.out && !m.hasPicked);
+      if (humansReady && aiPending && this.partyRushRound !== round.roundId) {
+        this.partyRushRound = round.roundId;
+        this.laterParty(() => {
+          const party = this.party;
+          if (!party || party.snapshot().round?.roundId !== round.roundId) return;
+          for (const [id, choice] of party.aiPicks()) party.pick(id, choice);
+        }, 700);
+      }
+    }
+
+    // 演出の段はサーバーが刻む。全員の画面で同じ間になる
+    if (state.phase === 'hush') this.laterParty(() => this.party?.advancePresentation(), 900);
+    if (state.phase === 'reveal') this.laterParty(() => this.party?.advancePresentation(), 1200);
+    if (state.phase === 'verdict') this.laterParty(() => this.party?.advancePresentation(), 3400);
+  }
+
+  private planPartyRound(roundId: string, deadlineAt: number): void {
+    this.clearPartyTimers();
+    const party = this.party;
+    if (!party) return;
+
+    // AI の助言は時間差で置く。一斉に出ると読めない
+    let at = 1200;
+    for (const hint of party.aiHints()) {
+      at += 900 + Math.random() * 1100;
+      this.laterParty(() => party.hint(hint.memberId, hint.text), at);
+    }
+    // 助言が出そろってから決める
+    this.laterParty(() => {
+      for (const [id, choice] of party.aiPicks()) party.pick(id, choice);
+    }, at + 1500);
+
+    // 締切はサーバーが持つ。決めなかった人は決めなかったものとして扱う
+    this.laterParty(() => {
+      if (party.snapshot().round?.roundId === roundId) party.timeUp();
+    }, Math.max(1000, deadlineAt - this.now()));
+  }
+
+  private laterParty(fn: () => void, ms: number): void {
+    this.partyTimers.push(setTimeout(fn, ms));
+  }
+
+  private clearPartyTimers(): void {
+    for (const t of this.partyTimers) clearTimeout(t);
+    this.partyTimers = [];
+  }
+
+  /** 一人ずつ宛てて送る。**知識が乗るのはここだけ** */
+  private pushPartyView(connectionId: string, state: PartyState): void {
+    this.sink.send(connectionId, {
+      t: 'party/view',
+      view: {
+        phase: state.phase,
+        meId: connectionId,
+        members: state.members.map((m) => ({
+          id: m.id, name: m.name, kind: m.kind, lives: m.lives, out: m.out, hasPicked: m.hasPicked,
+        })),
+        round: state.round
+          ? {
+              roundId: state.round.roundId,
+              room: state.round.room,
+              roomNumber: state.round.roomNumber,
+              sectionIndex: state.round.sectionIndex,
+              timeLimitMs: state.round.timeLimitMs,
+              deadlineAt: state.round.deadlineAt,
+              advice: state.round.advice.map((a) => ({ ...a, record: { ...a.record } })),
+            }
+          : null,
+        verdict: state.verdict
+          ? { ...state.verdict, results: state.verdict.results.map((r) => ({ ...r })) }
+          : null,
+        sectionIndex: state.sectionIndex,
+        sectionCount: state.sectionCount,
+        roomsPerSection: state.roomsPerSection,
+        roomNumber: state.roomNumber,
+        totalRooms: state.totalRooms,
+        traitors: [...state.traitors],
+        knowledge: this.party?.knowledgeFor(connectionId) ?? null,
+        serverNow: this.now(),
+      },
+    });
+  }
+
   private stop(): void {
     this.clearDeadline();
+    this.clearPartyTimers();
+    this.party?.dispose();
+    this.party = null;
+    this.partyRoundPlanned = null;
     for (const u of this.unsubs) u();
     this.unsubs = [];
     this.engine?.dispose();

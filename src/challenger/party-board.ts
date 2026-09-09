@@ -44,6 +44,8 @@ export interface PartyBoardOptions {
   root: HTMLElement;
   source: PartySource;
   onExit(): void;
+  /** HUD の「?」から手引きを開く */
+  onGuide?(): void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ''): HTMLElementTagNameMap[K] {
@@ -89,7 +91,19 @@ export class PartyBoard {
     this.timer.setAttribute('role', 'timer');
     // 命は人ごとなので HUD には出さない。名簿のほうに全員ぶん並ぶ
     this.hud.classList.add('party-hud');
-    this.hud.append(this.roomCount, this.timer);
+    const right = el('div', 'hud-right');
+    right.append(this.timer);
+    if (options.onGuide) {
+      const guide = document.createElement('button');
+      guide.className = 'hud-guide';
+      guide.type = 'button';
+      guide.textContent = '?';
+      guide.title = strings().briefing.open;
+      guide.setAttribute('aria-label', strings().briefing.open);
+      guide.addEventListener('click', () => options.onGuide?.());
+      right.append(guide);
+    }
+    this.hud.append(this.roomCount, right);
     this.stage.append(this.choicesHost, this.prompt);
     this.hintsHost.setAttribute('aria-live', 'polite');
     this.root.innerHTML = '';
@@ -124,6 +138,9 @@ export class PartyBoard {
       return;
     }
     if (state.phase !== 'choosing' || !state.round) return;
+    // 演出の最中に次の部屋が届くことがある（段を刻むのはサーバー）。
+    // そこで描き直すと、死んだ瞬間が飛ぶ
+    if (this.resolving) return;
 
     const round = state.round;
     if (round.roundId !== this.roundId) {
@@ -358,7 +375,10 @@ export class PartyBoard {
 
     this.resolving = false;
     this.source.advance();
-    if (this.source.snapshot().phase === 'choosing') audio.play('room-open');
+    const after = this.source.snapshot();
+    if (after.phase === 'choosing') audio.play('room-open');
+    // 待たせているあいだに次の部屋が届いていたら、ここで描く
+    this.render(after);
   }
 
   /** 誰が何を選んで、誰が死んだか */
