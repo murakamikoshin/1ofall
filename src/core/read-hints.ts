@@ -55,12 +55,18 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
     const touched = choices.filter((c) => row.text.includes(localized(c.label)));
     if (touched.length === 0) continue;
 
+    // 言い回しを見る前に、選択肢の名前そのものを外す。
+    // 「動かない影」「A shadow that does not move」のように、
+    // 名前の中に否定語が入っていると警告と読み違える
+    let rest = row.text;
+    for (const c of touched) rest = rest.split(localized(c.label)).join('　');
+
     // 「これは死ぬ」型の助言は、指したものを下げる
-    if (T.hints.avoidPattern.test(row.text)) {
+    if (T.hints.avoidPattern.test(rest)) {
       for (const c of touched) bump(c.id, -weight * 1.2);
       continue;
     }
-    const hedging = touched.length >= 2 || T.hints.hedgePattern.test(row.text);
+    const hedging = touched.length >= 2 || T.hints.hedgePattern.test(rest);
     for (const c of touched) bump(c.id, weight * (hedging ? 1.25 : 0.8));
   }
 

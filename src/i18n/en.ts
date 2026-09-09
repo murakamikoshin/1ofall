@@ -197,12 +197,18 @@ export const en: Strings = {
       (l: string) => `${l} lives`,
       (l: string) => `${l}. Certain`,
       (l: string) => `Don't think. ${l}`,
+      (l: string) => `${l} gets you through`,
+      (l: string) => `${l}, nothing else`,
+      (l: string) => `${l}. That's it`,
     ],
     hedge: [
       (l: string) => `Maybe ${l}`,
       (l: string) => `Looks like ${l}`,
       (l: string) => `${l}, I think`,
       (l: string) => `Feels like ${l}`,
+      (l: string) => `${l}, perhaps`,
+      (l: string) => `${l} or so`,
+      (l: string) => `${l}, I'd guess`,
     ],
     avoid: [
       (l: string) => `Not ${l}`,
@@ -210,6 +216,8 @@ export const en: Strings = {
       (l: string) => `Stay off ${l}`,
       (l: string) => `${l} is a trap`,
       (l: string) => `Anything but ${l}`,
+      (l: string) => `Leave ${l} alone`,
+      (l: string) => `Don't touch ${l}`,
     ],
     narrow: [
       (a: string, b: string) => `${a} or ${b}`,
@@ -218,7 +226,7 @@ export const en: Strings = {
       (a: string, b: string) => `${a} or ${b}. Can't tell`,
     ],
     // テンプレートと必ず揃えること（冠詞を外したとき合わせ忘れて英語の記録が壊れた）
-    avoidPattern: /\bnot\b|kills|stay off|is a trap|anything but|avoid|don't touch/i,
-    hedgePattern: /maybe|looks like|i think|feels like|either|down to|can't tell|or /i,
+    avoidPattern: /\bnot\b|kills|stay off|is a trap|anything but|avoid|don't touch|leave .* alone/i,
+    hedgePattern: /maybe|looks like|i think|feels like|either|down to|can't tell|or |perhaps|i'd guess/i,
   },
 };

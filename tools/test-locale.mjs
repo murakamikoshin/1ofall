@@ -77,6 +77,21 @@ for (const loc of C.LOCALES) {
   check(`${loc}: 番号と位置を塞げている`,
     C.isPointing(loc === 'ja' ? '2番目だ' : 'the second one') &&
     C.isPointing(loc === 'ja' ? '左のやつ' : 'the left one'));
+
+  // 言い回しを足したのに見分けの正規表現を直し忘れる事故が実際に起きた。
+  // 迷いの型が「迷い」と読まれないと、読み手が断言と取り違えて均衡が動く
+  const T = C.strings();
+  // 言い回しの中に出てこない字を使う（「あ」だと「あたりか」まで削れる）
+  const label = '◇◇';
+  const strip = (text) => text.split(label).join('　');
+  const hedgeMiss = T.hints.hedge.map((f) => f(label)).filter((t) => !T.hints.hedgePattern.test(strip(t)));
+  const avoidMiss = T.hints.avoid.map((f) => f(label)).filter((t) => !T.hints.avoidPattern.test(strip(t)));
+  const pushWrong = T.hints.push
+    .map((f) => f(label))
+    .filter((t) => T.hints.hedgePattern.test(strip(t)) || T.hints.avoidPattern.test(strip(t)));
+  check(`${loc}: 迷いの型がすべて迷いと読まれる`, hedgeMiss.length === 0, `漏れ: ${hedgeMiss.join(' / ')}`);
+  check(`${loc}: 警告の型がすべて警告と読まれる`, avoidMiss.length === 0, `漏れ: ${avoidMiss.join(' / ')}`);
+  check(`${loc}: 断言の型が迷い・警告と読まれない`, pushWrong.length === 0, `誤り: ${pushWrong.join(' / ')}`);
 }
 
 console.log(`\n${pass} 通過 / ${fail} 失敗`);

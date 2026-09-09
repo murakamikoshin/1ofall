@@ -680,9 +680,17 @@ export class GameEngine {
       this.emit();
       return;
     }
-    // 死んだらその区画の最初に戻る。ただし部屋は引き直す（同じ部屋を続けて見せない）
+    // 死んだらその区画の最初に戻る。ただし部屋は引き直す（同じ部屋を続けて見せない）。
+    //
+    // **顔ぶれと配役も引き直す。** 残したままだと、死ぬたびに同じ相手の
+    // 記録が積み上がって、区画をやり直すほど読みが楽になる。
+    // 実際に遊ぶと、区画1に16部屋いたところで「正14 嘘1」と「正3 嘘12」に
+    // 割れきって、あとは一番上の数字に従うだけの作業になっていた。
+    // 死んだら賭場は席を組み替える、という筋でもある。
     this.totalCleared -= this.clearedInSection;
     this.clearedInSection = 0;
+    this.sectionCasting = null;
+    this.records.clear();
     this.openRoom();
   }
 }
