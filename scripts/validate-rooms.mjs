@@ -23,8 +23,11 @@ await build({
 
 const { RoomPackSchema } = await import(pathToFileURL(bundlePath).href);
 
+// data/ 直下は部屋パックだけを置く。翻訳表など別形式のものは data/translations/ に。
 const dataDir = resolve(root, 'data');
-const files = readdirSync(dataDir).filter((f) => f.endsWith('.json'));
+const files = readdirSync(dataDir, { withFileTypes: true })
+  .filter((e) => e.isFile() && e.name.endsWith('.json'))
+  .map((e) => e.name);
 
 let failed = 0;
 let totalRooms = 0;

@@ -421,8 +421,9 @@ export class GameEngine {
     this.currentCasting = casting;
     resetGuard(this.guard);
 
-    // 死んで休んでいる仲間はこの部屋では喋らない
-    const speakingIds = casting.speakerIds.filter((id) => !this.resting.has(id));
+    // 死んで休んでいる仲間はこの部屋では喋らない。
+    // ただし全員が同時に死ぬと誰も喋らない部屋になるので、必ず数人は残す。
+    const speakingIds = this.applyResting(casting.speakerIds);
     const speakers = speakingIds
       .map((id) => eligible.find((a) => a.id === id))
       .filter((a): a is AdvisorInfo => !!a);
@@ -539,6 +540,23 @@ export class GameEngine {
     };
     this.phase = 'hush';
     this.emit();
+  }
+
+  /**
+   * 休みを適用する。全員が休むと助言がゼロの部屋になってしまうので、
+   * 最低人数を割り込むぶんは休みを取り消す（早く死んだ者から復帰する）。
+   */
+  private applyResting(speakerIds: readonly string[]): readonly string[] {
+    const MIN_SPEAKERS = 3;
+    if (this.resting.size === 0) return speakerIds;
+
+    const awake = speakerIds.filter((id) => !this.resting.has(id));
+    if (awake.length >= Math.min(MIN_SPEAKERS, speakerIds.length)) return awake;
+
+    const need = Math.min(MIN_SPEAKERS, speakerIds.length) - awake.length;
+    const recalled = speakerIds.filter((id) => this.resting.has(id)).slice(0, need);
+    for (const id of recalled) this.resting.delete(id);
+    return speakerIds.filter((id) => !this.resting.has(id));
   }
 
   /**

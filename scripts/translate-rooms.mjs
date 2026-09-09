@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const path = resolve(root, 'data/rooms.core.json');
 const pack = JSON.parse(readFileSync(path, 'utf8'));
 
-const EN = JSON.parse(readFileSync(resolve(root, 'data/rooms.core.en.json'), 'utf8'));
+const EN = JSON.parse(readFileSync(resolve(root, 'data/translations/rooms.core.en.json'), 'utf8'));
 
 const already = pack.rooms.every((r) => r.prompt && typeof r.prompt === 'object');
 if (already) {

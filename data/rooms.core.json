@@ -2499,6 +2499,1612 @@
         "ja": "賭けたものは戻らない",
         "en": "What you stake does not come back"
       }
+    },
+    {
+      "id": "room_049",
+      "theme": "ladder",
+      "prompt": {
+        "ja": "登っていいのはどれ？",
+        "en": "Which one is safe to climb?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "縄を繋いだ梯子",
+            "en": "Roped ladder"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "竹の梯子",
+            "en": "Bamboo ladder"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "鉄の梯子",
+            "en": "Iron ladder"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "段の広い梯子",
+            "en": "Wide-runged ladder"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "壁に立てかけた梯子",
+            "en": "Ladder against the wall"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "半ばで軋んで折れた",
+        "en": "It cracked halfway up"
+      }
+    },
+    {
+      "id": "room_050",
+      "theme": "drum",
+      "prompt": {
+        "ja": "叩いていいのはどれ？",
+        "en": "Which one is safe to strike?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "皮の張った太鼓",
+            "en": "Skin drum"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "破れた太鼓",
+            "en": "Torn drum"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "小さな鼓",
+            "en": "Small hand drum"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "鉄の輪",
+            "en": "Iron ring"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "木の板",
+            "en": "Wooden board"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "吊るされた鐘",
+            "en": "Hanging bell"
+          }
+        }
+      ],
+      "correct": "e",
+      "deathMessage": {
+        "ja": "音で何かが起きた",
+        "en": "The sound woke something"
+      }
+    },
+    {
+      "id": "room_052",
+      "theme": "net",
+      "prompt": {
+        "ja": "くぐっていいのはどれ？",
+        "en": "Which one is safe to pass through?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "破れた網",
+            "en": "Torn net"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "太い網",
+            "en": "Thick net"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "濡れた網",
+            "en": "Wet net"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "重りのついた網",
+            "en": "Weighted net"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "目の細かい網",
+            "en": "Fine-mesh net"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "絡めとられて締まった",
+        "en": "It closed and held him"
+      }
+    },
+    {
+      "id": "room_054",
+      "theme": "statue",
+      "prompt": {
+        "ja": "触れていいのはどれ？",
+        "en": "Which one is safe to touch?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "苔むした像",
+            "en": "Mossy statue"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "首のない像",
+            "en": "Headless statue"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "金の像",
+            "en": "Gilded statue"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "小さな像",
+            "en": "Small statue"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "倒れた像",
+            "en": "Fallen statue"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "像が向きを変えた",
+        "en": "The statue turned"
+      }
+    },
+    {
+      "id": "room_056",
+      "theme": "stairwell",
+      "prompt": {
+        "ja": "降りていいのはどれ？",
+        "en": "Which one is safe to descend?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "灯りのある段",
+            "en": "Lit steps"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "水の溜まった段",
+            "en": "Flooded steps"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "狭い段",
+            "en": "Narrow steps"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "崩れかけた段",
+            "en": "Crumbling steps"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "風の吹く段",
+            "en": "Steps with a draught"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "下は思ったより深かった",
+        "en": "The bottom was further than it looked"
+      }
+    },
+    {
+      "id": "room_057",
+      "theme": "fruit",
+      "prompt": {
+        "ja": "齧っていいのはどれ？",
+        "en": "Which one is safe to bite?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "熟れた実",
+            "en": "Ripe fruit"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "青い実",
+            "en": "Unripe fruit"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "割れた実",
+            "en": "Split fruit"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "皮の厚い実",
+            "en": "Thick-skinned fruit"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "虫の食った実",
+            "en": "Worm-eaten fruit"
+          }
+        }
+      ],
+      "correct": "e",
+      "deathMessage": {
+        "ja": "喉の奥で膨らんだ",
+        "en": "It swelled in his throat"
+      }
+    },
+    {
+      "id": "room_058",
+      "theme": "cart",
+      "prompt": {
+        "ja": "押していいのはどれ？",
+        "en": "Which one is safe to push?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "空の荷車",
+            "en": "Empty cart"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "積みすぎた荷車",
+            "en": "Overloaded cart"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "車輪の欠けた荷車",
+            "en": "Cart with a cracked wheel"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "布を掛けた荷車",
+            "en": "Covered cart"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "軽い荷車",
+            "en": "Light cart"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "傾いて荷が落ちてきた",
+        "en": "It tipped and the load came down"
+      }
+    },
+    {
+      "id": "room_061",
+      "theme": "chain",
+      "prompt": {
+        "ja": "外していいのはどれ？",
+        "en": "Which one is safe to unhook?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "太い鎖",
+            "en": "Thick chain"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "錆びた鎖",
+            "en": "Rusted chain"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "新しい鎖",
+            "en": "New chain"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "音のしない鎖",
+            "en": "Silent chain"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "垂れた鎖",
+            "en": "Hanging chain"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "巻かれた鎖",
+            "en": "Coiled chain"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "外した先が落ちてきた",
+        "en": "What it held came down"
+      }
+    },
+    {
+      "id": "room_062",
+      "theme": "doll",
+      "prompt": {
+        "ja": "持っていいのはどれ？",
+        "en": "Which one is safe to carry?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "布の人形",
+            "en": "Cloth doll"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "木の人形",
+            "en": "Wooden doll"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "目のない人形",
+            "en": "Eyeless doll"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "髪のある人形",
+            "en": "Doll with hair"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "継ぎ接ぎの人形",
+            "en": "Patched doll"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "夜のうちに向きが変わっていた",
+        "en": "By morning it faced the other way"
+      }
+    },
+    {
+      "id": "room_063",
+      "theme": "bell",
+      "prompt": {
+        "ja": "鳴らしていいのはどれ？",
+        "en": "Which one is safe to ring?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "大きな鐘",
+            "en": "Great bell"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "手鈴",
+            "en": "Hand bell"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "罅の入った鐘",
+            "en": "Cracked bell"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "縄の切れた鐘",
+            "en": "Bell with a cut rope"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "錆びた鐘",
+            "en": "Rusted bell"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "答えるように別の音が鳴った",
+        "en": "Another bell answered"
+      }
+    },
+    {
+      "id": "room_066",
+      "theme": "banner",
+      "prompt": {
+        "ja": "降ろしていいのはどれ？",
+        "en": "Which one is safe to lower?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "破れた旗",
+            "en": "Torn banner"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "色の褪せた旗",
+            "en": "Faded banner"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "重い旗",
+            "en": "Heavy banner"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "新しい旗",
+            "en": "New banner"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "縄の擦れた旗",
+            "en": "Banner on a frayed rope"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "高い旗",
+            "en": "High banner"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "旗の下に人が立っていた",
+        "en": "Someone was standing under it"
+      }
+    },
+    {
+      "id": "room_067",
+      "theme": "boat",
+      "prompt": {
+        "ja": "綱を解いていいのはどれ？",
+        "en": "Which one is safe to cast off?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "底の浅い舟",
+            "en": "Shallow boat"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "水の入った舟",
+            "en": "Boat taking water"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "繋ぎ直された舟",
+            "en": "Re-moored boat"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "古い舟",
+            "en": "Old boat"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "櫂のない舟",
+            "en": "Boat with no oar"
+          }
+        }
+      ],
+      "correct": "d",
+      "deathMessage": {
+        "ja": "流れの向きが違った",
+        "en": "The current went the other way"
+      }
+    },
+    {
+      "id": "room_069",
+      "theme": "seal",
+      "prompt": {
+        "ja": "破っていいのはどれ？",
+        "en": "Which one is safe to break?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "蝋の封",
+            "en": "Wax seal"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "紙の封",
+            "en": "Paper seal"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "縄の封",
+            "en": "Corded seal"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "朱の封",
+            "en": "Vermilion seal"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "古い封",
+            "en": "Old seal"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "新しい封",
+            "en": "Fresh seal"
+          }
+        }
+      ],
+      "correct": "e",
+      "deathMessage": {
+        "ja": "封が解けた音が奥まで届いた",
+        "en": "The sound of it carried inward"
+      }
+    },
+    {
+      "id": "room_070",
+      "theme": "garden",
+      "prompt": {
+        "ja": "踏み入っていいのはどれ？",
+        "en": "Which one is safe to step into?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "手入れされた庭",
+            "en": "Tended garden"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "荒れた庭",
+            "en": "Overgrown garden"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "石の庭",
+            "en": "Stone garden"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "水のある庭",
+            "en": "Garden with water"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "花の多い庭",
+            "en": "Garden full of flowers"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "土が柔らかすぎた",
+        "en": "The soil was too soft"
+      }
+    },
+    {
+      "id": "room_071",
+      "theme": "cloak",
+      "prompt": {
+        "ja": "羽織っていいのはどれ？",
+        "en": "Which one is safe to wear?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "重い外套",
+            "en": "Heavy cloak"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "濡れた外套",
+            "en": "Wet cloak"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "裾の切れた外套",
+            "en": "Frayed cloak"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "暖かい外套",
+            "en": "Warm cloak"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "誰かの外套",
+            "en": "Someone else's cloak"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "重さで動けなくなった",
+        "en": "The weight held him"
+      }
+    },
+    {
+      "id": "room_074",
+      "theme": "knot",
+      "prompt": {
+        "ja": "解いていいのはどれ？",
+        "en": "Which one is safe to untie?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "固く締まった結び",
+            "en": "Tight knot"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "緩んだ結び",
+            "en": "Loose knot"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "二重の結び",
+            "en": "Double knot"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "濡れた結び",
+            "en": "Wet knot"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "片端の結び",
+            "en": "Knot at one end"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "解いた先が繋がっていた",
+        "en": "What it held was attached to him"
+      }
+    },
+    {
+      "id": "room_076",
+      "theme": "shrine",
+      "prompt": {
+        "ja": "手を合わせていいのはどれ？",
+        "en": "Which one is safe to pray at?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "苔の祠",
+            "en": "Mossy shrine"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "新しい祠",
+            "en": "New shrine"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "供物のある祠",
+            "en": "Shrine with offerings"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "扉の開いた祠",
+            "en": "Open shrine"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "倒れた祠",
+            "en": "Fallen shrine"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "願いを聞かれてしまった",
+        "en": "The wish was heard"
+      }
+    },
+    {
+      "id": "room_077",
+      "theme": "tooth",
+      "prompt": {
+        "ja": "抜いていいのはどれ？",
+        "en": "Which one is safe to pull?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "欠けた歯",
+            "en": "Chipped tooth"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "黒い歯",
+            "en": "Black tooth"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "動く歯",
+            "en": "Loose tooth"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "奥の歯",
+            "en": "Back tooth"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "白い歯",
+            "en": "White tooth"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "血が止まらなかった",
+        "en": "The bleeding did not stop"
+      }
+    },
+    {
+      "id": "room_078",
+      "theme": "smoke",
+      "prompt": {
+        "ja": "抜けていいのはどれ？",
+        "en": "Which one is safe to walk through?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "白い煙",
+            "en": "White smoke"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "黒い煙",
+            "en": "Black smoke"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "低く這う煙",
+            "en": "Low-crawling smoke"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "薄い煙",
+            "en": "Thin smoke"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "甘い煙",
+            "en": "Sweet smoke"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "煙の中で向きを失った",
+        "en": "He lost his bearings inside"
+      }
+    },
+    {
+      "id": "room_079",
+      "theme": "ring",
+      "prompt": {
+        "ja": "嵌めていいのはどれ？",
+        "en": "Which one is safe to put on?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "鉄の指輪",
+            "en": "Iron ring"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "石の嵌った指輪",
+            "en": "Stone-set ring"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "細い指輪",
+            "en": "Thin ring"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "刻みのある指輪",
+            "en": "Engraved ring"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "曇った指輪",
+            "en": "Clouded ring"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "大きすぎる指輪",
+            "en": "Oversized ring"
+          }
+        }
+      ],
+      "correct": "f",
+      "deathMessage": {
+        "ja": "抜けなくなって締まった",
+        "en": "It would not come off, and tightened"
+      }
+    },
+    {
+      "id": "room_080",
+      "theme": "bucket",
+      "prompt": {
+        "ja": "汲んでいいのはどれ？",
+        "en": "Which one is safe to draw with?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "木の桶",
+            "en": "Wooden bucket"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "底の抜けた桶",
+            "en": "Bottomless bucket"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "重い桶",
+            "en": "Heavy bucket"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "縄の短い桶",
+            "en": "Short-roped bucket"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "苔の桶",
+            "en": "Mossy bucket"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "汲んだものが零れなかった",
+        "en": "What he drew did not pour out"
+      }
+    },
+    {
+      "id": "room_082",
+      "theme": "insect",
+      "prompt": {
+        "ja": "払っていいのはどれ？",
+        "en": "Which one is safe to brush away?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "羽虫",
+            "en": "Winged insect"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "這う虫",
+            "en": "Crawling insect"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "光る虫",
+            "en": "Glowing insect"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "集まった虫",
+            "en": "Swarming insects"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "動かない虫",
+            "en": "Still insect"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "払った手に卵がついた",
+        "en": "Eggs came away on his hand"
+      }
+    },
+    {
+      "id": "room_083",
+      "theme": "sack",
+      "prompt": {
+        "ja": "担いでいいのはどれ？",
+        "en": "Which one is safe to shoulder?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "軽い袋",
+            "en": "Light sack"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "湿った袋",
+            "en": "Damp sack"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "固い袋",
+            "en": "Stiff sack"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "縛った袋",
+            "en": "Tied sack"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "温かい袋",
+            "en": "Warm sack"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "匂う袋",
+            "en": "Reeking sack"
+          }
+        }
+      ],
+      "correct": "d",
+      "deathMessage": {
+        "ja": "担いだ袋が動いた",
+        "en": "The sack moved on his back"
+      }
+    },
+    {
+      "id": "room_084",
+      "theme": "candle",
+      "prompt": {
+        "ja": "消していいのはどれ？",
+        "en": "Which one is safe to snuff?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "長い蝋燭",
+            "en": "Tall candle"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "短い蝋燭",
+            "en": "Stub of candle"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "傾いた蝋燭",
+            "en": "Leaning candle"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "二本の蝋燭",
+            "en": "Paired candles"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "消えかけた蝋燭",
+            "en": "Guttering candle"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "消した数だけ暗くなった",
+        "en": "The dark grew by exactly that much"
+      }
+    },
+    {
+      "id": "room_085",
+      "theme": "step",
+      "prompt": {
+        "ja": "跨いでいいのはどれ？",
+        "en": "Which one is safe to step over?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "低い敷居",
+            "en": "Low threshold"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "高い敷居",
+            "en": "High threshold"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "擦り減った敷居",
+            "en": "Worn threshold"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "塗られた敷居",
+            "en": "Painted threshold"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "木目の浮いた敷居",
+            "en": "Grain-raised threshold"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "跨いだ足を取られた",
+        "en": "Something took the foot that crossed"
+      }
+    },
+    {
+      "id": "room_086",
+      "theme": "voice",
+      "prompt": {
+        "ja": "答えていいのはどれ？",
+        "en": "Which one is safe to answer?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "子どもの声",
+            "en": "A child's voice"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "老いた声",
+            "en": "An old voice"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "自分の名を呼ぶ声",
+            "en": "A voice calling your name"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "笑う声",
+            "en": "A laughing voice"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "小さな声",
+            "en": "A small voice"
+          }
+        }
+      ],
+      "correct": "e",
+      "deathMessage": {
+        "ja": "答えた者の声で返ってきた",
+        "en": "It answered back in his own voice"
+      }
+    },
+    {
+      "id": "room_087",
+      "theme": "板",
+      "prompt": {
+        "ja": "渡していいのはどれ？",
+        "en": "Which plank is safe to lay down?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "厚い板",
+            "en": "Thick plank"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "反った板",
+            "en": "Warped plank"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "濡れた板",
+            "en": "Wet plank"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "節のある板",
+            "en": "Knotted plank"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "焦げた板",
+            "en": "Charred plank"
+          }
+        }
+      ],
+      "correct": "d",
+      "deathMessage": {
+        "ja": "体重をかけた側から裂けた",
+        "en": "It split from where he stood"
+      }
+    },
+    {
+      "id": "room_088",
+      "theme": "ash",
+      "prompt": {
+        "ja": "掘っていいのはどれ？",
+        "en": "Which one is safe to dig?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "冷えた灰",
+            "en": "Cold ash"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "白い灰",
+            "en": "White ash"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "固まった灰",
+            "en": "Caked ash"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "積もった灰",
+            "en": "Deep ash"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "温かい灰",
+            "en": "Warm ash"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "骨のある灰",
+            "en": "Ash with bone in it"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "下がまだ燃えていた",
+        "en": "It was still burning underneath"
+      }
+    },
+    {
+      "id": "room_090",
+      "theme": "mask_shop",
+      "prompt": {
+        "ja": "選んでいいのはどれ？",
+        "en": "Which one is safe to choose?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "自分に似た面",
+            "en": "A mask like your face"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "誰にも似ない面",
+            "en": "A mask like no one"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "笑う面",
+            "en": "A laughing mask"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "古い面",
+            "en": "An old mask"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "値の高い面",
+            "en": "An expensive mask"
+          }
+        },
+        {
+          "id": "f",
+          "label": {
+            "ja": "売れ残った面",
+            "en": "The unsold mask"
+          }
+        }
+      ],
+      "correct": "b",
+      "deathMessage": {
+        "ja": "似ている方に持っていかれた",
+        "en": "The one that resembled him took him"
+      }
+    },
+    {
+      "id": "room_095",
+      "theme": "ledger",
+      "prompt": {
+        "ja": "名を書いていいのはどれ？",
+        "en": "Which one is safe to sign?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "空の帳面",
+            "en": "An empty ledger"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "名の並ぶ帳面",
+            "en": "A ledger full of names"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "破れた帳面",
+            "en": "A torn ledger"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "朱の帳面",
+            "en": "A red ledger"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "古い帳面",
+            "en": "An old ledger"
+          }
+        }
+      ],
+      "correct": "c",
+      "deathMessage": {
+        "ja": "書いた名が消えた",
+        "en": "The name he wrote disappeared"
+      }
+    },
+    {
+      "id": "room_096",
+      "theme": "weight",
+      "prompt": {
+        "ja": "持ち上げていいのはどれ？",
+        "en": "Which one is safe to lift?"
+      },
+      "choices": [
+        {
+          "id": "a",
+          "label": {
+            "ja": "軽い錘",
+            "en": "A light weight"
+          }
+        },
+        {
+          "id": "b",
+          "label": {
+            "ja": "石の錘",
+            "en": "A stone weight"
+          }
+        },
+        {
+          "id": "c",
+          "label": {
+            "ja": "鉄の錘",
+            "en": "An iron weight"
+          }
+        },
+        {
+          "id": "d",
+          "label": {
+            "ja": "紐のついた錘",
+            "en": "A corded weight"
+          }
+        },
+        {
+          "id": "e",
+          "label": {
+            "ja": "持ち手のない錘",
+            "en": "A weight with no grip"
+          }
+        }
+      ],
+      "correct": "a",
+      "deathMessage": {
+        "ja": "持ち上げた先が繋がっていた",
+        "en": "It was attached to something"
+      }
     }
   ]
 }
