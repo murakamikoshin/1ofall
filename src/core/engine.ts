@@ -354,6 +354,9 @@ export class GameEngine {
     return this.pausedAt !== null;
   }
 
+  /** ローカルの本体は時間を止められる。遠くの部屋は止められない */
+  readonly canPause = true;
+
   /** 死亡演出の各段を UI から進める。「間」は本体が持つ */
   advancePresentation(): void {
     switch (this.phase) {

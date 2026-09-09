@@ -32,6 +32,7 @@ export const en: Strings = {
     open: 'How this works',
     onceNote: 'Shown once. After that, open it from "How this works"',
     pausedNote: 'Your clock stops while this is open',
+    runningNote: 'The room keeps running while you read. Others are waiting',
     rulesHeading: 'True in every mode',
     rules: [
       'Each room has exactly one way out alive.',
@@ -57,6 +58,14 @@ export const en: Strings = {
         'A traitor is among them. Traitors die too, but they want to take you with them.',
       ],
     },
+  },
+
+  lobby: {
+    heading: 'Room code',
+    where: (url: string) => `Have them open ${url} and enter this code`,
+    waiting: (n: number) => (n === 0 ? 'Nobody yet. You can start with machines alone' : `${n} here`),
+    lost: 'The line dropped',
+    begin: 'Begin',
   },
 
   hud: {

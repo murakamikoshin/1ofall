@@ -48,6 +48,7 @@ export class RoomSession {
   private challengerId: string | null = null;
   private connections = new Set<string>();
   private briefing: RoundBriefing | null = null;
+  private deadlineTimer: number | null = null;
   private unsubs: (() => void)[] = [];
 
   constructor(options: RoomSessionOptions) {
@@ -190,6 +191,7 @@ export class RoomSession {
       this.humans.onRound((briefing) => {
         this.briefing = briefing;
         for (const id of this.connections) this.pushRoundTo(id);
+        this.armDeadline(briefing.roundId, briefing.deadlineAt);
       }),
       engine.subscribe((state) => this.onEngineState(state)),
       engine.onHintRejected((advisorId, reason) => this.fail(advisorId, reason)),
@@ -197,7 +199,28 @@ export class RoomSession {
     engine.start();
   }
 
+  /**
+   * 締切はサーバーが持つ。
+   * 挑戦者の画面に任せると、閉じられた部屋がそのまま止まって
+   * 助言者が待たされ続ける。
+   */
+  private armDeadline(roundId: string, deadlineAt: number): void {
+    this.clearDeadline();
+    const wait = Math.max(0, deadlineAt - this.now());
+    this.deadlineTimer = setTimeout(() => {
+      this.deadlineTimer = null;
+      const round = this.engine?.snapshot().round;
+      if (round?.roundId === roundId) this.engine?.timeUp();
+    }, wait + 250) as unknown as number;
+  }
+
+  private clearDeadline(): void {
+    if (this.deadlineTimer !== null) clearTimeout(this.deadlineTimer);
+    this.deadlineTimer = null;
+  }
+
   private stop(): void {
+    this.clearDeadline();
     for (const u of this.unsubs) u();
     this.unsubs = [];
     this.engine?.dispose();
@@ -211,6 +234,7 @@ export class RoomSession {
 
   private onEngineState(state: EngineState): void {
     this.pushState(state);
+    this.pushView(state);
 
     const round = state.round;
     if (round && round.roundId !== this.lastRoundId) {
@@ -257,18 +281,73 @@ export class RoomSession {
     }
   }
 
+  /**
+   * 挑戦者の画面ぶんをまるごと送る。宛先は挑戦者だけ。
+   * liarLog は載せない（今の部屋の嘘つきが分かると助言の意味が消える）。
+   */
+  private pushView(state: EngineState): void {
+    const id = this.challengerId;
+    if (!id) return;
+    const round = state.round;
+    this.sink.send(id, {
+      t: 'room/view',
+      view: {
+        phase: state.phase,
+        mode: this.modeId,
+        lives: state.lives,
+        maxLives: state.maxLives,
+        sectionIndex: state.sectionIndex,
+        sectionCount: state.sectionCount,
+        totalCleared: state.totalCleared,
+        totalRooms: state.totalRooms,
+        advisors: [...state.advisors],
+        mutedIds: [...state.mutedIds],
+        round: round
+          ? {
+              roundId: round.roundId,
+              room: round.room,
+              roomNumber: round.roomNumber,
+              sectionIndex: round.sectionIndex,
+              timeLimitMs: round.timeLimitMs,
+              deadlineAt: round.deadlineAt,
+              speakers: [...round.speakers],
+              advice: round.advice.map((a) => ({
+                advisorId: a.advisorId,
+                advisorName: a.advisorName,
+                text: a.text,
+                sentAt: a.sentAt,
+                record: { ...a.record },
+              })),
+              silenceUsed: round.silenceUsed,
+              ownCandidates: [...round.ownCandidates],
+              restingIds: [...round.restingIds],
+            }
+          : null,
+        verdict: state.verdict
+          ? {
+              ...state.verdict,
+              liars: [...state.verdict.liars],
+              party: state.verdict.party.map((p) => ({ ...p })),
+            }
+          : null,
+        serverNow: this.now(),
+      },
+    });
+  }
+
   private pushState(state?: EngineState): void {
     const s = state ?? this.engine?.snapshot();
-    if (!s) return;
+    // まだ始まっていない部屋でも名簿は配る。
+    // 配らないと待合に「誰が来たか」が出ない
     this.sink.broadcast({
       t: 'room/state',
-      phase: s.phase,
+      phase: s?.phase ?? 'title',
       mode: this.modeId,
-      lives: s.lives,
-      roomNumber: s.round?.roomNumber ?? 0,
-      sectionIndex: s.sectionIndex,
-      sectionCount: s.sectionCount,
-      roster: [...s.advisors],
+      lives: s?.lives ?? 0,
+      roomNumber: s?.round?.roomNumber ?? 0,
+      sectionIndex: s?.sectionIndex ?? 0,
+      sectionCount: s?.sectionCount ?? 1,
+      roster: s ? [...s.advisors] : this.humans.roster().map((a) => ({ ...a })),
     });
   }
 

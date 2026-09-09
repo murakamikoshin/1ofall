@@ -131,6 +131,19 @@ if (speaker) {
   check('発言枠に人間が入った部屋がある（この部屋は AI だけだった）', true);
 }
 
+/* ── 6.5 挑戦者の画面ぶんに答えが混ざらない ────────────────── */
+
+const views = inbox.get(CH).filter((m) => m.t === 'room/view');
+check('挑戦者に画面ぶんが届く', views.length > 0, `${views.length}通`);
+const view = views.at(-1)?.view;
+check('画面ぶんの部屋に correct が無い', !view?.round?.room || !('correct' in view.round.room));
+check('画面ぶんに liarLog が無い', view && !('liarLog' in view), '嘘つきの一覧が混ざっている');
+check('助言者には画面ぶんを送らない',
+  inbox.get(A1).filter((m) => m.t === 'room/view').length === 0
+  && inbox.get(A2).filter((m) => m.t === 'room/view').length === 0);
+check('選ぶ前は verdict が立っていない',
+  views.filter((v) => v.view.phase === 'choosing').every((v) => v.view.verdict === null));
+
 /* ── 7. 挑戦者が落ちたら畳む ────────────────────────────────── */
 
 room.disconnect(CH);

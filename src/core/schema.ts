@@ -135,7 +135,73 @@ export const ClientMessageSchema = z.discriminatedUnion('t', [
 
 /* ───────────────────────── サーバー→クライアント ───────────────────────── */
 
+/**
+ * 挑戦者の画面がそのまま描ける形。
+ *
+ * **答えに触れるものを載せない。**
+ *  - room は PublicRoom（正解と死亡文が落ちている）
+ *  - liarLog は載せない。今の部屋の嘘つきが分かると助言の意味が消える
+ *    （終わったあとの開示は game/over が別に運ぶ）
+ * verdict は選んだあとにしか立たないので、そのまま載せてよい。
+ */
+export const AdviceSchema = z.object({
+  advisorId: AdvisorIdSchema,
+  advisorName: AdvisorNameSchema,
+  text: z.string(),
+  sentAt: z.number().int(),
+  record: z.object({ hit: z.number().int(), miss: z.number().int() }),
+});
+
+export const ChallengerViewSchema = z.object({
+  phase: z.string(),
+  mode: ModeIdSchema,
+  lives: z.number().int(),
+  maxLives: z.number().int(),
+  sectionIndex: z.number().int(),
+  sectionCount: z.number().int(),
+  totalCleared: z.number().int(),
+  totalRooms: z.number().int(),
+  advisors: z.array(AdvisorInfoSchema),
+  mutedIds: z.array(AdvisorIdSchema),
+  round: z
+    .object({
+      roundId: z.string(),
+      room: PublicRoomSchema,
+      roomNumber: z.number().int(),
+      sectionIndex: z.number().int(),
+      timeLimitMs: z.number().int(),
+      deadlineAt: z.number().int(),
+      speakers: z.array(AdvisorInfoSchema),
+      advice: z.array(AdviceSchema),
+      silenceUsed: z.boolean(),
+      ownCandidates: z.array(z.string()),
+      restingIds: z.array(AdvisorIdSchema),
+    })
+    .nullable(),
+  verdict: z
+    .object({
+      roundId: z.string(),
+      chosenId: z.string().nullable(),
+      correctId: z.string(),
+      survived: z.boolean(),
+      timedOut: z.boolean(),
+      deathMessage: z.string(),
+      livesLeft: z.number().int(),
+      fatal: z.boolean(),
+      liars: z.array(AdvisorInfoSchema),
+      party: z.array(
+        z.object({ id: AdvisorIdSchema, name: AdvisorNameSchema, chosenId: z.string(), survived: z.boolean() }),
+      ),
+    })
+    .nullable(),
+  serverNow: z.number().int(),
+});
+
+export type ChallengerView = z.infer<typeof ChallengerViewSchema>;
+
 export const ServerMessageSchema = z.discriminatedUnion('t', [
+  /** 挑戦者の画面ぶんまるごと。助言者には送らない */
+  z.object({ t: z.literal('room/view'), view: ChallengerViewSchema }),
   z.object({
     t: z.literal('room/state'),
     phase: z.string(),

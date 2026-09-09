@@ -5,6 +5,7 @@ import './challenger.css';
 import { corePackage } from '@/core/pack';
 import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
+import { RemoteGame, type GameHandle } from './remote-game';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
 import { MODES, type ModeId } from '@/core/limits';
@@ -27,7 +28,7 @@ if (!app) throw new Error('#app が無い');
 const pack = corePackage();
 let currentLocale: Locale = detectLocale();
 setLocale(currentLocale);
-let engine: GameEngine | null = null;
+let engine: GameHandle | null = null;
 let unsubscribe: (() => void) | null = null;
 let timerHandle = 0;
 let resolving = false;
@@ -59,7 +60,13 @@ function renderTitle(): void {
     menuItem(T.menu.party, withBest('party', T.menu.partyNote), false, () => enterMode('party')),
     // 野良と賭場は通信層（段階4）が入ってから開く
     menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
-    menuItem(T.menu.host, `${T.menu.hostNote}（${T.menu.comingSoon}）`, true),
+    // 賭場は通信先が設定されているときだけ開く
+    menuItem(
+      T.menu.host,
+      PARTY_HOST ? T.menu.hostNote : `${T.menu.hostNote}（${T.menu.comingSoon}）`,
+      !PARTY_HOST,
+      PARTY_HOST ? () => hostGame('standard') : undefined,
+    ),
   );
 
   const head = el('div');
@@ -221,7 +228,7 @@ function openBriefingDuringRun(modeId: ModeId): void {
   const heading = el('h2', 'brief-heading');
   heading.textContent = T.heading;
   const paused = el('p', 'brief-note');
-  paused.textContent = T.pausedNote;
+  paused.textContent = engine?.canPause ? T.pausedNote : T.runningNote;
   sheet.append(heading, paused, briefBlock(T.rulesHeading, T.rules), briefBlock(labelForMode(modeId), T.modes[modeId]));
 
   const close = document.createElement('button');
@@ -365,11 +372,121 @@ function startGame(modeId: ModeId): void {
   // ソロは全員 AI。野良になっても本体はこの境界の先を知らない
   //（CompositeAdvisorGateway が人間と AI を混ぜて同じ顔で渡す）
   const mode = MODES[modeId];
-  engine = new GameEngine({ pack, mode, gateway: new AiAdvisorGateway({ count: 12, mode }) });
-  unsubscribe = engine.subscribe((state) => render(state));
-  engine.start();
+  const local = new GameEngine({ pack, mode, gateway: new AiAdvisorGateway({ count: 12, mode }) });
+  engine = local;
+  unsubscribe = local.subscribe((state) => render(state));
+  local.start();
   audio.play('room-open');
   startTimerLoop();
+}
+
+/* ─────────────────────────── 賭場を開く ─────────────────────────── */
+
+const PARTY_HOST = import.meta.env['VITE_PARTY_HOST'] ?? '';
+const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** 見間違えやすい字（I・O・0・1）を外した6文字 */
+function newRoomCode(): string {
+  let out = '';
+  for (let i = 0; i < 6; i++) {
+    out += ROOM_CODE_ALPHABET[Math.floor(Math.random() * ROOM_CODE_ALPHABET.length)];
+  }
+  return out;
+}
+
+function hostGame(modeId: ModeId): void {
+  currentMode = modeId;
+  const code = newRoomCode();
+  const remote = new RemoteGame(PARTY_HOST, code, modeId, currentLocale);
+  engine?.dispose();
+  engine = remote;
+  renderLobby(code, remote);
+  void remote.connect().catch(() => renderLobbyError(code));
+}
+
+function renderLobby(code: string, remote: RemoteGame): void {
+  const T = strings();
+  app!.innerHTML = '';
+  const screen = el('div', 'title-screen grain vignette');
+
+  const heading = el('h2', 'lobby-heading');
+  heading.textContent = T.lobby.heading;
+
+  const codeBox = el('p', 'lobby-code');
+  codeBox.textContent = code;
+
+  const where = el('p', 'lobby-where');
+  where.textContent = T.lobby.where(`${location.origin}/advisor.html`);
+
+  const count = el('p', 'lobby-count');
+  const begin = document.createElement('button');
+  begin.className = 'menu-item lobby-begin';
+  begin.textContent = T.lobby.begin;
+  begin.addEventListener('click', () => {
+    audio.load();
+    shell = buildShell();
+    unsubscribe = remote.subscribe((state) => render(state));
+    remote.start();
+    audio.play('room-open');
+    startTimerLoop();
+  });
+
+  const back = document.createElement('button');
+  back.className = 'brief-link';
+  back.textContent = T.briefing.close;
+  back.addEventListener('click', () => {
+    remote.dispose();
+    engine = null;
+    renderTitle();
+  });
+
+  remote.onStatus((status, roster) => {
+    const humans = roster.filter((a) => a.kind === 'human').length;
+    count.textContent = status === 'closed' ? T.lobby.lost : T.lobby.waiting(humans);
+    begin.disabled = status === 'connecting' || status === 'closed';
+  });
+
+  screen.append(heading, codeBox, where, count, begin, back);
+  app!.append(screen);
+}
+
+function renderLobbyError(code: string): void {
+  const T = strings();
+  app!.innerHTML = '';
+  const screen = el('div', 'title-screen grain vignette');
+  const line = el('p', 'lobby-where');
+  line.textContent = `${T.errors.roomNotFound}（${code}）`;
+  const back = document.createElement('button');
+  back.className = 'menu-item';
+  back.textContent = T.briefing.close;
+  back.addEventListener('click', renderTitle);
+  screen.append(line, back);
+  app!.append(screen);
+}
+
+/**
+ * 状態が条件を満たすまで待つ。
+ * ローカルの本体は同期なので即座に返り、遠くの部屋では返事を待つ。
+ * 描画側がどちらで動いているかを気にしなくて済むようにするための一枚。
+ */
+function waitFor(test: (state: EngineState) => boolean, timeoutMs = 10_000): Promise<EngineState | null> {
+  const current = engine?.snapshot();
+  if (current && test(current)) return Promise.resolve(current);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value: EngineState | null): void => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      off?.();
+      resolve(value);
+    };
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
+    const off = engine?.subscribe((state) => {
+      if (test(state)) finish(state);
+    });
+    if (!off) finish(null);
+  });
 }
 
 function render(state: EngineState): void {
@@ -397,6 +514,9 @@ function render(state: EngineState): void {
   resetStage(shell.refs);
   renderChoices(round.room.theme, round.room.id, round.room.choices, shell, round.ownCandidates);
   renderHints(state, shell);
+  // 遠くの部屋では、始めた時点ではまだ部屋が来ていない。
+  // 部屋が出たここで時計を回す（同じものを二度回さない作りになっている）
+  if (!resolving) startTimerLoop();
 }
 
 function renderLives(host: HTMLElement, state: EngineState): void {
@@ -570,8 +690,10 @@ function timeOut(): void {
 
 async function runResolution(): Promise<void> {
   if (!engine || !shell) return;
-  const verdict = engine.snapshot().verdict;
-  if (!verdict) {
+  // 遠くの部屋では、選んだ返事が戻ってくるまで判定が立たない
+  const settled = await waitFor((s) => s.verdict !== null);
+  const verdict = settled?.verdict ?? null;
+  if (!verdict || !shell) {
     resolving = false;
     return;
   }
@@ -589,7 +711,7 @@ async function runResolution(): Promise<void> {
   const next = engine.snapshot();
   engine.advancePresentation(); // verdict → 次の部屋 / 終了
 
-  const after = engine.snapshot();
+  const after = (await waitFor((s) => s.phase !== 'verdict')) ?? engine.snapshot();
   if (after.phase === 'choosing' && next.phase !== 'gameover') {
     resetStage(shell.refs);
     audio.play('room-open');
