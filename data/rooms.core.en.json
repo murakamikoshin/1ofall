@@ -1,0 +1,544 @@
+{
+  "room_001": {
+    "prompt": "Which one is safe to open?",
+    "deathMessage": "A weight dropped from inside",
+    "choices": [
+      "Iron door",
+      "Cloth-hung door",
+      "Latticed door",
+      "Red-painted door",
+      "Handleless door"
+    ]
+  },
+  "room_002": {
+    "prompt": "Which one is safe to eat?",
+    "deathMessage": "It was poison",
+    "choices": [
+      "Red soup",
+      "Grilled fish",
+      "White bread",
+      "Dried fruit",
+      "Steaming porridge"
+    ]
+  },
+  "room_003": {
+    "prompt": "Which one is safe to pull?",
+    "deathMessage": "The ceiling came down",
+    "choices": [
+      "Rusted iron bar",
+      "Rope loop",
+      "Brass grip",
+      "Wooden handle",
+      "End of a chain",
+      "Stone knob"
+    ]
+  },
+  "room_004": {
+    "prompt": "Which way is safe to walk?",
+    "deathMessage": "The ground gave way",
+    "choices": [
+      "The lit path",
+      "The path along water",
+      "The path down stairs",
+      "A trodden dirt track",
+      "A path of laid planks"
+    ]
+  },
+  "room_005": {
+    "prompt": "Who is safe to speak to?",
+    "deathMessage": "He had a blade",
+    "choices": [
+      "Man in a straw hat",
+      "Woman counting",
+      "Sleeping old man",
+      "Child facing away",
+      "Paper seller"
+    ]
+  },
+  "room_006": {
+    "prompt": "Which one is safe to ride?",
+    "deathMessage": "He never got off",
+    "choices": [
+      "Handcart",
+      "Small boat",
+      "Palanquin",
+      "Rail trolley",
+      "An ox's back"
+    ]
+  },
+  "room_007": {
+    "prompt": "Which one is safe to drink?",
+    "deathMessage": "His throat burned",
+    "choices": [
+      "Cloudy tea",
+      "Clear water",
+      "White milk",
+      "Foaming liquor",
+      "Green broth"
+    ]
+  },
+  "room_008": {
+    "prompt": "Which one is safe to step on?",
+    "deathMessage": "A spike came up",
+    "choices": [
+      "White flagstone",
+      "Charred plank",
+      "Mossy stone",
+      "Hollow in the sand",
+      "Latticed lid",
+      "Straw mat"
+    ]
+  },
+  "room_009": {
+    "prompt": "Which one goes in the lock?",
+    "deathMessage": "A needle shot out",
+    "choices": [
+      "Chipped key",
+      "Long key",
+      "Paired keys",
+      "Small key",
+      "Ringed key"
+    ]
+  },
+  "room_010": {
+    "prompt": "Which lid is safe to lift?",
+    "deathMessage": "Smoke filled the room",
+    "choices": [
+      "Sealed box",
+      "Corded box",
+      "Loose-lidded box",
+      "Heavy iron box",
+      "Cloth-wrapped box"
+    ]
+  },
+  "room_011": {
+    "prompt": "Which one is safe to look into?",
+    "deathMessage": "The rim crumbled",
+    "choices": [
+      "Well with a bucket",
+      "Dry well",
+      "Boarded well",
+      "Well with water sounds",
+      "Stone-stacked well"
+    ]
+  },
+  "room_012": {
+    "prompt": "Which one is safe to wear?",
+    "deathMessage": "There were thorns inside",
+    "choices": [
+      "White mask",
+      "Horned mask",
+      "Laughing mask",
+      "Cracked mask",
+      "Black mask",
+      "Eyeless mask"
+    ]
+  },
+  "room_013": {
+    "prompt": "Which one is safe to cross?",
+    "deathMessage": "It broke halfway",
+    "choices": [
+      "Rope bridge",
+      "Stone bridge",
+      "Log bridge",
+      "Iron girder",
+      "Sunken stepping stones"
+    ]
+  },
+  "room_014": {
+    "prompt": "Which one is safe to pick up?",
+    "deathMessage": "Fire caught his hand",
+    "choices": [
+      "Lamp out of oil",
+      "Paper lantern",
+      "Iron lantern",
+      "Candlestick",
+      "Hanging lamp"
+    ]
+  },
+  "room_015": {
+    "prompt": "Which one is safe to approach?",
+    "deathMessage": "It was hiding its teeth",
+    "choices": [
+      "Chained dog",
+      "Caged bird",
+      "Sleeping cat",
+      "Horse drinking",
+      "Rat on the roof"
+    ]
+  },
+  "room_016": {
+    "prompt": "Which one is safe to swallow?",
+    "deathMessage": "His throat closed",
+    "choices": [
+      "Black pill",
+      "Powder",
+      "Vial of liquid",
+      "Dried root",
+      "Paper-wrapped dose",
+      "Ointment"
+    ]
+  },
+  "room_017": {
+    "prompt": "Which one is safe to climb?",
+    "deathMessage": "What he stepped on gave way",
+    "choices": [
+      "Spiral stair",
+      "Ladder",
+      "Stone steps",
+      "Slanted board",
+      "Rope ladder"
+    ]
+  },
+  "room_018": {
+    "prompt": "Which one is safe to sit on?",
+    "deathMessage": "A trap was set beneath",
+    "choices": [
+      "Low stool",
+      "Stacked bales",
+      "Stone block",
+      "Tree stump",
+      "Cloth-draped chair"
+    ]
+  },
+  "room_019": {
+    "prompt": "Which one is safe to reach into?",
+    "deathMessage": "Something pulled him under",
+    "choices": [
+      "Clear pond",
+      "Foaming pail",
+      "Black water",
+      "Running channel",
+      "Iced water jar"
+    ]
+  },
+  "room_020": {
+    "prompt": "Which one is safe to lift aside?",
+    "deathMessage": "Blades stood behind it",
+    "choices": [
+      "Red curtain",
+      "Sooty blackout cloth",
+      "Torn cloth",
+      "Seamed cloth",
+      "Heavy weave",
+      "Sheer cloth"
+    ]
+  },
+  "room_021": {
+    "prompt": "Which one is safe to head toward?",
+    "deathMessage": "The sound was bait",
+    "choices": [
+      "A bell",
+      "Running water",
+      "A flute",
+      "A human voice",
+      "Where there is no sound"
+    ]
+  },
+  "room_022": {
+    "prompt": "Which one is safe to take?",
+    "deathMessage": "The whole shelf came down",
+    "choices": [
+      "Jar on the top shelf",
+      "Tilted plate",
+      "Scroll at the back",
+      "Bowl at the front",
+      "Sack in the corner"
+    ]
+  },
+  "room_023": {
+    "prompt": "Which one is safe to pass under?",
+    "deathMessage": "What was overhead came down",
+    "choices": [
+      "Low gate",
+      "Roped-off gate",
+      "Leaning shrine gate",
+      "Half-shut gate",
+      "Lantern-hung gate",
+      "Bare stone frame"
+    ]
+  },
+  "room_024": {
+    "prompt": "Which one is safe to put on?",
+    "deathMessage": "Powder had been rubbed inside",
+    "choices": [
+      "Leather glove",
+      "Cloth glove",
+      "Chain glove",
+      "Damp glove",
+      "A single odd glove"
+    ]
+  },
+  "room_025": {
+    "prompt": "Which one is safe to pick up?",
+    "deathMessage": "The fingers that touched it turned black",
+    "choices": [
+      "Shining coin",
+      "Holed coin",
+      "Stacked coins",
+      "Mud-caked coin",
+      "Paper-wrapped coin"
+    ]
+  },
+  "room_026": {
+    "prompt": "Which one is safe to look out of?",
+    "deathMessage": "Outside was a cliff",
+    "choices": [
+      "Latticed window",
+      "Paper screen",
+      "Shuttered window",
+      "Clouded glass",
+      "Small skylight",
+      "Ivy-covered window"
+    ]
+  },
+  "room_027": {
+    "prompt": "Which one is safe to grab?",
+    "deathMessage": "It came undone and he fell",
+    "choices": [
+      "Thick rope",
+      "Thin wire",
+      "Braided cord",
+      "Damp rope",
+      "Heavily knotted rope"
+    ]
+  },
+  "room_028": {
+    "prompt": "Which one is safe to breathe in?",
+    "deathMessage": "He fell asleep and did not return",
+    "choices": [
+      "Incense smoke",
+      "A burnt smell",
+      "A sweet smell",
+      "The smell of earth",
+      "A sour smell"
+    ]
+  },
+  "room_029": {
+    "prompt": "Which one is safe to look into?",
+    "deathMessage": "What was reflected moved",
+    "choices": [
+      "Polished bronze mirror",
+      "Cracked mirror",
+      "Cloth-covered mirror",
+      "Warped mirror",
+      "Small hand mirror"
+    ]
+  },
+  "room_030": {
+    "prompt": "Which one is safe to leave by?",
+    "deathMessage": "Beyond it was the stage",
+    "choices": [
+      "The lit mouth",
+      "The mouth with a draught",
+      "The mouth with a queue",
+      "The mouth with stairs",
+      "The blocked mouth",
+      "The merely dark mouth"
+    ]
+  },
+  "room_031": {
+    "prompt": "Which one is safe to grip?",
+    "deathMessage": "The handle slipped and the blade turned",
+    "choices": [
+      "Sickle with a split haft",
+      "Blunted hatchet",
+      "Rusted shears",
+      "Cloth-wrapped chisel",
+      "Fine-toothed saw",
+      "Long-handled hammer"
+    ]
+  },
+  "room_032": {
+    "prompt": "Which one is safe to release?",
+    "deathMessage": "Its call brought the flock",
+    "choices": [
+      "Bird with a torn wing",
+      "Singing bird",
+      "Bird with bound legs",
+      "Black bird",
+      "Sleeping bird"
+    ]
+  },
+  "room_033": {
+    "prompt": "Which one is safe to read?",
+    "deathMessage": "Something was smeared on the paper",
+    "choices": [
+      "Unsealed letter",
+      "Letter in red ink",
+      "Rolled letter",
+      "Letter black on the back",
+      "Unsigned letter",
+      "Damp letter"
+    ]
+  },
+  "room_034": {
+    "prompt": "Which one is safe to warm your hands at?",
+    "deathMessage": "One breath and it swelled",
+    "choices": [
+      "Red embers",
+      "Blue flame",
+      "Smoke with no fire",
+      "A small pilot flame",
+      "A dying fire"
+    ]
+  },
+  "room_035": {
+    "prompt": "Which one is safe to move?",
+    "deathMessage": "A hand came out from under",
+    "choices": [
+      "Mossy stone",
+      "Flat stone",
+      "Stacked stones",
+      "Damp stone",
+      "White stone"
+    ]
+  },
+  "room_036": {
+    "prompt": "Which one is safe to reel in?",
+    "deathMessage": "A bell rang somewhere deep",
+    "choices": [
+      "Red thread",
+      "Fraying thread",
+      "Knotted thread",
+      "Thick thread",
+      "Thread up to the ceiling"
+    ]
+  },
+  "room_037": {
+    "prompt": "Which one is safe to put on?",
+    "deathMessage": "Nails had been set inside",
+    "choices": [
+      "Sandal with a loose thong",
+      "Muddy clog",
+      "New straw sandal",
+      "A single odd shoe",
+      "Thin-soled shoe"
+    ]
+  },
+  "room_038": {
+    "prompt": "Which one is safe to drink from?",
+    "deathMessage": "His face was not reflected",
+    "choices": [
+      "Clear bowl",
+      "Cloudy bowl",
+      "Upturned bowl",
+      "Chipped bowl",
+      "Black-rimmed bowl",
+      "Bowl still steaming"
+    ]
+  },
+  "room_039": {
+    "prompt": "Which one is safe to call out?",
+    "deathMessage": "The one called turned around",
+    "choices": [
+      "Scrawl on the wall",
+      "Name on a tag",
+      "A name passed by mouth",
+      "A name no one calls",
+      "Your own name"
+    ]
+  },
+  "room_040": {
+    "prompt": "Which one is safe to enter?",
+    "deathMessage": "It narrowed and he could not back out",
+    "choices": [
+      "Hole with a draught",
+      "Hole smelling of water",
+      "Wide hole",
+      "Hole someone came out of",
+      "Low narrow hole",
+      "Half-filled hole"
+    ]
+  },
+  "room_041": {
+    "prompt": "Which one is safe to buy?",
+    "deathMessage": "He paid with a finger",
+    "choices": [
+      "Goods priced too low",
+      "Goods with no price",
+      "Goods in a row",
+      "Goods left in a corner",
+      "Goods a customer touched"
+    ]
+  },
+  "room_042": {
+    "prompt": "Which one is safe to stop?",
+    "deathMessage": "He aged by what he stopped",
+    "choices": [
+      "Fast clock",
+      "Slow clock",
+      "Stopped clock",
+      "Silent clock",
+      "Clock with no hands"
+    ]
+  },
+  "room_043": {
+    "prompt": "Which one is safe to set foot on?",
+    "deathMessage": "It was flowing underneath",
+    "choices": [
+      "Milky ice",
+      "Clear ice",
+      "Snow-covered ice",
+      "Ice with a crack",
+      "Ice with footprints",
+      "Ice thin at the edge"
+    ]
+  },
+  "room_044": {
+    "prompt": "Which one is safe to step over?",
+    "deathMessage": "The one casting it turned around",
+    "choices": [
+      "Your own shadow",
+      "A pillar's shadow",
+      "A shadow that does not move",
+      "A doubled shadow",
+      "A shadow stretched too far"
+    ]
+  },
+  "room_045": {
+    "prompt": "Which one is safe to hum?",
+    "deathMessage": "More voices joined in",
+    "choices": [
+      "A festival song",
+      "A lullaby",
+      "A song with no name",
+      "A song someone was singing",
+      "A song cut off partway"
+    ]
+  },
+  "room_046": {
+    "prompt": "Which one is safe to touch?",
+    "deathMessage": "Its owner came to collect it",
+    "choices": [
+      "White dry bone",
+      "Earth-caked bone",
+      "Thin bone",
+      "Broken bone",
+      "Cloth-wrapped bone",
+      "Bone with teeth left"
+    ]
+  },
+  "room_047": {
+    "prompt": "Who will let you through?",
+    "deathMessage": "The ones who answered were cut down",
+    "choices": [
+      "Sleepy gatekeeper",
+      "Young gatekeeper",
+      "Talkative gatekeeper",
+      "Silent gatekeeper",
+      "Freshly relieved gatekeeper"
+    ]
+  },
+  "room_048": {
+    "prompt": "What is safe to wager?",
+    "deathMessage": "What you stake does not come back",
+    "choices": [
+      "Your name",
+      "The coins you carry",
+      "Your right hand",
+      "Tomorrow",
+      "Nothing at all"
+    ]
+  }
+}

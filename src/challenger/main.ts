@@ -1,15 +1,17 @@
 import '@/ui/tokens.css';
+import '@/ui/font.css';
 import './challenger.css';
 
 import { corePackage } from '@/core/pack';
 import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
+import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
-import { liarRangeFor } from '@/core/limits';
+import { liarCountFor } from '@/core/limits';
 import { audio } from '@/ui/audio';
 import { choiceArt } from '@/ui/placeholder';
 import { playResolution, resetStage, type ResolutionRefs } from '@/ui/death-sequence';
-import { t } from '@/i18n/ja';
+import { strings, localized, detectLocale, setLocale, rememberLocale, LOCALES, LOCALE_NAMES, type Locale } from '@/i18n';
 
 /**
  * 挑戦者クライアント。
@@ -22,6 +24,8 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('#app が無い');
 
 const pack = corePackage();
+let currentLocale: Locale = detectLocale();
+setLocale(currentLocale);
 let engine: GameEngine | null = null;
 let unsubscribe: (() => void) | null = null;
 let timerHandle = 0;
@@ -35,23 +39,45 @@ function renderTitle(): void {
   const screen = el('div', 'title-screen grain vignette');
 
   const mark = el('h1', 'title-mark');
-  mark.textContent = t.title;
+  mark.textContent = strings().title;
   const ruby = el('p', 'title-ruby');
-  ruby.textContent = t.titleRuby;
+  ruby.textContent = strings().titleRuby;
   const tagline = el('p', 'title-tagline');
-  tagline.textContent = t.tagline;
+  tagline.textContent = strings().tagline;
 
   const menu = el('div', 'menu');
   menu.append(
-    menuItem(t.menu.solo, t.menu.soloNote, false, () => startGame()),
-    menuItem(t.menu.host, t.menu.hostNote, true),
-    menuItem(t.menu.advisor, '', true),
+    menuItem(strings().menu.solo, strings().menu.soloNote, false, () => startGame()),
+    menuItem(strings().menu.host, strings().menu.hostNote, true),
+    menuItem(strings().menu.advisor, '', true),
   );
 
   const head = el('div');
   head.append(mark, ruby);
-  screen.append(head, tagline, menu);
+  screen.append(head, tagline, menu, renderLanguagePicker());
   app!.append(screen);
+}
+
+function renderLanguagePicker(): HTMLElement {
+  const wrap = el('div', 'lang');
+  const label = el('span', 'lang-label');
+  label.textContent = strings().language.label;
+  wrap.append(label);
+  for (const locale of LOCALES) {
+    const btn = document.createElement('button');
+    btn.className = `lang-option${locale === currentLocale ? ' is-on' : ''}`;
+    btn.textContent = LOCALE_NAMES[locale];
+    btn.addEventListener('click', () => switchLocale(locale));
+    wrap.append(btn);
+  }
+  return wrap;
+}
+
+function switchLocale(locale: Locale): void {
+  currentLocale = locale;
+  setLocale(locale);
+  rememberLocale(locale);
+  renderTitle();
 }
 
 function menuItem(label: string, note: string, disabled: boolean, onClick?: () => void): HTMLButtonElement {
@@ -158,8 +184,8 @@ function render(state: EngineState): void {
   shell.roundId = round.roundId;
 
   renderLives(shell.lives, state);
-  shell.roomCount.textContent = `${t.hud.room(round.roomNumber)}　${t.hud.section(round.sectionIndex + 1, state.sectionCount)}`;
-  shell.prompt.textContent = round.room.prompt;
+  shell.roomCount.textContent = `${strings().hud.room(round.roomNumber)}　${strings().hud.section(round.sectionIndex + 1, state.sectionCount)}`;
+  shell.prompt.textContent = localized(round.room.prompt);
 
   resetStage(shell.refs);
   renderChoices(round.room.theme, round.room.id, round.room.choices, shell);
@@ -169,13 +195,13 @@ function render(state: EngineState): void {
 function renderLives(host: HTMLElement, state: EngineState): void {
   host.innerHTML = '';
   const label = document.createElement('span');
-  label.textContent = t.hud.lives;
+  label.textContent = strings().hud.lives;
   host.append(label);
   for (let i = 0; i < state.maxLives; i++) {
     const pip = el('span', `pip${i < state.lives ? '' : ' is-lost'}`);
     host.append(pip);
   }
-  host.setAttribute('aria-label', `${t.hud.lives} ${state.lives} / ${state.maxLives}`);
+  host.setAttribute('aria-label', `${strings().hud.lives} ${state.lives} / ${state.maxLives}`);
 }
 
 const KEYCAPS = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -194,7 +220,7 @@ function renderChoices(
     const btn = document.createElement('button');
     btn.className = 'choice';
     btn.dataset['choiceId'] = choice.id;
-    btn.setAttribute('aria-label', choice.label);
+    btn.setAttribute('aria-label', localized(choice.label));
 
     const key = el('span', 'choice-key');
     key.textContent = KEYCAPS[i] ?? '';
@@ -204,7 +230,7 @@ function renderChoices(
     img.loading = 'lazy';
     img.decoding = 'async';
     const label = el('span', 'choice-label');
-    label.textContent = choice.label;
+    label.textContent = localized(choice.label);
 
     btn.append(key, img, label);
     btn.addEventListener('pointerenter', () => audio.play('hover'));
@@ -219,75 +245,78 @@ function renderChoices(
 }
 
 function renderHints(state: EngineState, s: Shell): void {
+  const T = strings();
   s.hints.innerHTML = '';
   const round = state.round;
   if (!round) return;
 
   if (round.speakers.length === 0) {
     const empty = el('p', 'hints-empty');
-    empty.textContent = t.challenger.hintsNone;
+    empty.textContent = T.challenger.hintsNone;
     s.hints.append(empty);
     return;
   }
 
-  const left = round.openLimit - round.opened.length;
   const head = el('div', 'hints-head');
   const count = el('span', 'hints-count');
   count.textContent =
-    round.arrivals.length === 0
-      ? t.challenger.hintsEmpty
-      : `${t.challenger.inbox(round.arrivals.length)}　${t.challenger.liarCount(...liarRangeFor(round.speakers.length))}`;
-  const budget = el('span', `hints-budget${left === 0 ? ' is-spent' : ''}`);
-  budget.textContent = left > 0 ? t.challenger.openLeft(left) : t.challenger.openNone;
-  head.append(count, budget);
+    round.advice.length === 0
+      ? T.challenger.hintsEmpty
+      : `${T.challenger.inbox(round.advice.length)}　${T.challenger.liarCount(liarCountFor(round.speakers.length))}`;
+  const note = el('span', 'hints-note');
+  note.textContent = T.challenger.knowsNothing;
+  head.append(count, note);
   s.hints.append(head);
 
   const list = el('div', 'hints-list');
-  for (const arrival of round.arrivals) {
-    const opened = round.opened.find((h) => h.advisorId === arrival.advisorId);
-    const row = el('div', `hint-row${opened ? ' is-open' : ''}`);
-
-    const name = el('span', 'hint-name');
-    name.textContent = arrival.advisorName;
-    if (arrival.record.hit + arrival.record.miss > 0) {
-      const rec = el('span', 'hint-record');
-      rec.textContent = t.challenger.record(arrival.record.hit, arrival.record.miss);
-      name.append(rec);
-    }
-
-    let body: HTMLElement;
-    if (opened) {
-      body = el('span', 'hint-text');
-      body.textContent = opened.text;
-    } else {
-      const btn = document.createElement('button');
-      btn.className = 'hint-open';
-      btn.textContent = left > 0 ? t.challenger.open : t.challenger.unopened;
-      btn.disabled = left === 0;
-      btn.addEventListener('click', () => {
-        audio.play('hover');
-        engine?.openHint(arrival.advisorId);
-      });
-      body = btn;
-    }
-
-    row.append(name, body);
-
-    // 黙らせられるのは、助言を読んだ相手だけ。読んでいない相手を裁く材料は無い
-    if (opened) {
-      const silence = document.createElement('button');
-      silence.className = 'hint-silence';
-      silence.textContent = round.silenceUsed ? t.challenger.silenceDone : t.challenger.silence;
-      silence.disabled = round.silenceUsed;
-      silence.addEventListener('click', () => {
-        const result = engine?.silence(arrival.advisorId);
-        if (result) announce(result.hit ? t.challenger.silenceHit : t.challenger.silenceMiss);
-      });
-      row.append(silence);
-    }
-    list.append(row);
+  // 届いた順に並べる。早い遅いも読みの材料になる
+  for (const advice of [...round.advice].sort((a, b) => a.sentAt - b.sentAt)) {
+    list.append(renderAdviceRow(advice, round.silenceUsed));
   }
   s.hints.append(list);
+}
+
+function renderAdviceRow(advice: Advice, silenceUsed: boolean): HTMLElement {
+  const T = strings();
+  const row = el('div', 'hint-row');
+
+  const name = el('span', 'hint-name');
+  name.textContent = advice.advisorName;
+  if (advice.record.hit + advice.record.miss > 0) {
+    const rec = el('span', `hint-record${advice.record.miss > 0 ? ' is-suspect' : ''}`);
+    rec.textContent = T.challenger.record(advice.record.hit, advice.record.miss);
+    rec.title = T.challenger.recordHint;
+    name.append(rec);
+  }
+
+  const text = el('span', 'hint-text');
+  text.textContent = advice.text;
+
+  const actions = el('span', 'hint-actions');
+
+  const silence = document.createElement('button');
+  silence.className = 'hint-silence';
+  silence.textContent = silenceUsed ? T.challenger.silenceDone : T.challenger.silence;
+  silence.disabled = silenceUsed;
+  silence.addEventListener('click', () => {
+    const result = engine?.silence(advice.advisorId);
+    if (result) announce(result.hit ? T.challenger.silenceHit : T.challenger.silenceMiss);
+  });
+
+  const report = document.createElement('button');
+  report.className = 'hint-report';
+  report.textContent = T.challenger.report;
+  report.title = T.challenger.reportNote;
+  report.addEventListener('click', () => {
+    engine?.report('challenger', advice.advisorId, advice.text);
+    report.textContent = T.challenger.reported;
+    report.disabled = true;
+    announce(T.challenger.reported);
+  });
+
+  actions.append(silence, report);
+  row.append(name, text, actions);
+  return row;
 }
 
 /* ─────────────────────────── 選択と演出 ─────────────────────────── */
@@ -396,21 +425,21 @@ function renderEnd(state: EngineState): void {
 
   const screen = el('div', 'end-screen grain vignette');
   const mark = el('h1', `end-mark${dead ? ' is-death' : ''}`);
-  mark.textContent = dead ? t.verdict.gameover : t.verdict.cleared;
+  mark.textContent = dead ? strings().verdict.gameover : strings().verdict.cleared;
 
   const stat = el('p', 'end-stat');
-  stat.textContent = t.verdict.reached(state.totalCleared);
+  stat.textContent = strings().verdict.reached(state.totalCleared);
 
   // 嘘つきが誰だったかを全員に開示する
   const reveal = el('p', 'end-stat');
   const liars = new Set(state.liarLog.flatMap((r) => [...r.liarIds]));
   const names = state.advisors.filter((a) => liars.has(a.id)).map((a) => a.name);
   reveal.textContent =
-    names.length > 0 ? t.verdict.reveal(names.join(t.verdict.nameSeparator)) : t.verdict.revealNone;
+    names.length > 0 ? strings().verdict.reveal(names.join(strings().verdict.nameSeparator)) : strings().verdict.revealNone;
 
   const again = document.createElement('button');
   again.className = 'end-action';
-  again.textContent = t.verdict.retry;
+  again.textContent = strings().verdict.retry;
   again.addEventListener('click', () => {
     resolving = false;
     unsubscribe?.();

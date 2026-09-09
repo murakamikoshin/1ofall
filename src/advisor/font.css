@@ -1,0 +1,10 @@
+/* 助言者ページ用。見出しに出る字だけの小さいもの（約48KB）。
+   本文はシステムフォントのままにして、初期表示を待たせない。 */
+@font-face {
+  font-family: 'Koshin Pop';
+  src: url('/font/koshin-role.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  /* 見出し以外で誤って使われても、無い字は system-ui に落ちる */
+}

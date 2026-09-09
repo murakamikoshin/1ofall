@@ -1,84 +1,108 @@
 import type { Choice } from './schema';
 import { HINT_MAX_LENGTH } from './limits';
+import type { Knowledge } from './casting';
 import type { Rng } from './rng';
+import { localized } from '../i18n';
 
 /**
- * 助言の文面を組み立てる。
+ * 助言の文面を組み立てる。AI助言者（ソロ）が使う。
  *
- * 人間の助言者は自由に書くが、AI助言者（ソロモード）と、
- * 荒らし対策の文字数検査でここを共有する。
- * 20文字に収まらない言い回しは選ばない。
+ * 大事なのは「協力者は本当に迷っている」ことが文面に出ること。
+ * 協力者は正解を知らないので断言できない。断言できるのは嘘つきだけ。
+ * ここが挑戦者にとって唯一の手掛かりになる。
  */
 
 type Shape = (label: string) => string;
 
-/** 「これだ」と押す言い方 */
+/** 一つに賭けて押す言い方 */
 const PUSH: Shape[] = [
   (l) => `${l}だ`,
   (l) => `${l}にしろ`,
   (l) => `${l}が生きる`,
   (l) => `${l}で間違いない`,
   (l) => `迷うな、${l}`,
-  (l) => `${l}以外は死ぬ`,
 ];
 
-/** 「これは避けろ」と外す言い方 */
-const AVOID: Shape[] = [
-  (l) => `${l}はやめろ`,
-  (l) => `${l}は罠だ`,
-  (l) => `${l}に手を出すな`,
-  (l) => `${l}で死ぬぞ`,
-];
-
-/** 断定を避けた言い方。読み手に迷いを残す */
+/** 迷いを込めた言い方 */
 const HEDGE: Shape[] = [
   (l) => `たぶん${l}`,
   (l) => `${l}に見える`,
   (l) => `${l}じゃないか`,
+  (l) => `${l}な気がする`,
 ];
 
-function fit(text: string): string | null {
-  return [...text].length <= HINT_MAX_LENGTH ? text : null;
-}
+/** 二つに絞れている、と伝える言い方 */
+const NARROW: ((a: string, b: string) => string)[] = [
+  (a, b) => `${a}か${b}のどっちか`,
+  (a, b) => `${a}か${b}だ`,
+  (a, b) => `${a}と${b}まで絞れた`,
+  (a, b) => `${a}か${b}。決めきれん`,
+];
 
-function tryShapes(shapes: readonly Shape[], label: string, rng: Rng): string | null {
-  const order = shapes.slice().sort(() => rng() - 0.5);
-  for (const shape of order) {
+const fit = (text: string): string | null => ([...text].length <= HINT_MAX_LENGTH ? text : null);
+
+function trySh(shapes: readonly Shape[], label: string, rng: Rng): string | null {
+  for (const shape of shapes.slice().sort(() => rng() - 0.5)) {
     const text = fit(shape(label));
     if (text) return text;
   }
   return null;
 }
 
+const labelOf = (choices: readonly Choice[], id: string): string => {
+  const c = choices.find((x) => x.id === id);
+  return c ? localized(c.label) : '';
+};
+
 export interface WriteOptions {
   choices: readonly Choice[];
-  /** 助言者が挑戦者に選ばせたい選択肢 */
-  target: string;
+  knowledge: Knowledge;
   rng: Rng;
+  /** 嘘つきが本当のことを言って信用を作りにいく確率 */
+  liarHonestyRate?: number;
 }
 
 /**
- * target を選ばせるための一文を書く。
- * 「target を押す」か「target 以外のどれかを外す」かのどちらかになる。
+ * 知識に沿った一文を書く。
+ * 嘘つきは「外れを押す」か「本当のことを言って信用を作る」かを選べる。
+ * ここぞで裏切るには、それまで信用されている必要がある。
  */
-export function writeHint({ choices, target, rng }: WriteOptions): string {
-  const aim = choices.find((c) => c.id === target);
-  const others = choices.filter((c) => c.id !== target);
-  const roll = rng();
+export function writeHint({ choices, knowledge, rng, liarHonestyRate = 0.35 }: WriteOptions): string {
+  if (knowledge.kind === 'liar') {
+    const wrong = choices.filter((c) => c.id !== knowledge.correct);
+    if (rng() < liarHonestyRate) {
+      // 信用を作る回。正解を含む二択の形に紛れる
+      const decoy = wrong[Math.floor(rng() * wrong.length)];
+      const a = labelOf(choices, knowledge.correct);
+      const b = decoy ? localized(decoy.label) : '';
+      const narrowed = writeNarrow(a, b, rng);
+      if (narrowed) return narrowed;
+      return trySh(HEDGE, a, rng) ?? a;
+    }
+    const victim = wrong[Math.floor(rng() * wrong.length)];
+    const label = victim ? localized(victim.label) : '';
+    // 嘘つきは正解を知っているので言い切れる
+    return trySh(PUSH, label, rng) ?? trySh(HEDGE, label, rng) ?? label;
+  }
 
-  if (aim && roll < 0.62) {
-    const text = tryShapes(PUSH, aim.label, rng);
+  // 協力者。二択までしか絞れていないので、賭けるか、迷いを見せるか
+  const [first, second] = knowledge.candidates;
+  const a = labelOf(choices, first ?? '');
+  const b = second ? labelOf(choices, second) : '';
+
+  if (b && rng() < 0.5) {
+    const narrowed = writeNarrow(a, b, rng);
+    if (narrowed) return narrowed;
+  }
+  const bet = rng() < 0.5 ? a : b || a;
+  return trySh(HEDGE, bet, rng) ?? trySh(PUSH, bet, rng) ?? bet;
+}
+
+function writeNarrow(a: string, b: string, rng: Rng): string | null {
+  if (!a || !b) return null;
+  for (const shape of NARROW.slice().sort(() => rng() - 0.5)) {
+    const text = fit(shape(a, b));
     if (text) return text;
   }
-  if (aim && roll < 0.84) {
-    const text = tryShapes(HEDGE, aim.label, rng);
-    if (text) return text;
-  }
-  // 外しに回る。2択まで絞れていない限り、決め手にはならない言い方
-  const victim = others[Math.floor(rng() * others.length)];
-  if (victim) {
-    const text = tryShapes(AVOID, victim.label, rng);
-    if (text) return text;
-  }
-  return aim ? (fit(aim.label) ?? 'これだ') : 'わからない';
+  return null;
 }

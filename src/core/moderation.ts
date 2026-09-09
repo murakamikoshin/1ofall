@@ -8,9 +8,18 @@ import { HINT_MAX_LENGTH } from './limits';
  * 体験のためのもので、防御はサーバーで同じ関数を通すことで成立する。
  */
 
-export type Rejection =
-  | { ok: true; text: string }
-  | { ok: false; reason: 'empty' | 'tooLong' | 'blocked' | 'rateLimited' | 'repeat' };
+export type RejectReason =
+  | 'empty'
+  | 'tooLong'
+  | 'blocked'
+  | 'rateLimited'
+  | 'repeat'
+  /** 番号や位置で指した */
+  | 'pointing'
+  /** 一度に選択肢を挙げすぎた */
+  | 'tooManyChoices';
+
+export type Rejection = { ok: true; text: string } | { ok: false; reason: RejectReason };
 
 /** 連投の間隔。1部屋につき1人1通だが、書き直しの余地は残す */
 export const HINT_COOLDOWN_MS = 2_500;
@@ -46,6 +55,51 @@ export function containsBlocked(text: string): boolean {
   return BLOCKED.some((word) => n.includes(normalize(word)));
 }
 
+/**
+ * 番号と位置で選択肢を指す言い方は使えない。
+ *
+ * 理由は二つ。
+ *  - 「1234は罠」のように、一度の助言で全選択肢に触れて潰せてしまう
+ *  - 番号で指せると助言が機械的に数えられる。数えられると多数決に戻る
+ *
+ * 選択肢の名前そのものは使える。使えないと何も伝えられない。
+ * 20文字あれば名前は2つまでしか入らないので、全部に触れることはできない。
+ */
+const POINTING = [
+  /[0-9０-９]/,
+  /[一二三四五六七八九]\s*(番|つ目|個目)/,
+  /(番目|ばんめ)/,
+  /(左|右|真ん中|まんなか|中央|端|はし|上から|下から|手前|奥から)/,
+  /[①-⑧]/,
+];
+
+/**
+ * 選択肢の名前そのものに位置語が入っていることがある
+ * （「右手」「端の薄い氷」「手前の椀」）。
+ * 先に名前を取り除いてから調べないと、正当な助言を黙って落としてしまう。
+ */
+export function isPointing(text: string, labels: readonly string[] = []): boolean {
+  let rest = text.normalize('NFKC');
+  // 長い名前から消す。短い名前が長い名前の一部を食わないように
+  for (const label of [...labels].sort((a, b) => b.length - a.length)) {
+    if (!label) continue;
+    const norm = label.normalize('NFKC');
+    while (rest.includes(norm)) rest = rest.replace(norm, '　');
+  }
+  return POINTING.some((re) => re.test(rest));
+}
+
+/**
+ * 一度に触れてよい選択肢は2つまで。
+ * 協力者が知っているのも2択なので、それ以上を挙げる必要が無い。
+ */
+export const MAX_CHOICES_PER_HINT = 2;
+
+export function countChoicesMentioned(text: string, labels: readonly string[]): number {
+  const n = normalize(text);
+  return labels.filter((l) => l.length > 0 && n.includes(normalize(l))).length;
+}
+
 export interface HintGuardState {
   /** 助言者ごとの最終送信時刻 */
   lastSentAt: Map<string, number>;
@@ -65,11 +119,16 @@ export function checkHint(
   advisorId: string,
   raw: string,
   now: number,
+  labels: readonly string[] = [],
 ): Rejection {
   const text = raw.trim();
   if (text.length === 0) return { ok: false, reason: 'empty' };
   if ([...text].length > HINT_MAX_LENGTH) return { ok: false, reason: 'tooLong' };
   if (containsBlocked(text)) return { ok: false, reason: 'blocked' };
+  if (isPointing(text, labels)) return { ok: false, reason: 'pointing' };
+  if (labels.length && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) {
+    return { ok: false, reason: 'tooManyChoices' };
+  }
 
   // 初回は連投になり得ない。?? 0 にすると now が小さいとき初回が弾かれる
   const last = guard.lastSentAt.get(advisorId);
@@ -97,4 +156,57 @@ export const MAX_ADVISORS_PER_ROOM = 3_000;
 
 export function canJoin(currentCount: number): boolean {
   return currentCount < MAX_ADVISORS_PER_ROOM;
+}
+
+
+/* ───────────────────────────── 通報 ───────────────────────────── */
+
+export interface Report {
+  reporterId: string;
+  targetId: string;
+  roundId: string;
+  text: string;
+  at: number;
+}
+
+export interface ReportBook {
+  reports: Report[];
+  /** 通報された回数。閾値を超えたら自動で発言を止める */
+  countByTarget: Map<string, number>;
+  /** 同じ相手を何度も通報しても1回として数える */
+  seen: Set<string>;
+}
+
+export function createReportBook(): ReportBook {
+  return { reports: [], countByTarget: new Map(), seen: new Set() };
+}
+
+/** これだけ別の人から通報されたら、以降その人の助言は届かない */
+export const AUTO_MUTE_REPORTS = 3;
+
+export interface ReportResult {
+  accepted: boolean;
+  count: number;
+  autoMuted: boolean;
+}
+
+export function fileReport(book: ReportBook, report: Report): ReportResult {
+  // 自分を通報はできない。同じ相手への重複も数えない
+  if (report.reporterId === report.targetId) {
+    return { accepted: false, count: book.countByTarget.get(report.targetId) ?? 0, autoMuted: false };
+  }
+  const key = `${report.reporterId}→${report.targetId}`;
+  if (book.seen.has(key)) {
+    return { accepted: false, count: book.countByTarget.get(report.targetId) ?? 0, autoMuted: false };
+  }
+
+  book.seen.add(key);
+  book.reports.push(report);
+  const count = (book.countByTarget.get(report.targetId) ?? 0) + 1;
+  book.countByTarget.set(report.targetId, count);
+  return { accepted: true, count, autoMuted: count >= AUTO_MUTE_REPORTS };
+}
+
+export function reportCount(book: ReportBook, targetId: string): number {
+  return book.countByTarget.get(targetId) ?? 0;
 }

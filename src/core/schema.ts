@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LOCALES } from '../i18n/locales';
 import { ADVISOR_NAME_MAX, HINT_MAX_LENGTH, ROOM_CODE_LENGTH, SLOTS_MAX, SLOTS_MIN } from './limits';
 
 /**
@@ -8,21 +9,31 @@ import { ADVISOR_NAME_MAX, HINT_MAX_LENGTH, ROOM_CODE_LENGTH, SLOTS_MAX, SLOTS_M
 
 /* ────────────────────────────── 部屋データ ────────────────────────────── */
 
+/** 言語ごとに用意する文字列。部屋データはすべてこの形で持つ */
+const LocalizedText = (max: number) =>
+  z.object(Object.fromEntries(LOCALES.map((l) => [l, z.string().min(1).max(max)])) as Record<
+    (typeof LOCALES)[number],
+    z.ZodString
+  >);
+
+export const LocalizedLabelSchema = LocalizedText(28);
+export const LocalizedLineSchema = LocalizedText(48);
+
 export const ChoiceSchema = z.object({
   id: z.string().min(1),
   /** 画像パス。未配置なら描画側がプレースホルダにフォールバックする */
   image: z.string().optional(),
-  label: z.string().min(1).max(24),
+  label: LocalizedLabelSchema,
 });
 
 const RoomBaseSchema = z.object({
     id: z.string().min(1),
     theme: z.string().min(1),
-    prompt: z.string().min(1).max(40),
+    prompt: LocalizedLineSchema,
     /** 勘で当たらないよう原則5択以上。3〜8で受け付ける */
     choices: z.array(ChoiceSchema).min(3).max(8),
     correct: z.string().min(1),
-  deathMessage: z.string().min(1).max(40),
+  deathMessage: LocalizedLineSchema,
 });
 
 export const RoomSchema = RoomBaseSchema.superRefine((room, ctx) => {

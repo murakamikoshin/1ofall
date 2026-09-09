@@ -1,3 +1,7 @@
+/* 見出しは Koshin Pop（恒紳ポップ）。SIL OFL。
+   一字ずつ跳ねる書体なので、口上のように読める。
+   跳ねが強すぎる場面では font-feature-settings: 'calt' 0 で止める。 */
+
 /* 闇市・賭場。すすけた木、油煙、錆びた提灯、黄ばんだ紙。
    清潔感を出さない。祭りの華やかさに寄せない。酸化して湿った質感を保つ。 */
 :root {
@@ -18,8 +22,8 @@
   --edge: 1px solid var(--dim);
   --hush: 800ms;
 
-  --font-display: 'Zen Antique', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
-  --font-ui: 'Zen Kaku Gothic New', system-ui, sans-serif;
+  --font-display: 'Koshin Pop', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+  --font-ui: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
 
   color-scheme: dark;
 }

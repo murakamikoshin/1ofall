@@ -1,7 +1,11 @@
 import type { AdvisorInfo, Hint, PublicRoom, Room, RoomPack } from './schema';
-import { RUN, openLimitFor } from './limits';
-import { checkHint, createHintGuard, resetGuard, type HintGuardState } from './moderation';
-import { castRound, clampSlots, type Casting, type SelectionMode } from './casting';
+import { RUN, candidatesForSection } from './limits';
+import { localized } from '../i18n';
+import {
+  checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard,
+  type HintGuardState, type ReportBook,
+} from './moderation';
+import { castLiars, castSpeakers, clampSlots, dealKnowledge, type Casting, type SelectionMode } from './casting';
 import { createRng, shuffled, pickSome, type Rng } from './rng';
 import type { AdvisorGateway, Unsubscribe } from './advisor-gateway';
 import { NullAdvisorGateway } from './advisor-gateway';
@@ -24,11 +28,13 @@ export type Phase =
   | 'gameover'
   | 'cleared';
 
-/** 誰かが助言を送ってきた、という事実だけ。中身は開くまで挑戦者に渡らない */
-export interface Arrival {
+/** 届いた助言。中身は最初から見えている（伏せると運ゲーになる） */
+export interface Advice {
   advisorId: string;
   advisorName: string;
-  /** 過去の部屋で、この人の助言を開いた結果どうだったか */
+  text: string;
+  sentAt: number;
+  /** この区画で、この人の助言に従っていたらどうだったか。区画が変わると消える */
   record: { hit: number; miss: number };
 }
 
@@ -41,13 +47,10 @@ export interface RoundState {
   sectionIndex: number;
   timeLimitMs: number;
   deadlineAt: number;
-  /** 発言枠に選ばれた面々。名前だけ見えている */
+  /** この区画の発言枠。区画のあいだ顔ぶれは変わらない */
   speakers: readonly AdvisorInfo[];
-  /** 届いた助言（中身は伏せてある） */
-  arrivals: readonly Arrival[];
-  /** 開封した助言。ここだけ本文が入る */
-  opened: readonly Hint[];
-  openLimit: number;
+  /** 届いた助言。すべて見える */
+  advice: readonly Advice[];
   silenceUsed: boolean;
 }
 
@@ -127,12 +130,15 @@ export class GameEngine {
   private deck: Room[] = [];
   private currentSource: Room | null = null;
   private currentCasting: Casting = { speakerIds: [], liarIds: [] };
-  /** 部屋ごとの、伏せられた助言 */
-  private inbox = new Map<string, Hint>();
-  /** 開封した相手の当たり外れ。挑戦者が積む読み */
+  /** 区画のあいだの当たり外れ。配役が固定なので手掛かりになる */
   private records = new Map<string, { hit: number; miss: number }>();
+  /** 区画のあいだ据え置く配役 */
+  private sectionCasting: Casting | null = null;
+  private sectionCastingIndex = -1;
   /** 文字数・連投・NGワードの検査。段階4のサーバーも同じものを通す */
   private guard: HintGuardState = createHintGuard();
+  /** 通報。一定数集まったらその人の助言は届かなくなる */
+  private reports: ReportBook = createReportBook();
 
   private listeners = new Set<Listener>();
   private unsubs: Unsubscribe[] = [];
@@ -204,6 +210,7 @@ export class GameEngine {
     this.totalCleared = 0;
     this.muted.clear();
     this.records.clear();
+    this.sectionCasting = null;
     this.liarLog = [];
     this.nextRoundPenaltyMs = 0;
     this.deck = shuffled(this.pack.rooms, this.rng);
@@ -220,19 +227,6 @@ export class GameEngine {
     this.emit();
   }
 
-  /** 伏せられた助言を1通開く。開ける数には上限がある */
-  openHint(advisorId: string): boolean {
-    const round = this.round;
-    if (!round || this.phase !== 'choosing') return false;
-    if (round.opened.length >= round.openLimit) return false;
-    if (round.opened.some((h) => h.advisorId === advisorId)) return false;
-    const hint = this.inbox.get(advisorId);
-    if (!hint) return false;
-    round.opened = [...round.opened, hint];
-    this.emit();
-    return true;
-  }
-
   /** 発言者を1人黙らせる。当たれば以降その人の助言は届かない。外したら次の部屋が短くなる */
   silence(advisorId: string): { hit: boolean } | null {
     const round = this.round;
@@ -243,14 +237,39 @@ export class GameEngine {
     const hit = this.currentCasting.liarIds.includes(advisorId);
     if (hit) {
       this.muted.add(advisorId);
-      round.opened = round.opened.filter((h) => h.advisorId !== advisorId);
-      round.arrivals = round.arrivals.filter((a) => a.advisorId !== advisorId);
-      this.inbox.delete(advisorId);
+      round.advice = round.advice.filter((a) => a.advisorId !== advisorId);
     } else {
       this.nextRoundPenaltyMs += this.cfg.penaltyTimeMs;
     }
     this.emit();
     return { hit };
+  }
+
+  /**
+   * 助言者を通報する。一定数集まると以降その人の助言は届かない。
+   * 挑戦者の「黙らせる」と違い、当てる／外すの読み合いではなく、
+   * 迷惑行為を止めるための仕組み。
+   */
+  report(reporterId: string, targetId: string, text: string): { accepted: boolean; count: number } {
+    const round = this.round;
+    const result = fileReport(this.reports, {
+      reporterId,
+      targetId,
+      roundId: round?.roundId ?? '',
+      text,
+      at: this.now(),
+    });
+    if (result.autoMuted) {
+      this.muted.add(targetId);
+      if (round) round.advice = round.advice.filter((a) => a.advisorId !== targetId);
+      this.sectionCasting = null; // 顔ぶれを引き直す
+      this.emit();
+    }
+    return { accepted: result.accepted, count: result.count };
+  }
+
+  reportsAgainst(advisorId: string): number {
+    return reportCount(this.reports, advisorId);
   }
 
   choose(choiceId: string): void {
@@ -303,6 +322,34 @@ export class GameEngine {
     return clampSlots(RUN.slotsBySection[this.sectionIndex] ?? RUN.slotsBySection.at(-1) ?? 5);
   }
 
+  /**
+   * 配役は区画のあいだ据え置く。顔ぶれも嘘つきも変わらない。
+   * これがあるから「ずっと本当のことを言って、ここぞで裏切る」が起こる。
+   * 区画が変わると顔ぶれごと入れ替わり、積んだ読みは一度捨てられる。
+   */
+  private castingForSection(eligible: readonly AdvisorInfo[]): Casting {
+    const stale =
+      !this.sectionCasting ||
+      this.sectionCastingIndex !== this.sectionIndex ||
+      this.sectionCasting.speakerIds.some((id) => !eligible.some((a) => a.id === id));
+
+    if (stale) {
+      const speakerIds = castSpeakers({
+        advisors: eligible,
+        slots: this.slotsForSection(),
+        mode: this.selectionMode,
+        volunteers: this.gateway.volunteers(),
+        nominated: this.nominated,
+        rng: this.rng,
+      });
+      this.nominated = [];
+      this.sectionCasting = { speakerIds, liarIds: castLiars(speakerIds, this.rng) };
+      this.sectionCastingIndex = this.sectionIndex;
+      this.records.clear();
+    }
+    return this.sectionCasting as Casting;
+  }
+
   /** 区画が進むほど択の多い部屋を出す。山札からは二度と同じ部屋を引かない */
   private drawRoom(): Room | null {
     if (this.deck.length === 0) return null;
@@ -340,17 +387,8 @@ export class GameEngine {
     const room: PublicRoom = { id: source.id, theme: source.theme, prompt: source.prompt, choices };
 
     const eligible = this.advisors.filter((a) => !this.muted.has(a.id));
-    const casting = castRound({
-      advisors: eligible,
-      slots: this.slotsForSection(),
-      mode: this.selectionMode,
-      volunteers: this.gateway.volunteers(),
-      nominated: this.nominated,
-      rng: this.rng,
-    });
-    this.nominated = [];
+    const casting = this.castingForSection(eligible);
     this.currentCasting = casting;
-    this.inbox.clear();
     resetGuard(this.guard);
 
     const speakers = casting.speakerIds
@@ -367,17 +405,18 @@ export class GameEngine {
       timeLimitMs,
       deadlineAt,
       speakers,
-      arrivals: [],
-      opened: [],
-      openLimit: openLimitFor(speakers.length),
+      advice: [],
       silenceUsed: false,
     };
     this.liarLog = [...this.liarLog, { roundId, liarIds: casting.liarIds }];
     this.verdict = null;
     this.phase = 'choosing';
 
-    // 正解は助言者側にだけ渡る
-    this.gateway.openRound({ roundId, room: fullRoom, correct: source.correct, casting, deadlineAt });
+    // 誰が何を知っているかを配る。正解が入るのは嘘つきの手元と、協力者の候補の中だけ
+    const knowledge = dealKnowledge(
+      choices, source.correct, casting, this.rng, candidatesForSection(this.sectionIndex),
+    );
+    this.gateway.openRound({ roundId, room: fullRoom, casting, knowledge, deadlineAt });
     this.emit();
   }
 
@@ -388,26 +427,21 @@ export class GameEngine {
     if (this.muted.has(hint.advisorId)) return;
     if (!this.currentCasting.speakerIds.includes(hint.advisorId)) return;
 
-    const checked = checkHint(this.guard, hint.advisorId, hint.text, this.now());
+    const labels = round.room.choices.map((c) => localized(c.label));
+    const checked = checkHint(this.guard, hint.advisorId, hint.text, this.now(), labels);
     if (!checked.ok) return;
     const text = checked.text;
 
-    // 1部屋につき1人1通。上書きで最新を残す
-    const already = this.inbox.has(hint.advisorId);
-    this.inbox.set(hint.advisorId, { ...hint, text });
-    if (already) {
-      // すでに開かれていたら本文も差し替える
-      round.opened = round.opened.map((h) => (h.advisorId === hint.advisorId ? { ...hint, text } : h));
-    } else {
-      round.arrivals = [
-        ...round.arrivals,
-        {
-          advisorId: hint.advisorId,
-          advisorName: hint.advisorName,
-          record: this.records.get(hint.advisorId) ?? { hit: 0, miss: 0 },
-        },
-      ];
-    }
+    // 1部屋につき1人1通。書き直しは最新で上書きする
+    const entry = {
+      advisorId: hint.advisorId,
+      advisorName: hint.advisorName,
+      text,
+      sentAt: hint.sentAt,
+      record: this.records.get(hint.advisorId) ?? { hit: 0, miss: 0 },
+    };
+    const rest = round.advice.filter((a) => a.advisorId !== hint.advisorId);
+    round.advice = [...rest, entry];
     this.emit();
   }
 
@@ -418,11 +452,12 @@ export class GameEngine {
     const survived = !timedOut && chosenId === correctId;
     if (!survived) this.lives -= 1;
 
-    // 開いた相手が当たっていたか。次の部屋で「誰を開くか」の材料になる
-    for (const hint of round.opened) {
-      const rec = this.records.get(hint.advisorId) ?? { hit: 0, miss: 0 };
-      const liar = this.currentCasting.liarIds.includes(hint.advisorId);
-      this.records.set(hint.advisorId, {
+    // 助言を送った全員について、その部屋で嘘をついていたかを記録する。
+    // 配役は区画のあいだ固定なので、この記録は次の部屋の手掛かりになる。
+    for (const entry of round.advice) {
+      const rec = this.records.get(entry.advisorId) ?? { hit: 0, miss: 0 };
+      const liar = this.currentCasting.liarIds.includes(entry.advisorId);
+      this.records.set(entry.advisorId, {
         hit: rec.hit + (liar ? 0 : 1),
         miss: rec.miss + (liar ? 1 : 0),
       });
@@ -438,7 +473,7 @@ export class GameEngine {
       correctId,
       survived,
       timedOut,
-      deathMessage: source?.deathMessage ?? '',
+      deathMessage: source ? localized(source.deathMessage) : '',
       livesLeft: Math.max(0, this.lives),
       fatal: !survived && this.lives <= 0,
       liars,
@@ -457,6 +492,7 @@ export class GameEngine {
       if (this.clearedInSection >= this.cfg.roomsPerSection) {
         this.sectionIndex += 1;
         this.clearedInSection = 0;
+        this.sectionCasting = null; // 顔ぶれごと入れ替える
       }
       this.openRoom();
       return;

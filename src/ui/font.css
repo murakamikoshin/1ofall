@@ -1,0 +1,9 @@
+/* 挑戦者画面用。部屋の文言まで含む字数を積んである */
+@font-face {
+  font-family: 'Koshin Pop';
+  src: url('/font/koshin-display.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  /* 読み込みを待たせない。届いたら差し替わる */
+  font-display: swap;
+}

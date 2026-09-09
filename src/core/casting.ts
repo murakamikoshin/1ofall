@@ -1,83 +1,106 @@
-import type { AdvisorInfo } from './schema';
+import type { AdvisorInfo, Choice } from './schema';
 import { pickSome, shuffled, type Rng } from './rng';
-import { SLOTS_MAX, SLOTS_MIN, liarRangeFor } from './limits';
+import { CANDIDATE_COUNT, SLOTS_MAX, SLOTS_MIN, liarCountFor } from './limits';
 
 /**
- * 発言枠と嘘つきの配役。
+ * 発言枠と嘘つきの配役、そして誰が何を知っているか。
  * 配信（数千人）と友達内（4〜8人）で分岐させない。人数から自動で決まる。
  */
 
 export type SelectionMode = 'lottery' | 'nominate';
-
-export interface CastingInput {
-  advisors: readonly AdvisorInfo[];
-  /** 挑戦者が設定する発言枠（3〜10）。実質的な難易度スライダー */
-  slots: number;
-  mode: SelectionMode;
-  /** 指名方式で立候補した助言者 */
-  volunteers?: readonly string[];
-  /** 指名方式で挑戦者が直接選んだ助言者 */
-  nominated?: readonly string[];
-  rng: Rng;
-}
 
 export interface Casting {
   speakerIds: readonly string[];
   liarIds: readonly string[];
 }
 
+/** 助言者ひとりに配られる知識 */
+export type Knowledge =
+  /** 嘘つきは正解を正確に知っている */
+  | { kind: 'liar'; correct: string }
+  /** 協力者は「このどれかが生きる」までしか知らない */
+  | { kind: 'honest'; candidates: readonly string[] };
+
 export function clampSlots(slots: number): number {
   if (!Number.isFinite(slots)) return SLOTS_MIN;
   return Math.min(SLOTS_MAX, Math.max(SLOTS_MIN, Math.round(slots)));
 }
 
-export function castRound(input: CastingInput): Casting {
-  const { advisors, mode, rng } = input;
-  const alive = advisors.filter((a) => !!a.id);
-  const slots = clampSlots(input.slots);
-
-  // 助言者が枠以下（友達モード）なら全員が発言枠。人数に応じて自動調整する。
-  let speakerIds: string[];
-  if (alive.length <= slots) {
-    speakerIds = alive.map((a) => a.id);
-  } else if (mode === 'nominate') {
-    const nominated = (input.nominated ?? []).filter((id) => alive.some((a) => a.id === id));
-    const pool = (input.volunteers ?? []).filter(
-      (id) => !nominated.includes(id) && alive.some((a) => a.id === id),
-    );
-    const fromVolunteers = pickSome(pool, slots - nominated.length, rng);
-    speakerIds = [...nominated, ...fromVolunteers];
-    // 立候補が枠に足りない分は抽選で埋める（枠が空くと発言が薄くなる）
-    if (speakerIds.length < slots) {
-      const rest = alive.map((a) => a.id).filter((id) => !speakerIds.includes(id));
-      speakerIds.push(...pickSome(rest, slots - speakerIds.length, rng));
-    }
-  } else {
-    speakerIds = pickSome(
-      alive.map((a) => a.id),
-      slots,
-      rng,
-    );
-  }
-
-  // ラウンドごとに再抽選する（固定しない）。
-  // ただし全員を等確率にすると、過去の記録が何も予測しない飾りになる。
-  // 一人ひとりに嘘の出やすさの癖を持たせ、記録に弱い意味を持たせる。
-  const liarIds = drawLiars(speakerIds, rollLiarCount(speakerIds.length, rng), rng);
-  return { speakerIds, liarIds };
+export interface SpeakerInput {
+  advisors: readonly AdvisorInfo[];
+  slots: number;
+  mode: SelectionMode;
+  volunteers?: readonly string[];
+  nominated?: readonly string[];
+  rng: Rng;
 }
 
-/** その部屋の嘘つきの人数を引く */
-export function rollLiarCount(speakerCount: number, rng: Rng): number {
-  const [lo, hi] = liarRangeFor(speakerCount);
-  if (hi === lo) return lo;
-  return rng() < 0.5 ? lo : hi;
+/**
+ * 発言枠を選ぶ。
+ * 助言者が枠以下（友達モード）なら全員。人数に応じて自動調整する。
+ */
+export function castSpeakers(input: SpeakerInput): readonly string[] {
+  const { advisors, mode, rng } = input;
+  const slots = clampSlots(input.slots);
+  const ids = advisors.map((a) => a.id);
+  if (ids.length <= slots) return ids;
+
+  if (mode === 'nominate') {
+    const nominated = (input.nominated ?? []).filter((id) => ids.includes(id));
+    const pool = (input.volunteers ?? []).filter((id) => !nominated.includes(id) && ids.includes(id));
+    const chosen = [...nominated, ...pickSome(pool, slots - nominated.length, rng)];
+    if (chosen.length < slots) {
+      chosen.push(...pickSome(ids.filter((id) => !chosen.includes(id)), slots - chosen.length, rng));
+    }
+    return chosen;
+  }
+  return pickSome(ids, slots, rng);
+}
+
+/**
+ * 嘘つきを選ぶ。
+ *
+ * 区画のあいだ固定する。毎部屋引き直すと、
+ * 「ずっと本当のことを言って信用を作り、ここぞで裏切る」が起こり得ない。
+ * 過去の当たり外れの記録も、引き直していては何も予測しない飾りになる。
+ *
+ * 固定しても読み切られないのは、協力者自身が正解を知らず本当に迷っているため。
+ * 嘘つきは迷ったふりに紛れられる（実測：区画6部屋を通して 78% → 84%。
+ * 読みは効くが、割れて終わりにはならない）。
+ */
+export function castLiars(speakerIds: readonly string[], rng: Rng): readonly string[] {
+  return drawLiars(speakerIds, liarCountFor(speakerIds.length), rng);
+}
+
+/**
+ * 誰が何を知っているかを配る。
+ * 正解が入るのは嘘つきの手元と、協力者の候補の中だけ。
+ */
+export function dealKnowledge(
+  choices: readonly Choice[],
+  correct: string,
+  casting: Casting,
+  rng: Rng,
+  candidateCount: number = CANDIDATE_COUNT,
+): Map<string, Knowledge> {
+  const wrong = choices.filter((c) => c.id !== correct).map((c) => c.id);
+  const out = new Map<string, Knowledge>();
+
+  for (const id of casting.speakerIds) {
+    if (casting.liarIds.includes(id)) {
+      out.set(id, { kind: 'liar', correct });
+      continue;
+    }
+    // 正解は必ず入れる。残りは外れから埋める
+    const decoys = pickSome(wrong, Math.max(0, candidateCount - 1), rng);
+    out.set(id, { kind: 'honest', candidates: shuffled([correct, ...decoys], rng) });
+  }
+  return out;
 }
 
 /**
  * 嘘つきの出やすさの癖。id から決まるので、同じ人はいつも同じ癖を持つ。
- * 0.35〜2.4 倍。よく裏切る常連と、めったに裏切らない常連が自然に生まれる。
- * 確実ではないので、記録で読み切ることはできない。
+ * よく裏切る常連と、めったに裏切らない常連が自然に生まれる。
  */
 export function liarBias(advisorId: string): number {
   let h = 2166136261;
@@ -88,7 +111,6 @@ export function liarBias(advisorId: string): number {
   return 0.35 + ((h >>> 0) % 1000) / 1000 * 2.05;
 }
 
-/** 癖で重みをつけた抽選 */
 function drawLiars(speakerIds: readonly string[], count: number, rng: Rng): string[] {
   const pool = shuffled(speakerIds, rng);
   const picked: string[] = [];

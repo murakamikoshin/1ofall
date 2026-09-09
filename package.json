@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "gen:sfx": "node scripts/gen-sfx.mjs",
+    "font": "node scripts/subset-font.mjs",
     "validate:rooms": "node scripts/validate-rooms.mjs",
     "images:manifest": "node scripts/image-manifest.mjs",
     "shots": "node tools/shot.mjs",

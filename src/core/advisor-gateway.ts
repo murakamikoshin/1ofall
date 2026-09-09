@@ -1,5 +1,5 @@
 import type { AdvisorInfo, Hint, Room } from './schema';
-import type { Casting } from './casting';
+import type { Casting, Knowledge } from './casting';
 
 /**
  * 助言者の供給源を抽象化する。
@@ -11,13 +11,18 @@ import type { Casting } from './casting';
 
 export type Unsubscribe = () => void;
 
-/** 部屋ごとに助言者側へ配る情報。正解はここにしか乗らない */
+/**
+ * 部屋ごとに助言者側へ配る情報。正解はここにしか乗らない。
+ *
+ * 助言者ごとに知っていることが違う。嘘つきは正解そのもの、
+ * 協力者は「このどれかが生きる」までしか受け取らない。
+ */
 export interface RoundBriefing {
   roundId: string;
   room: Room;
-  /** 助言者だけが見ている答え */
-  correct: string;
   casting: Casting;
+  /** 助言者ID → その人が知っていること */
+  knowledge: ReadonlyMap<string, Knowledge>;
   deadlineAt: number;
 }
 

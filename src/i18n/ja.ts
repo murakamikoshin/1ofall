@@ -27,14 +27,13 @@ export const ja = {
     hintsEmpty: '助言を待っている',
     hintsNone: '助言者はいない。自分で決めろ',
     inbox: (n: number) => `${n}人が助言を送ってきた`,
-    openLeft: (n: number) => `あと ${n} 通ひらける`,
-    openNone: 'もうひらけない',
-    open: 'ひらく',
-    unopened: '伏せられている',
-    record: (hit: number, miss: number) => `当${hit} 嘘${miss}`,
-    recordHint: '数字は、その相手をひらいたときの当たり外れ',
-    liarCount: (lo: number, hi: number) =>
-      lo === hi ? `この中に嘘つきが ${lo} 人` : `この中に嘘つきが ${lo}〜${hi} 人`,
+    record: (hit: number, miss: number) => `正${hit} 嘘${miss}`,
+    recordHint: 'この区画での、その人の正直さ',
+    liarCount: (n: number) => `この中に嘘つきが ${n} 人`,
+    knowsNothing: '協力者は正解を知らない。二択まで絞れているだけ',
+    report: '通報',
+    reported: '通報した',
+    reportNote: '暴言・妨害を運営に知らせる',
     silence: '黙らせる',
     silenceDone: '黙らせた',
     silenceHit: '嘘つきを黙らせた',
@@ -68,6 +67,8 @@ export const ja = {
     youAreHonest: 'あなたは助言者だ',
     youAreHonestNote: '挑戦者を生かせば勝ち',
     correctIs: '生きる方',
+    maybeIs: 'このどちらか',
+    youDontKnow: 'どちらかは分からない。知っているのは嘘つきだけ',
     speaking: '発言できる',
     notSpeaking: '今回は発言できない',
     notSpeakingNote: '見えていても言えない',
@@ -75,8 +76,8 @@ export const ja = {
     send: '送る',
     sent: '送った',
     // 助言は伏せて届く。挑戦者は数通しかひらけない
-    veiled: '助言は伏せて届く',
-    veiledNote: 'ひらいてもらえるとは限らない',
+    veiled: '助言は全員に見える',
+    veiledNote: '名前が一緒に出る',
     opened: 'ひらかれた',
     volunteer: '立候補する',
     volunteered: '立候補中',
@@ -88,8 +89,15 @@ export const ja = {
     roomFull: '満員',
     rateLimited: '少し待て',
     blocked: 'その言葉は通らない',
+    pointing: '番号と位置は使えない',
+    tooManyChoices: '触れていいのは二つまで',
+    tooLong: '長すぎる',
   },
-} as const;
 
+  language: {
+    label: '言語',
+  },
+};
+
+/** 文言表の形。他の言語はこの形に揃える */
 export type Strings = typeof ja;
-export const t = ja;

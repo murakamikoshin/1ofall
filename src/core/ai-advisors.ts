@@ -2,16 +2,11 @@ import type { AdvisorInfo, Hint } from './schema';
 import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { createRng, shuffled, type Rng } from './rng';
 import { writeHint } from './hint-writer';
+import { liarBias } from './casting';
 
 /**
  * AI の助言者。ソロモードで人間の助言者の代わりに入る。
- *
- * 本体から見れば人間の助言者と区別がつかない（同じ AdvisorGateway）。
- * 人間かAIかでゲームロジックを分岐させないという原則の実装側。
- *
- * 賢さは持たせていない。正直者は正解を、嘘つきは外れを押すだけ。
- * 読み合いの成立に必要なのは「誰が嘘つきか分からないこと」であって、
- * 助言者が賢いことではない。
+ * 本体から見れば人間と区別がつかない（同じ AdvisorGateway）。
  */
 
 const NAMES = [
@@ -23,7 +18,6 @@ const NAMES = [
 export interface AiAdvisorOptions {
   count?: number;
   seed?: number;
-  /** 助言が届くまでの間。全員同時に出ると機械に見える */
   minDelayMs?: number;
   maxDelayMs?: number;
 }
@@ -43,7 +37,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
     const count = Math.min(options.count ?? 12, NAMES.length);
     this.rng = createRng(options.seed ?? (Date.now() & 0xffffffff));
     this.minDelay = options.minDelayMs ?? 400;
-    this.maxDelay = options.maxDelayMs ?? 3200;
+    this.maxDelay = options.maxDelayMs ?? 3400;
     this.advisors = shuffled(NAMES, this.rng)
       .slice(0, count)
       .map((name, i) => ({ id: `ai_${i}`, name, kind: 'ai' as const }));
@@ -57,17 +51,19 @@ export class AiAdvisorGateway implements AdvisorGateway {
     this.clearTimers();
     this.openRoundId = briefing.roundId;
 
-    const wrong = briefing.room.choices.filter((c) => c.id !== briefing.correct);
-
     for (const id of briefing.casting.speakerIds) {
       const advisor = this.advisors.find((a) => a.id === id);
-      if (!advisor) continue;
+      const knowledge = briefing.knowledge.get(id);
+      if (!advisor || !knowledge) continue;
 
-      const isLiar = briefing.casting.liarIds.includes(id);
-      // 嘘つきは互いを知らないので、狙う外れがばらける
-      const decoy = wrong[Math.floor(this.rng() * wrong.length)];
-      const target = isLiar ? decoy?.id ?? briefing.correct : briefing.correct;
-      const text = writeHint({ choices: briefing.room.choices, target, rng: this.rng });
+      // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る
+      const honesty = 0.55 - Math.min(0.4, liarBias(id) * 0.16);
+      const text = writeHint({
+        choices: briefing.room.choices,
+        knowledge,
+        rng: this.rng,
+        liarHonestyRate: honesty,
+      });
       const delay = this.minDelay + this.rng() * (this.maxDelay - this.minDelay);
 
       this.timers.push(

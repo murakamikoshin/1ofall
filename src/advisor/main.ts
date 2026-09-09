@@ -1,11 +1,15 @@
 import '@/ui/tokens.css';
+import './font.css';
 import './advisor.css';
 
 import { choiceArt } from '@/ui/placeholder';
 import { HINT_MAX_LENGTH } from '@/core/limits';
-import { containsBlocked } from '@/core/moderation';
+import {
+  containsBlocked, isPointing, countChoicesMentioned, MAX_CHOICES_PER_HINT,
+} from '@/core/moderation';
 import type { Choice } from '@/core/schema';
-import { t } from '@/i18n/ja';
+import { strings, localized, detectLocale, setLocale } from '@/i18n';
+import type { Knowledge } from '@/core/casting';
 
 /**
  * 助言者ページ。無料・ブラウザ・URLを開くだけ。
@@ -23,10 +27,12 @@ export interface AdvisorView {
   roomId: string;
   theme: string;
   choices: readonly Choice[];
-  /** 助言者だけに見えている答え */
-  correct: string;
+  /**
+   * 自分に配られた知識。
+   * 嘘つきは正解そのもの、協力者は「このどちらかが生きる」までしか受け取らない。
+   */
+  knowledge: Knowledge;
   isSpeaker: boolean;
-  isLiar: boolean;
 }
 
 export interface AdvisorConnection {
@@ -55,15 +61,19 @@ class RehearsalConnection implements AdvisorConnection {
       const room = rooms[i % rooms.length];
       i += 1;
       if (!room) return;
+      const wrong = room.choices.filter((c) => c.id !== room.correct);
+      const decoy = wrong[i % wrong.length];
+      const isLiar = i % 3 === 0;
       const view: AdvisorView = {
         roundId: `${room.id}#${i}`,
         roomId: room.id,
         theme: room.theme,
-        prompt: room.prompt,
+        prompt: localized(room.prompt),
         choices: room.choices,
-        correct: room.correct,
+        knowledge: isLiar
+          ? { kind: 'liar', correct: room.correct }
+          : { kind: 'honest', candidates: [room.correct, decoy?.id ?? room.correct] },
         isSpeaker: i % 4 !== 0,
-        isLiar: i % 3 === 0,
       };
       this.latest = view;
       for (const l of this.listeners) l(view);
@@ -90,6 +100,8 @@ class RehearsalConnection implements AdvisorConnection {
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('#app が無い');
 
+setLocale(detectLocale());
+
 const connection: AdvisorConnection = new RehearsalConnection();
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ''): HTMLElementTagNameMap[K] {
@@ -104,24 +116,24 @@ function renderEnter(): void {
   const form = el('form', 'enter');
 
   const heading = el('h1');
-  heading.textContent = t.title;
+  heading.textContent = strings().title;
   const note = el('p');
-  note.textContent = t.tagline;
+  note.textContent = strings().tagline;
 
   const code = el('input', 'field');
-  code.placeholder = t.advisor.roomCodePlaceholder;
+  code.placeholder = strings().advisor.roomCodePlaceholder;
   code.autocapitalize = 'characters';
   code.maxLength = 6;
-  code.setAttribute('aria-label', t.advisor.roomCodePlaceholder);
+  code.setAttribute('aria-label', strings().advisor.roomCodePlaceholder);
 
   const name = el('input', 'field');
-  name.placeholder = t.advisor.namePlaceholder;
+  name.placeholder = strings().advisor.namePlaceholder;
   name.maxLength = 12;
-  name.setAttribute('aria-label', t.advisor.namePlaceholder);
+  name.setAttribute('aria-label', strings().advisor.namePlaceholder);
 
   const submit = el('button', 'primary');
   submit.type = 'submit';
-  submit.textContent = t.advisor.join;
+  submit.textContent = strings().advisor.join;
 
   form.append(heading, note, code, name, submit);
   form.addEventListener('submit', (event) => {
@@ -157,31 +169,41 @@ function renderBoard(): void {
   connection.onView((view) => {
     current = view;
     if (!view) {
-      prompt.textContent = t.advisor.waiting;
+      prompt.textContent = strings().advisor.waiting;
       grid.innerHTML = '';
       compose.innerHTML = '';
       return;
     }
 
-    frame.classList.toggle('is-liar', view.isLiar);
-    roleTitle.textContent = view.isLiar ? t.advisor.youAreLiar : t.advisor.youAreHonest;
-    roleTitle.classList.toggle('is-liar', view.isLiar);
-    roleNote.textContent = view.isLiar ? t.advisor.youAreLiarNote : t.advisor.youAreHonestNote;
+    const T = strings();
+    const isLiar = view.knowledge.kind === 'liar';
+    frame.classList.toggle('is-liar', isLiar);
+    roleTitle.textContent = isLiar ? T.advisor.youAreLiar : T.advisor.youAreHonest;
+    roleTitle.classList.toggle('is-liar', isLiar);
+    roleNote.textContent = isLiar
+      ? T.advisor.youAreLiarNote
+      : `${T.advisor.youAreHonestNote}　${T.advisor.youDontKnow}`;
 
     prompt.textContent = view.prompt;
+    // 嘘つきには正解が1つ、協力者には候補が2つ光る
+    const marked = view.knowledge.kind === 'liar'
+      ? [view.knowledge.correct]
+      : [...view.knowledge.candidates];
+
     grid.innerHTML = '';
     for (const choice of view.choices) {
-      const cell = el('div', `cell${choice.id === view.correct ? ' is-correct' : ''}`);
+      const lit = marked.includes(choice.id);
+      const cell = el('div', `cell${lit ? ' is-correct' : ''}${lit && !isLiar ? ' is-maybe' : ''}`);
       const img = el('img');
       img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
       img.alt = '';
       img.decoding = 'async';
       const label = el('span');
-      label.textContent = choice.label;
+      label.textContent = localized(choice.label);
       cell.append(img, label);
-      if (choice.id === view.correct) {
+      if (lit) {
         const flag = el('span', 'cell-flag');
-        flag.textContent = t.advisor.correctIs;
+        flag.textContent = isLiar ? T.advisor.correctIs : T.advisor.maybeIs;
         cell.append(flag);
       }
       grid.append(cell);
@@ -198,38 +220,57 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   if (!view.isSpeaker) {
     const locked = el('p', 'locked');
     const lockedTitle = el('span', 'locked-title');
-    lockedTitle.textContent = t.advisor.notSpeaking;
+    lockedTitle.textContent = strings().advisor.notSpeaking;
     const lockedNote = el('span', 'locked-note');
-    lockedNote.textContent = t.advisor.notSpeakingNote;
+    lockedNote.textContent = strings().advisor.notSpeakingNote;
     locked.append(lockedTitle, lockedNote);
     const volunteer = el('button', 'primary');
-    volunteer.textContent = t.advisor.volunteer;
+    volunteer.textContent = strings().advisor.volunteer;
     volunteer.addEventListener('click', () => {
       connection.volunteer(view.roundId);
       volunteer.disabled = true;
-      volunteer.textContent = t.advisor.volunteered;
+      volunteer.textContent = strings().advisor.volunteered;
     });
     host.append(locked, volunteer);
     return;
   }
 
   const veil = el('p', 'compose-veil');
-  veil.textContent = `${t.advisor.veiled} — ${t.advisor.veiledNote}`;
+  veil.textContent = `${strings().advisor.veiled} — ${strings().advisor.veiledNote}`;
 
   const row = el('div', 'compose-row');
   const input = el('input', 'field');
-  input.placeholder = t.advisor.hintPlaceholder;
+  input.placeholder = strings().advisor.hintPlaceholder;
   input.maxLength = HINT_MAX_LENGTH;
-  input.setAttribute('aria-label', t.advisor.hintPlaceholder);
+  input.setAttribute('aria-label', strings().advisor.hintPlaceholder);
 
   const send = el('button', 'primary');
-  send.textContent = t.advisor.send;
+  send.textContent = strings().advisor.send;
 
   const counter = el('p', 'counter');
   const status = el('p', 'status');
+  const labels = view.choices.map((c) => localized(c.label));
+
+  // 送れないものは、送らせない。押してから断るのでは遅い
   const sync = (): void => {
-    counter.textContent = `${[...input.value].length} / ${HINT_MAX_LENGTH}`;
-    send.disabled = input.value.trim().length === 0;
+    const T = strings();
+    const text = input.value.trim();
+    const len = [...input.value].length;
+    counter.textContent = `${len} / ${HINT_MAX_LENGTH}`;
+    counter.classList.toggle('is-over', len > HINT_MAX_LENGTH);
+
+    let reason = '';
+    if (len > HINT_MAX_LENGTH) reason = T.errors.tooLong;
+    else if (text && containsBlocked(text)) reason = T.errors.blocked;
+    else if (text && isPointing(text, labels)) reason = T.errors.pointing;
+    else if (text && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) {
+      reason = T.errors.tooManyChoices;
+    }
+
+    status.textContent = reason;
+    status.classList.toggle('is-error', !!reason);
+    input.classList.toggle('is-error', !!reason);
+    send.disabled = text.length === 0 || !!reason;
   };
   input.addEventListener('input', sync);
   sync();
@@ -237,15 +278,11 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   const submit = (): void => {
     const text = input.value.trim();
     const round = get();
-    if (!text || !round) return;
-    if (containsBlocked(text)) {
-      status.textContent = t.errors.blocked;
-      return;
-    }
+    if (!text || !round || send.disabled) return;
     connection.sendHint(round.roundId, text);
     input.value = '';
     sync();
-    status.textContent = t.advisor.sent;
+    status.textContent = strings().advisor.sent;
   };
 
   send.addEventListener('click', submit);

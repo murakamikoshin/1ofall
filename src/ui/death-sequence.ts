@@ -2,7 +2,7 @@
 import { animate } from 'motion/mini';
 import type { Verdict } from '@/core/engine';
 import { audio } from './audio';
-import { t } from '@/i18n/ja';
+import { strings } from '@/i18n';
 
 /**
  * 死亡演出。体験の核心。
@@ -88,7 +88,7 @@ export async function playResolution(
   if (verdict.survived) {
     // 正解時は短く抑える
     audio.play('survive');
-    banner.textContent = t.verdict.survived;
+    banner.textContent = strings().verdict.survived;
     banner.classList.add('is-visible', 'is-survive');
     if (chosen && !soft) animate(chosen, { scale: [1.06, 1.0] }, { duration: 0.35 });
     await wait(soft ? 900 : 850);
@@ -107,7 +107,7 @@ export async function playResolution(
   }
   await wait(soft ? 500 : 620);
 
-  banner.textContent = verdict.timedOut ? t.challenger.timeUp : verdict.deathMessage;
+  banner.textContent = verdict.timedOut ? strings().challenger.timeUp : verdict.deathMessage;
   banner.classList.add('is-visible', 'is-death');
   await wait(soft ? 1200 : 1500);
 

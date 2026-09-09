@@ -12,7 +12,7 @@ const errors = [];
 for (let i = 0; i < RUNS; i++) {
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   p.on('pageerror', (e) => errors.push(e.message));
-  await p.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded' });
+  await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'domcontentloaded' });
   await p.getByRole('button', { name: /一人で試す/ }).click();
   await p.waitForSelector('.choice:not([disabled])');
 
@@ -21,9 +21,13 @@ for (let i = 0; i < RUNS; i++) {
 
   while (guard++ < 90) {
     if (await p.locator('.end-screen').count()) break;
-    await p.waitForFunction(() => document.querySelectorAll('.hint-open').length > 0, null, { timeout: 8000 })
-      .catch(() => {});
-    await p.waitForTimeout(500);
+    // 助言が出そろうまで待つ。増えなくなったら締め切りとみなす
+    await p.waitForFunction(() => {
+      const n = document.querySelectorAll('.hint-text').length;
+      const w = window;
+      if (w.__last === n) { w.__same = (w.__same ?? 0) + 1; } else { w.__same = 0; w.__last = n; }
+      return n > 0 && w.__same >= 4;
+    }, null, { timeout: 12000, polling: 200 }).catch(() => {});
 
     const prompt = await p.locator('.prompt').textContent();
     if (prompt === lastPrompt) repeats++;
@@ -31,24 +35,21 @@ for (let i = 0; i < RUNS; i++) {
     const rc = (await p.locator('.room-count').textContent()) ?? '';
     deepest = Math.max(deepest, parseInt(rc.match(/(\d+)部屋/)?.[1] ?? '0', 10));
 
-    for (let k = 0; k < 6; k++) {
-      const btn = p.locator('.hint-open:not([disabled])').first();
-      if (!(await btn.count())) break;
-      await btn.click();
-      opened++;
-      await p.waitForTimeout(60);
-    }
+    opened += await p.locator('.hint-text').count();
 
     const texts = await p.locator('.hint-text').allTextContents();
     const labels = await p.$$eval('.choice', (els) =>
       els.map((e) => ({ id: e.dataset.choiceId, label: e.getAttribute('aria-label') ?? '' })));
+    // 「どっちか」と迷っている助言は、触れた両方に薄く点を入れる。
+    // 正解は全協力者の候補に必ず入るので、迷いを数えると浮かび上がる。
     const score = new Map();
     for (const c of labels) score.set(c.id, 0);
+    // 協力者は正解を知らないので断言できない。断言は嘘つきを疑う。
     for (const tx of texts) {
-      for (const c of labels) {
-        if (!c.label || !tx.includes(c.label)) continue;
-        const neg = /やめろ|罠|手を出すな|死ぬぞ/.test(tx);
-        score.set(c.id, (score.get(c.id) ?? 0) + (neg ? -1 : 1));
+      const touched = labels.filter((c) => c.label && tx.includes(c.label));
+      const hedging = touched.length >= 2 || /たぶん|気がする|に見える|じゃないか|絞れた|決めきれん|どっちか/.test(tx);
+      for (const c of touched) {
+        score.set(c.id, (score.get(c.id) ?? 0) + (hedging ? 1.0 : 0.45));
       }
     }
     let best = labels[0]?.id, bestV = -Infinity;
