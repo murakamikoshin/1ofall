@@ -240,28 +240,80 @@
 
 /* ───────────────────────────── 助言 ───────────────────────────── */
 
+/* 全部は読めない。誰の助言を開くかが、この画面で一番重い決断になる */
 .hints {
   flex: 0 0 auto;
-  max-height: 26vh;
+  max-height: 30vh;
   overflow-y: auto;
   border-top: var(--edge);
   background: var(--soot);
   z-index: 3;
 }
 
-.hint-row {
-  display: grid;
-  grid-template-columns: minmax(4.5rem, 7rem) 1fr auto;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.55rem clamp(0.75rem, 3vw, 1.75rem);
+.hints-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.5rem clamp(0.75rem, 3vw, 1.75rem);
   border-bottom: 1px solid rgba(58, 46, 34, 0.5);
-  font-size: 0.92rem;
+  font-size: 0.78rem;
+  color: var(--paper-faint);
+  position: sticky;
+  top: 0;
+  background: var(--soot);
 }
 
-.hint-row:last-child { border-bottom: none; }
-.hint-name { color: var(--paper-faint); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hint-text { color: var(--paper-bright); }
+.hints-budget { color: var(--rust); white-space: nowrap; }
+.hints-budget.is-spent { color: var(--paper-faint); }
+
+.hints-list {
+  display: grid;
+  /* 2列までにする。これ以上割ると助言の一行が縦に潰れる */
+  grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr));
+}
+
+.hint-row {
+  display: grid;
+  /* minmax(0, 1fr) にしないと、本文の列が中身の最小幅まで潰れる */
+  grid-template-columns: minmax(4.5rem, 7rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem clamp(0.75rem, 3vw, 1.75rem);
+  border-bottom: 1px solid rgba(58, 46, 34, 0.5);
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.hint-name {
+  color: var(--paper-faint);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint-row.is-open .hint-name { color: var(--paper); }
+.hint-record { margin-left: 0.4rem; font-size: 0.7rem; color: var(--paper-faint); }
+.hint-text {
+  color: var(--paper-bright);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 伏せられた助言。開くまで中身は届いていない */
+.hint-open {
+  justify-self: start;
+  border: 1px solid var(--dim);
+  color: var(--paper-faint);
+  font-size: 0.78rem;
+  padding: 0.25rem 1.1rem;
+  letter-spacing: 0.08em;
+  transition: border-color 140ms, color 140ms;
+}
+
+.hint-open:hover:not(:disabled) { border-color: var(--rust); color: var(--paper-bright); }
+.hint-open:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .hint-silence {
   border: 1px solid var(--dim);
@@ -407,6 +459,8 @@
 
 @media (max-width: 560px) {
   .choices { grid-template-columns: repeat(2, 1fr) !important; }
+  .hints-list { grid-template-columns: 1fr; }
+  .hint-row { grid-template-columns: minmax(4rem, 6rem) 1fr auto; font-size: 0.82rem; }
   /* 端数の1枚は中央に。左に寄っていると答えの重みが偏って見える */
   .choices .choice:last-child:nth-child(odd) {
     grid-column: 1 / -1 !important;

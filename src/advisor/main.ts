@@ -196,7 +196,11 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   // 枠外の助言者にも正解は見えている。見えていて言えない状態を作る
   if (!view.isSpeaker) {
     const locked = el('p', 'locked');
-    locked.textContent = `${t.advisor.notSpeaking} — ${t.advisor.notSpeakingNote}`;
+    const lockedTitle = el('span', 'locked-title');
+    lockedTitle.textContent = t.advisor.notSpeaking;
+    const lockedNote = el('span', 'locked-note');
+    lockedNote.textContent = t.advisor.notSpeakingNote;
+    locked.append(lockedTitle, lockedNote);
     const volunteer = el('button', 'primary');
     volunteer.textContent = t.advisor.volunteer;
     volunteer.addEventListener('click', () => {
@@ -207,6 +211,9 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
     host.append(locked, volunteer);
     return;
   }
+
+  const veil = el('p', 'compose-veil');
+  veil.textContent = `${t.advisor.veiled} — ${t.advisor.veiledNote}`;
 
   const row = el('div', 'compose-row');
   const input = el('input', 'field');
@@ -242,7 +249,7 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   });
 
   row.append(input, send);
-  host.append(row, counter, status);
+  host.append(veil, row, counter, status);
 }
 
 renderEnter();

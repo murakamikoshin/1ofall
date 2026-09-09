@@ -4,6 +4,8 @@ import './challenger.css';
 import { corePackage } from '@/core/pack';
 import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
+import { AiAdvisorGateway } from '@/core/ai-advisors';
+import { liarRangeFor } from '@/core/limits';
 import { audio } from '@/ui/audio';
 import { choiceArt } from '@/ui/placeholder';
 import { playResolution, resetStage, type ResolutionRefs } from '@/ui/death-sequence';
@@ -71,6 +73,7 @@ function menuItem(label: string, note: string, disabled: boolean, onClick?: () =
 /* ────────────────────────────── 対局 ────────────────────────────── */
 
 interface Shell {
+  roundId: string | null;
   hud: HTMLElement;
   lives: HTMLElement;
   roomCount: HTMLElement;
@@ -111,6 +114,7 @@ function buildShell(): Shell {
   app!.append(hud, stage, hints, lamp, blackout, banner);
 
   return {
+    roundId: null,
     hud,
     lives,
     roomCount,
@@ -128,7 +132,7 @@ function startGame(): void {
   engine?.dispose();
   shell = buildShell();
 
-  engine = new GameEngine({ pack });
+  engine = new GameEngine({ pack, gateway: new AiAdvisorGateway({ count: 12 }) });
   unsubscribe = engine.subscribe((state) => render(state));
   engine.start();
   audio.play('room-open');
@@ -146,8 +150,15 @@ function render(state: EngineState): void {
   const round = state.round;
   if (!round) return;
 
+  // 同じ部屋のあいだは盤面を作り直さず、助言欄だけ更新する
+  if (shell.roundId === round.roundId) {
+    renderHints(state, shell);
+    return;
+  }
+  shell.roundId = round.roundId;
+
   renderLives(shell.lives, state);
-  shell.roomCount.textContent = t.hud.room(round.roomNumber);
+  shell.roomCount.textContent = `${t.hud.room(round.roomNumber)}　${t.hud.section(round.sectionIndex + 1, state.sectionCount)}`;
   shell.prompt.textContent = round.room.prompt;
 
   resetStage(shell.refs);
@@ -210,34 +221,73 @@ function renderChoices(
 function renderHints(state: EngineState, s: Shell): void {
   s.hints.innerHTML = '';
   const round = state.round;
-  const hints = round?.hints ?? [];
+  if (!round) return;
 
-  if (hints.length === 0) {
+  if (round.speakers.length === 0) {
     const empty = el('p', 'hints-empty');
-    empty.textContent = state.advisors.length === 0 ? t.challenger.hintsNone : t.challenger.hintsEmpty;
+    empty.textContent = t.challenger.hintsNone;
     s.hints.append(empty);
     return;
   }
 
-  for (const hint of hints) {
-    const row = el('div', 'hint-row');
+  const left = round.openLimit - round.opened.length;
+  const head = el('div', 'hints-head');
+  const count = el('span', 'hints-count');
+  count.textContent =
+    round.arrivals.length === 0
+      ? t.challenger.hintsEmpty
+      : `${t.challenger.inbox(round.arrivals.length)}　${t.challenger.liarCount(...liarRangeFor(round.speakers.length))}`;
+  const budget = el('span', `hints-budget${left === 0 ? ' is-spent' : ''}`);
+  budget.textContent = left > 0 ? t.challenger.openLeft(left) : t.challenger.openNone;
+  head.append(count, budget);
+  s.hints.append(head);
+
+  const list = el('div', 'hints-list');
+  for (const arrival of round.arrivals) {
+    const opened = round.opened.find((h) => h.advisorId === arrival.advisorId);
+    const row = el('div', `hint-row${opened ? ' is-open' : ''}`);
+
     const name = el('span', 'hint-name');
-    name.textContent = hint.advisorName;
-    const text = el('span', 'hint-text');
-    text.textContent = hint.text;
+    name.textContent = arrival.advisorName;
+    if (arrival.record.hit + arrival.record.miss > 0) {
+      const rec = el('span', 'hint-record');
+      rec.textContent = t.challenger.record(arrival.record.hit, arrival.record.miss);
+      name.append(rec);
+    }
 
-    const silence = document.createElement('button');
-    silence.className = 'hint-silence';
-    silence.textContent = round?.silenceUsed ? t.challenger.silenceDone : t.challenger.silence;
-    silence.disabled = !!round?.silenceUsed;
-    silence.addEventListener('click', () => {
-      const result = engine?.silence(hint.advisorId);
-      if (result) announce(result.hit ? t.challenger.silenceHit : t.challenger.silenceMiss);
-    });
+    let body: HTMLElement;
+    if (opened) {
+      body = el('span', 'hint-text');
+      body.textContent = opened.text;
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'hint-open';
+      btn.textContent = left > 0 ? t.challenger.open : t.challenger.unopened;
+      btn.disabled = left === 0;
+      btn.addEventListener('click', () => {
+        audio.play('hover');
+        engine?.openHint(arrival.advisorId);
+      });
+      body = btn;
+    }
 
-    row.append(name, text, silence);
-    s.hints.append(row);
+    row.append(name, body);
+
+    // 黙らせられるのは、助言を読んだ相手だけ。読んでいない相手を裁く材料は無い
+    if (opened) {
+      const silence = document.createElement('button');
+      silence.className = 'hint-silence';
+      silence.textContent = round.silenceUsed ? t.challenger.silenceDone : t.challenger.silence;
+      silence.disabled = round.silenceUsed;
+      silence.addEventListener('click', () => {
+        const result = engine?.silence(arrival.advisorId);
+        if (result) announce(result.hit ? t.challenger.silenceHit : t.challenger.silenceMiss);
+      });
+      row.append(silence);
+    }
+    list.append(row);
   }
+  s.hints.append(list);
 }
 
 /* ─────────────────────────── 選択と演出 ─────────────────────────── */
@@ -349,13 +399,14 @@ function renderEnd(state: EngineState): void {
   mark.textContent = dead ? t.verdict.gameover : t.verdict.cleared;
 
   const stat = el('p', 'end-stat');
-  stat.textContent = t.verdict.reached(state.clearedRooms);
+  stat.textContent = t.verdict.reached(state.totalCleared);
 
   // 嘘つきが誰だったかを全員に開示する
   const reveal = el('p', 'end-stat');
   const liars = new Set(state.liarLog.flatMap((r) => [...r.liarIds]));
   const names = state.advisors.filter((a) => liars.has(a.id)).map((a) => a.name);
-  reveal.textContent = names.length > 0 ? `${t.verdict.reveal}：${names.join('、')}` : t.verdict.revealNone;
+  reveal.textContent =
+    names.length > 0 ? t.verdict.reveal(names.join(t.verdict.nameSeparator)) : t.verdict.revealNone;
 
   const again = document.createElement('button');
   again.className = 'end-action';

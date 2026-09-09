@@ -2,154 +2,1453 @@
   "packId": "core",
   "title": "闇市の通り",
   "rooms": [
-    { "id": "room_001", "theme": "door", "prompt": "開けていいのはどれ？", "choices": [
-      { "id": "a", "label": "鉄の扉" }, { "id": "b", "label": "布を垂らした戸" }, { "id": "c", "label": "格子の戸" },
-      { "id": "d", "label": "赤く塗られた扉" }, { "id": "e", "label": "取手のない扉" } ],
-      "correct": "c", "deathMessage": "内側に錘が仕掛けられていた" },
-
-    { "id": "room_002", "theme": "food", "prompt": "食べていいのはどれ？", "choices": [
-      { "id": "a", "label": "赤いスープ" }, { "id": "b", "label": "焼いた魚" }, { "id": "c", "label": "白いパン" },
-      { "id": "d", "label": "干した果実" }, { "id": "e", "label": "湯気の立つ粥" } ],
-      "correct": "d", "deathMessage": "毒だった" },
-
-    { "id": "room_003", "theme": "lever", "prompt": "引いていいのはどれ？", "choices": [
-      { "id": "a", "label": "錆びた鉄棒" }, { "id": "b", "label": "縄の輪" }, { "id": "c", "label": "真鍮の握り" },
-      { "id": "d", "label": "木の把手" }, { "id": "e", "label": "鎖の先" }, { "id": "f", "label": "石の突起" } ],
-      "correct": "e", "deathMessage": "天井が落ちてきた" },
-
-    { "id": "room_004", "theme": "path", "prompt": "進んでいいのはどれ？", "choices": [
-      { "id": "a", "label": "灯りの続く道" }, { "id": "b", "label": "水の流れる道" }, { "id": "c", "label": "階段を下る道" },
-      { "id": "d", "label": "土の踏み跡" }, { "id": "e", "label": "板を渡した道" } ],
-      "correct": "b", "deathMessage": "足元が抜けた" },
-
-    { "id": "room_005", "theme": "person", "prompt": "話しかけていいのは誰？", "choices": [
-      { "id": "a", "label": "笠の男" }, { "id": "b", "label": "数を数える女" }, { "id": "c", "label": "眠る老人" },
-      { "id": "d", "label": "背を向けた子" }, { "id": "e", "label": "紙を売る者" } ],
-      "correct": "a", "deathMessage": "刃を隠していた" },
-
-    { "id": "room_006", "theme": "vehicle", "prompt": "乗っていいのはどれ？", "choices": [
-      { "id": "a", "label": "荷車" }, { "id": "b", "label": "小舟" }, { "id": "c", "label": "駕籠" },
-      { "id": "d", "label": "軌道の台車" }, { "id": "e", "label": "牛の背" } ],
-      "correct": "c", "deathMessage": "川底まで沈んだ" },
-
-    { "id": "room_007", "theme": "cup", "prompt": "飲んでいいのはどれ？", "choices": [
-      { "id": "a", "label": "濁った茶" }, { "id": "b", "label": "澄んだ水" }, { "id": "c", "label": "白い乳" },
-      { "id": "d", "label": "泡の立つ酒" }, { "id": "e", "label": "緑の湯" } ],
-      "correct": "a", "deathMessage": "喉が焼けた" },
-
-    { "id": "room_008", "theme": "floor", "prompt": "踏んでいいのはどれ？", "choices": [
-      { "id": "a", "label": "白い石畳" }, { "id": "b", "label": "焦げた板" }, { "id": "c", "label": "苔の生えた石" },
-      { "id": "d", "label": "砂の窪み" }, { "id": "e", "label": "格子の蓋" }, { "id": "f", "label": "藁の敷物" } ],
-      "correct": "b", "deathMessage": "杭が突き上がった" },
-
-    { "id": "room_009", "theme": "key", "prompt": "使っていいのはどれ？", "choices": [
-      { "id": "a", "label": "歯の欠けた鍵" }, { "id": "b", "label": "長い鍵" }, { "id": "c", "label": "二本組の鍵" },
-      { "id": "d", "label": "小さな鍵" }, { "id": "e", "label": "輪のついた鍵" } ],
-      "correct": "d", "deathMessage": "錠から針が出た" },
-
-    { "id": "room_010", "theme": "box", "prompt": "開けていいのはどれ？", "choices": [
-      { "id": "a", "label": "封のある箱" }, { "id": "b", "label": "紐で縛った箱" }, { "id": "c", "label": "蓋の浮いた箱" },
-      { "id": "d", "label": "重い鉄箱" }, { "id": "e", "label": "布に包まれた箱" } ],
-      "correct": "e", "deathMessage": "煙が満ちた" },
-
-    { "id": "room_011", "theme": "well", "prompt": "覗いていいのはどれ？", "choices": [
-      { "id": "a", "label": "釣瓶のある井戸" }, { "id": "b", "label": "枯れた井戸" }, { "id": "c", "label": "板で塞いだ井戸" },
-      { "id": "d", "label": "水音のする井戸" }, { "id": "e", "label": "石を積んだ井戸" } ],
-      "correct": "a", "deathMessage": "縁が崩れて落ちた" },
-
-    { "id": "room_012", "theme": "mask", "prompt": "被っていいのはどれ？", "choices": [
-      { "id": "a", "label": "白い面" }, { "id": "b", "label": "角のある面" }, { "id": "c", "label": "笑った面" },
-      { "id": "d", "label": "割れた面" }, { "id": "e", "label": "黒い面" }, { "id": "f", "label": "目のない面" } ],
-      "correct": "d", "deathMessage": "内側に棘があった" },
-
-    { "id": "room_013", "theme": "bridge", "prompt": "渡っていいのはどれ？", "choices": [
-      { "id": "a", "label": "縄の吊り橋" }, { "id": "b", "label": "石の橋" }, { "id": "c", "label": "丸太の橋" },
-      { "id": "d", "label": "鉄の桁" }, { "id": "e", "label": "沈んだ飛び石" } ],
-      "correct": "e", "deathMessage": "半ばで折れた" },
-
-    { "id": "room_014", "theme": "lamp", "prompt": "手に取っていいのはどれ？", "choices": [
-      { "id": "a", "label": "油の切れた灯" }, { "id": "b", "label": "紙の提灯" }, { "id": "c", "label": "鉄の角灯" },
-      { "id": "d", "label": "蝋燭立て" }, { "id": "e", "label": "吊り下げた灯" } ],
-      "correct": "b", "deathMessage": "油が服に回って燃えた" },
-
-    { "id": "room_015", "theme": "animal", "prompt": "近づいていいのはどれ？", "choices": [
-      { "id": "a", "label": "繋がれた犬" }, { "id": "b", "label": "籠の鳥" }, { "id": "c", "label": "眠る猫" },
-      { "id": "d", "label": "水を飲む馬" }, { "id": "e", "label": "屋根の鼠" } ],
-      "correct": "d", "deathMessage": "囲いの内は別の獣の寝床だった" },
-
-    { "id": "room_016", "theme": "medicine", "prompt": "服んでいいのはどれ？", "choices": [
-      { "id": "a", "label": "黒い丸薬" }, { "id": "b", "label": "粉薬" }, { "id": "c", "label": "小瓶の液" },
-      { "id": "d", "label": "干した根" }, { "id": "e", "label": "紙に包んだ薬" }, { "id": "f", "label": "膏薬" } ],
-      "correct": "f", "deathMessage": "喉が閉じた" },
-
-    { "id": "room_017", "theme": "stair", "prompt": "使っていいのはどれ？", "choices": [
-      { "id": "a", "label": "螺旋の階段" }, { "id": "b", "label": "梯子" }, { "id": "c", "label": "石段" },
-      { "id": "d", "label": "斜めの板" }, { "id": "e", "label": "縄の梯子" } ],
-      "correct": "c", "deathMessage": "段が抜けて落ちた" },
-
-    { "id": "room_018", "theme": "seat", "prompt": "座っていいのはどれ？", "choices": [
-      { "id": "a", "label": "床几" }, { "id": "b", "label": "積んだ俵" }, { "id": "c", "label": "石の台" },
-      { "id": "d", "label": "木の切株" }, { "id": "e", "label": "布を掛けた椅子" } ],
-      "correct": "b", "deathMessage": "下に罠が仕込まれていた" },
-
-    { "id": "room_019", "theme": "water", "prompt": "手を入れていいのはどれ？", "choices": [
-      { "id": "a", "label": "透けた池" }, { "id": "b", "label": "泡の立つ桶" }, { "id": "c", "label": "黒い水面" },
-      { "id": "d", "label": "流れる溝" }, { "id": "e", "label": "氷の張った甕" } ],
-      "correct": "c", "deathMessage": "掴まれて引き込まれた" },
-
-    { "id": "room_020", "theme": "cloth", "prompt": "めくっていいのはどれ？", "choices": [
-      { "id": "a", "label": "赤い幕" }, { "id": "b", "label": "煤けた暗幕" }, { "id": "c", "label": "破れた布" },
-      { "id": "d", "label": "縫い目のある布" }, { "id": "e", "label": "重い織物" }, { "id": "f", "label": "薄い紗" } ],
-      "correct": "a", "deathMessage": "後ろに刃が並んでいた" },
-
-    { "id": "room_021", "theme": "sound", "prompt": "向かっていいのはどれ？", "choices": [
-      { "id": "a", "label": "鈴の音" }, { "id": "b", "label": "水の音" }, { "id": "c", "label": "笛の音" },
-      { "id": "d", "label": "人の声" }, { "id": "e", "label": "無音の方" } ],
-      "correct": "e", "deathMessage": "音は誘いだった" },
-
-    { "id": "room_022", "theme": "shelf", "prompt": "取っていいのはどれ？", "choices": [
-      { "id": "a", "label": "上段の壺" }, { "id": "b", "label": "傾いた皿" }, { "id": "c", "label": "奥の巻物" },
-      { "id": "d", "label": "手前の椀" }, { "id": "e", "label": "隅の袋" } ],
-      "correct": "d", "deathMessage": "棚ごと崩れた" },
-
-    { "id": "room_023", "theme": "gate", "prompt": "潜っていいのはどれ？", "choices": [
-      { "id": "a", "label": "低い門" }, { "id": "b", "label": "縄を張った門" }, { "id": "c", "label": "傾いた鳥居" },
-      { "id": "d", "label": "半分閉じた門" }, { "id": "e", "label": "灯を吊った門" }, { "id": "f", "label": "石の枠だけの門" } ],
-      "correct": "c", "deathMessage": "上の梁が落ちた" },
-
-    { "id": "room_024", "theme": "glove", "prompt": "着けていいのはどれ？", "choices": [
-      { "id": "a", "label": "革の手甲" }, { "id": "b", "label": "布の手袋" }, { "id": "c", "label": "鎖の手袋" },
-      { "id": "d", "label": "濡れた手袋" }, { "id": "e", "label": "片方だけの手袋" } ],
-      "correct": "e", "deathMessage": "内に粉が塗られていた" },
-
-    { "id": "room_025", "theme": "coin", "prompt": "拾っていいのはどれ？", "choices": [
-      { "id": "a", "label": "光る銭" }, { "id": "b", "label": "穴の空いた銭" }, { "id": "c", "label": "積まれた銭" },
-      { "id": "d", "label": "泥のついた銭" }, { "id": "e", "label": "紙に包んだ銭" } ],
-      "correct": "d", "deathMessage": "触れた指が黒く変わった" },
-
-    { "id": "room_026", "theme": "window", "prompt": "開けていいのはどれ？", "choices": [
-      { "id": "a", "label": "格子窓" }, { "id": "b", "label": "紙障子" }, { "id": "c", "label": "板戸の窓" },
-      { "id": "d", "label": "曇った硝子" }, { "id": "e", "label": "小さな明かり窓" }, { "id": "f", "label": "蔦の絡む窓" } ],
-      "correct": "f", "deathMessage": "外は崖だった" },
-
-    { "id": "room_027", "theme": "rope", "prompt": "掴んでいいのはどれ？", "choices": [
-      { "id": "a", "label": "太い縄" }, { "id": "b", "label": "細い針金" }, { "id": "c", "label": "編んだ紐" },
-      { "id": "d", "label": "湿った縄" }, { "id": "e", "label": "結び目の多い縄" } ],
-      "correct": "e", "deathMessage": "解けて落ちた" },
-
-    { "id": "room_028", "theme": "smell", "prompt": "嗅いでいいのはどれ？", "choices": [
-      { "id": "a", "label": "香の煙" }, { "id": "b", "label": "焦げた匂い" }, { "id": "c", "label": "甘い匂い" },
-      { "id": "d", "label": "土の匂い" }, { "id": "e", "label": "酸いた匂い" } ],
-      "correct": "d", "deathMessage": "眠りに落ちて戻らなかった" },
-
-    { "id": "room_029", "theme": "mirror", "prompt": "覗いていいのはどれ？", "choices": [
-      { "id": "a", "label": "磨いた銅鏡" }, { "id": "b", "label": "割れた鏡" }, { "id": "c", "label": "布を掛けた鏡" },
-      { "id": "d", "label": "曲がった鏡" }, { "id": "e", "label": "小さな手鏡" } ],
-      "correct": "b", "deathMessage": "映ったものが動いた" },
-
-    { "id": "room_030", "theme": "exit", "prompt": "出ていいのはどれ？", "choices": [
-      { "id": "a", "label": "光の差す口" }, { "id": "b", "label": "風の来る口" }, { "id": "c", "label": "人の並ぶ口" },
-      { "id": "d", "label": "階段のある口" }, { "id": "e", "label": "塞がれた口" }, { "id": "f", "label": "暗いだけの口" } ],
-      "correct": "f", "deathMessage": "光の先は舞台の上だった" }
+    {
+      "id": "room_001",
+      "theme": "door",
+      "prompt": "開けていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "鉄の扉"
+        },
+        {
+          "id": "b",
+          "label": "布を垂らした扉"
+        },
+        {
+          "id": "c",
+          "label": "格子の扉"
+        },
+        {
+          "id": "d",
+          "label": "赤く塗られた扉"
+        },
+        {
+          "id": "e",
+          "label": "取手のない扉"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "内側から重しが落ちた"
+    },
+    {
+      "id": "room_002",
+      "theme": "food",
+      "prompt": "食べていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "赤いスープ"
+        },
+        {
+          "id": "b",
+          "label": "焼いた魚"
+        },
+        {
+          "id": "c",
+          "label": "白いパン"
+        },
+        {
+          "id": "d",
+          "label": "干した果実"
+        },
+        {
+          "id": "e",
+          "label": "湯気の立つ粥"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "毒だった"
+    },
+    {
+      "id": "room_003",
+      "theme": "lever",
+      "prompt": "引いていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "錆びた鉄棒"
+        },
+        {
+          "id": "b",
+          "label": "縄の輪"
+        },
+        {
+          "id": "c",
+          "label": "真鍮の握り"
+        },
+        {
+          "id": "d",
+          "label": "木の把手"
+        },
+        {
+          "id": "e",
+          "label": "鎖の先"
+        },
+        {
+          "id": "f",
+          "label": "石の突起"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "天井が落ちてきた"
+    },
+    {
+      "id": "room_004",
+      "theme": "path",
+      "prompt": "進んでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "灯りの続く道"
+        },
+        {
+          "id": "b",
+          "label": "水の流れる道"
+        },
+        {
+          "id": "c",
+          "label": "階段を下る道"
+        },
+        {
+          "id": "d",
+          "label": "土の踏み跡"
+        },
+        {
+          "id": "e",
+          "label": "板を渡した道"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "足元が抜けた"
+    },
+    {
+      "id": "room_005",
+      "theme": "person",
+      "prompt": "話しかけていいのは誰？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "笠の男"
+        },
+        {
+          "id": "b",
+          "label": "数を数える女"
+        },
+        {
+          "id": "c",
+          "label": "眠る老人"
+        },
+        {
+          "id": "d",
+          "label": "背を向けた子"
+        },
+        {
+          "id": "e",
+          "label": "紙を売る者"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "刃を隠していた"
+    },
+    {
+      "id": "room_006",
+      "theme": "vehicle",
+      "prompt": "乗っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "荷車"
+        },
+        {
+          "id": "b",
+          "label": "小舟"
+        },
+        {
+          "id": "c",
+          "label": "駕籠"
+        },
+        {
+          "id": "d",
+          "label": "軌道の台車"
+        },
+        {
+          "id": "e",
+          "label": "牛の背"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "二度と降りられなかった"
+    },
+    {
+      "id": "room_007",
+      "theme": "cup",
+      "prompt": "飲んでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "濁った茶"
+        },
+        {
+          "id": "b",
+          "label": "澄んだ水"
+        },
+        {
+          "id": "c",
+          "label": "白い乳"
+        },
+        {
+          "id": "d",
+          "label": "泡の立つ酒"
+        },
+        {
+          "id": "e",
+          "label": "緑の湯"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "喉が焼けた"
+    },
+    {
+      "id": "room_008",
+      "theme": "floor",
+      "prompt": "踏んでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "白い石畳"
+        },
+        {
+          "id": "b",
+          "label": "焦げた板"
+        },
+        {
+          "id": "c",
+          "label": "苔の生えた石"
+        },
+        {
+          "id": "d",
+          "label": "砂の窪み"
+        },
+        {
+          "id": "e",
+          "label": "格子の蓋"
+        },
+        {
+          "id": "f",
+          "label": "藁の敷物"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "杭が突き上がった"
+    },
+    {
+      "id": "room_009",
+      "theme": "key",
+      "prompt": "錠に挿していいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "歯の欠けた鍵"
+        },
+        {
+          "id": "b",
+          "label": "長い鍵"
+        },
+        {
+          "id": "c",
+          "label": "対になった鍵"
+        },
+        {
+          "id": "d",
+          "label": "小さな鍵"
+        },
+        {
+          "id": "e",
+          "label": "輪のついた鍵"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "錠から針が出た"
+    },
+    {
+      "id": "room_010",
+      "theme": "box",
+      "prompt": "蓋を取っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "封のある箱"
+        },
+        {
+          "id": "b",
+          "label": "紐で縛った箱"
+        },
+        {
+          "id": "c",
+          "label": "蓋の浮いた箱"
+        },
+        {
+          "id": "d",
+          "label": "重い鉄箱"
+        },
+        {
+          "id": "e",
+          "label": "布に包まれた箱"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "煙が満ちた"
+    },
+    {
+      "id": "room_011",
+      "theme": "well",
+      "prompt": "覗いていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "桶を吊るした井戸"
+        },
+        {
+          "id": "b",
+          "label": "枯れた井戸"
+        },
+        {
+          "id": "c",
+          "label": "板で塞いだ井戸"
+        },
+        {
+          "id": "d",
+          "label": "水音のする井戸"
+        },
+        {
+          "id": "e",
+          "label": "石を積んだ井戸"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "縁が崩れて落ちた"
+    },
+    {
+      "id": "room_012",
+      "theme": "mask",
+      "prompt": "被っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "白い面"
+        },
+        {
+          "id": "b",
+          "label": "角のある面"
+        },
+        {
+          "id": "c",
+          "label": "笑った面"
+        },
+        {
+          "id": "d",
+          "label": "割れた面"
+        },
+        {
+          "id": "e",
+          "label": "黒い面"
+        },
+        {
+          "id": "f",
+          "label": "目のない面"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "内側に棘があった"
+    },
+    {
+      "id": "room_013",
+      "theme": "bridge",
+      "prompt": "渡っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "縄の吊り橋"
+        },
+        {
+          "id": "b",
+          "label": "石の橋"
+        },
+        {
+          "id": "c",
+          "label": "丸太の橋"
+        },
+        {
+          "id": "d",
+          "label": "鉄の桁"
+        },
+        {
+          "id": "e",
+          "label": "沈んだ飛び石"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "半ばで折れた"
+    },
+    {
+      "id": "room_014",
+      "theme": "lamp",
+      "prompt": "手に取っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "油の切れた灯"
+        },
+        {
+          "id": "b",
+          "label": "紙の提灯"
+        },
+        {
+          "id": "c",
+          "label": "鉄の角灯"
+        },
+        {
+          "id": "d",
+          "label": "蝋燭立て"
+        },
+        {
+          "id": "e",
+          "label": "吊り下げた灯"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "掴んだ手に火が移った"
+    },
+    {
+      "id": "room_015",
+      "theme": "animal",
+      "prompt": "近づいていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "繋がれた犬"
+        },
+        {
+          "id": "b",
+          "label": "籠の鳥"
+        },
+        {
+          "id": "c",
+          "label": "眠る猫"
+        },
+        {
+          "id": "d",
+          "label": "水を飲む馬"
+        },
+        {
+          "id": "e",
+          "label": "屋根の鼠"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "牙を隠していた"
+    },
+    {
+      "id": "room_016",
+      "theme": "medicine",
+      "prompt": "口に入れていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "黒い丸薬"
+        },
+        {
+          "id": "b",
+          "label": "粉薬"
+        },
+        {
+          "id": "c",
+          "label": "小瓶の液"
+        },
+        {
+          "id": "d",
+          "label": "干した根"
+        },
+        {
+          "id": "e",
+          "label": "紙に包んだ薬"
+        },
+        {
+          "id": "f",
+          "label": "塗り薬"
+        }
+      ],
+      "correct": "f",
+      "deathMessage": "喉が閉じた"
+    },
+    {
+      "id": "room_017",
+      "theme": "stair",
+      "prompt": "上っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "螺旋の階段"
+        },
+        {
+          "id": "b",
+          "label": "梯子"
+        },
+        {
+          "id": "c",
+          "label": "石段"
+        },
+        {
+          "id": "d",
+          "label": "斜めの板"
+        },
+        {
+          "id": "e",
+          "label": "縄の梯子"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "足をかけた先が抜けた"
+    },
+    {
+      "id": "room_018",
+      "theme": "seat",
+      "prompt": "座っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "低い腰掛け"
+        },
+        {
+          "id": "b",
+          "label": "積んだ俵"
+        },
+        {
+          "id": "c",
+          "label": "石の台"
+        },
+        {
+          "id": "d",
+          "label": "木の切株"
+        },
+        {
+          "id": "e",
+          "label": "布を掛けた椅子"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "下に罠が仕込まれていた"
+    },
+    {
+      "id": "room_019",
+      "theme": "water",
+      "prompt": "手を入れていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "透けた池"
+        },
+        {
+          "id": "b",
+          "label": "泡の立つ桶"
+        },
+        {
+          "id": "c",
+          "label": "黒い水面"
+        },
+        {
+          "id": "d",
+          "label": "流れる溝"
+        },
+        {
+          "id": "e",
+          "label": "氷の張った水がめ"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "掴まれて引き込まれた"
+    },
+    {
+      "id": "room_020",
+      "theme": "cloth",
+      "prompt": "めくっていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "赤い幕"
+        },
+        {
+          "id": "b",
+          "label": "煤けた暗幕"
+        },
+        {
+          "id": "c",
+          "label": "破れた布"
+        },
+        {
+          "id": "d",
+          "label": "縫い目のある布"
+        },
+        {
+          "id": "e",
+          "label": "重い織物"
+        },
+        {
+          "id": "f",
+          "label": "透ける布"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "後ろに刃が並んでいた"
+    },
+    {
+      "id": "room_021",
+      "theme": "sound",
+      "prompt": "向かっていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "鈴の音"
+        },
+        {
+          "id": "b",
+          "label": "水の音"
+        },
+        {
+          "id": "c",
+          "label": "笛の音"
+        },
+        {
+          "id": "d",
+          "label": "人の声"
+        },
+        {
+          "id": "e",
+          "label": "無音の方"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "音は誘いだった"
+    },
+    {
+      "id": "room_022",
+      "theme": "shelf",
+      "prompt": "取っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "上段の壺"
+        },
+        {
+          "id": "b",
+          "label": "傾いた皿"
+        },
+        {
+          "id": "c",
+          "label": "奥の巻物"
+        },
+        {
+          "id": "d",
+          "label": "手前の椀"
+        },
+        {
+          "id": "e",
+          "label": "隅の袋"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "棚ごと崩れた"
+    },
+    {
+      "id": "room_023",
+      "theme": "gate",
+      "prompt": "潜っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "低い門"
+        },
+        {
+          "id": "b",
+          "label": "縄を張った門"
+        },
+        {
+          "id": "c",
+          "label": "傾いた鳥居"
+        },
+        {
+          "id": "d",
+          "label": "半分閉じた門"
+        },
+        {
+          "id": "e",
+          "label": "灯を吊った門"
+        },
+        {
+          "id": "f",
+          "label": "石の枠だけの門"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "潜った頭上が落ちてきた"
+    },
+    {
+      "id": "room_024",
+      "theme": "glove",
+      "prompt": "着けていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "革の手袋"
+        },
+        {
+          "id": "b",
+          "label": "布の手袋"
+        },
+        {
+          "id": "c",
+          "label": "鎖の手袋"
+        },
+        {
+          "id": "d",
+          "label": "濡れた手袋"
+        },
+        {
+          "id": "e",
+          "label": "片方だけの手袋"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "内に粉が塗られていた"
+    },
+    {
+      "id": "room_025",
+      "theme": "coin",
+      "prompt": "拾っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "光る銭"
+        },
+        {
+          "id": "b",
+          "label": "穴の空いた銭"
+        },
+        {
+          "id": "c",
+          "label": "積まれた銭"
+        },
+        {
+          "id": "d",
+          "label": "泥のついた銭"
+        },
+        {
+          "id": "e",
+          "label": "紙に包んだ銭"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "触れた指が黒く変わった"
+    },
+    {
+      "id": "room_026",
+      "theme": "window",
+      "prompt": "外を見ていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "格子窓"
+        },
+        {
+          "id": "b",
+          "label": "紙障子"
+        },
+        {
+          "id": "c",
+          "label": "板戸の窓"
+        },
+        {
+          "id": "d",
+          "label": "曇った硝子"
+        },
+        {
+          "id": "e",
+          "label": "小さな明かり窓"
+        },
+        {
+          "id": "f",
+          "label": "蔦の絡む窓"
+        }
+      ],
+      "correct": "f",
+      "deathMessage": "外は崖だった"
+    },
+    {
+      "id": "room_027",
+      "theme": "rope",
+      "prompt": "掴んでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "太い縄"
+        },
+        {
+          "id": "b",
+          "label": "細い針金"
+        },
+        {
+          "id": "c",
+          "label": "編んだ紐"
+        },
+        {
+          "id": "d",
+          "label": "湿った縄"
+        },
+        {
+          "id": "e",
+          "label": "結び目の多い縄"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "解けて落ちた"
+    },
+    {
+      "id": "room_028",
+      "theme": "smell",
+      "prompt": "嗅いでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "香の煙"
+        },
+        {
+          "id": "b",
+          "label": "焦げた匂い"
+        },
+        {
+          "id": "c",
+          "label": "甘い匂い"
+        },
+        {
+          "id": "d",
+          "label": "土の匂い"
+        },
+        {
+          "id": "e",
+          "label": "酸っぱい匂い"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "眠りに落ちて戻らなかった"
+    },
+    {
+      "id": "room_029",
+      "theme": "mirror",
+      "prompt": "映していいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "磨いた銅鏡"
+        },
+        {
+          "id": "b",
+          "label": "割れた鏡"
+        },
+        {
+          "id": "c",
+          "label": "布を掛けた鏡"
+        },
+        {
+          "id": "d",
+          "label": "曲がった鏡"
+        },
+        {
+          "id": "e",
+          "label": "小さな手鏡"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "映ったものが動いた"
+    },
+    {
+      "id": "room_030",
+      "theme": "exit",
+      "prompt": "出ていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "光の差す口"
+        },
+        {
+          "id": "b",
+          "label": "風の来る口"
+        },
+        {
+          "id": "c",
+          "label": "人の並ぶ口"
+        },
+        {
+          "id": "d",
+          "label": "階段のある口"
+        },
+        {
+          "id": "e",
+          "label": "塞がれた口"
+        },
+        {
+          "id": "f",
+          "label": "暗いだけの口"
+        }
+      ],
+      "correct": "f",
+      "deathMessage": "その先は舞台の上だった"
+    },
+    {
+      "id": "room_031",
+      "theme": "tool",
+      "prompt": "握っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "柄の折れた鎌"
+        },
+        {
+          "id": "b",
+          "label": "刃の潰れた鉈"
+        },
+        {
+          "id": "c",
+          "label": "錆びた鋏"
+        },
+        {
+          "id": "d",
+          "label": "柄を布で巻いた鑿"
+        },
+        {
+          "id": "e",
+          "label": "歯の細かい鋸"
+        },
+        {
+          "id": "f",
+          "label": "柄の長い金槌"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "柄が抜けて刃が返った"
+    },
+    {
+      "id": "room_032",
+      "theme": "bird",
+      "prompt": "放していいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "羽の欠けた鳥"
+        },
+        {
+          "id": "b",
+          "label": "囀る鳥"
+        },
+        {
+          "id": "c",
+          "label": "脚を結ばれた鳥"
+        },
+        {
+          "id": "d",
+          "label": "黒い鳥"
+        },
+        {
+          "id": "e",
+          "label": "眠っている鳥"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "呼び戻す声で群れが来た"
+    },
+    {
+      "id": "room_033",
+      "theme": "letter",
+      "prompt": "読んでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "封を切った文"
+        },
+        {
+          "id": "b",
+          "label": "朱で書かれた文"
+        },
+        {
+          "id": "c",
+          "label": "巻いた文"
+        },
+        {
+          "id": "d",
+          "label": "裏が黒い文"
+        },
+        {
+          "id": "e",
+          "label": "名の無い文"
+        },
+        {
+          "id": "f",
+          "label": "濡れた文"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "紙に塗られていた"
+    },
+    {
+      "id": "room_034",
+      "theme": "fire",
+      "prompt": "手をかざしていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "赤い熾火"
+        },
+        {
+          "id": "b",
+          "label": "青い炎"
+        },
+        {
+          "id": "c",
+          "label": "煙だけの火"
+        },
+        {
+          "id": "d",
+          "label": "小さな種火"
+        },
+        {
+          "id": "e",
+          "label": "消えかけた火"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "一息で膨れ上がった"
+    },
+    {
+      "id": "room_035",
+      "theme": "stone",
+      "prompt": "どけていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "苔むした石"
+        },
+        {
+          "id": "b",
+          "label": "平たい石"
+        },
+        {
+          "id": "c",
+          "label": "重ねた石"
+        },
+        {
+          "id": "d",
+          "label": "湿った石"
+        },
+        {
+          "id": "e",
+          "label": "白い石"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "下から手が出た"
+    },
+    {
+      "id": "room_036",
+      "theme": "thread",
+      "prompt": "手繰っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "赤い糸"
+        },
+        {
+          "id": "b",
+          "label": "切れかけた糸"
+        },
+        {
+          "id": "c",
+          "label": "結ばれた糸"
+        },
+        {
+          "id": "d",
+          "label": "太い糸"
+        },
+        {
+          "id": "e",
+          "label": "天井へ伸びる糸"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "奥で鈴が鳴った"
+    },
+    {
+      "id": "room_037",
+      "theme": "shoe",
+      "prompt": "履いていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "鼻緒の緩んだ草履"
+        },
+        {
+          "id": "b",
+          "label": "泥のついた下駄"
+        },
+        {
+          "id": "c",
+          "label": "新しい草鞋"
+        },
+        {
+          "id": "d",
+          "label": "片方だけの履物"
+        },
+        {
+          "id": "e",
+          "label": "底の薄い靴"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "中に釘が仕込まれていた"
+    },
+    {
+      "id": "room_038",
+      "theme": "bowl",
+      "prompt": "口をつけていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "澄んだ椀"
+        },
+        {
+          "id": "b",
+          "label": "濁った椀"
+        },
+        {
+          "id": "c",
+          "label": "伏せた椀"
+        },
+        {
+          "id": "d",
+          "label": "欠けた椀"
+        },
+        {
+          "id": "e",
+          "label": "縁の黒い椀"
+        },
+        {
+          "id": "f",
+          "label": "湯気の残る椀"
+        }
+      ],
+      "correct": "c",
+      "deathMessage": "覗いた顔が映らなかった"
+    },
+    {
+      "id": "room_039",
+      "theme": "name",
+      "prompt": "呼んでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "壁の落書き"
+        },
+        {
+          "id": "b",
+          "label": "札に書かれた名"
+        },
+        {
+          "id": "c",
+          "label": "口伝えの名"
+        },
+        {
+          "id": "d",
+          "label": "誰も呼ばない名"
+        },
+        {
+          "id": "e",
+          "label": "自分の名"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "呼ばれた方が振り返った"
+    },
+    {
+      "id": "room_040",
+      "theme": "tunnel",
+      "prompt": "入っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "風が抜ける穴"
+        },
+        {
+          "id": "b",
+          "label": "水の匂う穴"
+        },
+        {
+          "id": "c",
+          "label": "広い穴"
+        },
+        {
+          "id": "d",
+          "label": "人が出てきた穴"
+        },
+        {
+          "id": "e",
+          "label": "低く狭い穴"
+        },
+        {
+          "id": "f",
+          "label": "塞ぎかけの穴"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "奥で狭まって戻れなかった"
+    },
+    {
+      "id": "room_041",
+      "theme": "market",
+      "prompt": "買っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "安すぎる品"
+        },
+        {
+          "id": "b",
+          "label": "値の付かない品"
+        },
+        {
+          "id": "c",
+          "label": "並んだ品"
+        },
+        {
+          "id": "d",
+          "label": "隅に置かれた品"
+        },
+        {
+          "id": "e",
+          "label": "客が触った品"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "代金は指で払わされた"
+    },
+    {
+      "id": "room_042",
+      "theme": "clock",
+      "prompt": "止めていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "進んだ時計"
+        },
+        {
+          "id": "b",
+          "label": "遅れた時計"
+        },
+        {
+          "id": "c",
+          "label": "止まった時計"
+        },
+        {
+          "id": "d",
+          "label": "音のしない時計"
+        },
+        {
+          "id": "e",
+          "label": "針の無い時計"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "止めた分だけ齢を取った"
+    },
+    {
+      "id": "room_043",
+      "theme": "ice",
+      "prompt": "足を乗せていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "白く濁った氷"
+        },
+        {
+          "id": "b",
+          "label": "透けた氷"
+        },
+        {
+          "id": "c",
+          "label": "雪の積もった氷"
+        },
+        {
+          "id": "d",
+          "label": "割れ目のある氷"
+        },
+        {
+          "id": "e",
+          "label": "足跡の続く氷"
+        },
+        {
+          "id": "f",
+          "label": "端の薄い氷"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "下は流れていた"
+    },
+    {
+      "id": "room_044",
+      "theme": "shadow",
+      "prompt": "またいでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "自分の影"
+        },
+        {
+          "id": "b",
+          "label": "柱の影"
+        },
+        {
+          "id": "c",
+          "label": "動かない影"
+        },
+        {
+          "id": "d",
+          "label": "二重の影"
+        },
+        {
+          "id": "e",
+          "label": "伸びすぎた影"
+        }
+      ],
+      "correct": "b",
+      "deathMessage": "影の主が振り向いた"
+    },
+    {
+      "id": "room_045",
+      "theme": "song",
+      "prompt": "口ずさんでいいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "祭りの唄"
+        },
+        {
+          "id": "b",
+          "label": "子守唄"
+        },
+        {
+          "id": "c",
+          "label": "名の無い唄"
+        },
+        {
+          "id": "d",
+          "label": "誰かが歌っていた唄"
+        },
+        {
+          "id": "e",
+          "label": "途中で切れた唄"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "合わせて歌う声が増えた"
+    },
+    {
+      "id": "room_046",
+      "theme": "bone",
+      "prompt": "触っていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "白く乾いた骨"
+        },
+        {
+          "id": "b",
+          "label": "土のついた骨"
+        },
+        {
+          "id": "c",
+          "label": "細い骨"
+        },
+        {
+          "id": "d",
+          "label": "折れた骨"
+        },
+        {
+          "id": "e",
+          "label": "布に包まれた骨"
+        },
+        {
+          "id": "f",
+          "label": "歯の残った骨"
+        }
+      ],
+      "correct": "a",
+      "deathMessage": "持ち主が取りに来た"
+    },
+    {
+      "id": "room_047",
+      "theme": "guard",
+      "prompt": "通してもらえるのは誰？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "眠そうな門番"
+        },
+        {
+          "id": "b",
+          "label": "若い門番"
+        },
+        {
+          "id": "c",
+          "label": "話し好きな門番"
+        },
+        {
+          "id": "d",
+          "label": "黙った門番"
+        },
+        {
+          "id": "e",
+          "label": "交代したての門番"
+        }
+      ],
+      "correct": "d",
+      "deathMessage": "言葉を返した者から斬られた"
+    },
+    {
+      "id": "room_048",
+      "theme": "last",
+      "prompt": "賭けていいのはどれ？",
+      "choices": [
+        {
+          "id": "a",
+          "label": "自分の名"
+        },
+        {
+          "id": "b",
+          "label": "持っている銭"
+        },
+        {
+          "id": "c",
+          "label": "右手"
+        },
+        {
+          "id": "d",
+          "label": "明日"
+        },
+        {
+          "id": "e",
+          "label": "何も賭けない"
+        }
+      ],
+      "correct": "e",
+      "deathMessage": "賭けたものは戻らない"
+    }
   ]
 }

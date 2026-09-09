@@ -139,16 +139,27 @@ body { overflow: auto; }
 .compose-row .field { flex: 1; }
 .compose-row .primary { width: auto; padding: 0.85rem 1.4rem; }
 
+.compose-veil {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--paper-faint);
+  text-align: center;
+}
+
 .counter { font-size: 0.72rem; color: var(--paper-faint); text-align: right; }
 .counter.is-over { color: var(--blood-lit); }
 
 .locked {
   padding: 1.1rem 1rem;
   text-align: center;
-  color: var(--paper-faint);
-  font-size: 0.85rem;
   border-top: var(--edge);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
+
+.locked-title { color: var(--paper); font-size: 0.92rem; }
+.locked-note { color: var(--paper-faint); font-size: 0.8rem; }
 
 .status { font-size: 0.78rem; color: var(--paper-faint); text-align: center; margin: 0; }
 

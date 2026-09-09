@@ -1,6 +1,6 @@
 import type { AdvisorInfo } from './schema';
-import { pickSome, type Rng } from './rng';
-import { SLOTS_MAX, SLOTS_MIN } from './limits';
+import { pickSome, shuffled, type Rng } from './rng';
+import { SLOTS_MAX, SLOTS_MIN, liarRangeFor } from './limits';
 
 /**
  * 発言枠と嘘つきの配役。
@@ -29,17 +29,6 @@ export interface Casting {
 export function clampSlots(slots: number): number {
   if (!Number.isFinite(slots)) return SLOTS_MIN;
   return Math.min(SLOTS_MAX, Math.max(SLOTS_MIN, Math.round(slots)));
-}
-
-/**
- * 嘘つきは発言枠の中に1〜2人。
- * 枠が3人しかいない状況で2人が嘘つきだと読み合いが成立しないため、
- * 枠が5人以上のときだけ2人目が出る。
- */
-export function liarCountFor(speakerCount: number, rng: Rng): number {
-  if (speakerCount <= 2) return speakerCount >= 1 ? 1 : 0;
-  if (speakerCount < 5) return 1;
-  return rng() < 0.45 ? 2 : 1;
 }
 
 export function castRound(input: CastingInput): Casting {
@@ -71,7 +60,49 @@ export function castRound(input: CastingInput): Casting {
     );
   }
 
-  // ラウンドごとに再抽選する（固定しない）
-  const liarIds = pickSome(speakerIds, liarCountFor(speakerIds.length, rng), rng);
+  // ラウンドごとに再抽選する（固定しない）。
+  // ただし全員を等確率にすると、過去の記録が何も予測しない飾りになる。
+  // 一人ひとりに嘘の出やすさの癖を持たせ、記録に弱い意味を持たせる。
+  const liarIds = drawLiars(speakerIds, rollLiarCount(speakerIds.length, rng), rng);
   return { speakerIds, liarIds };
+}
+
+/** その部屋の嘘つきの人数を引く */
+export function rollLiarCount(speakerCount: number, rng: Rng): number {
+  const [lo, hi] = liarRangeFor(speakerCount);
+  if (hi === lo) return lo;
+  return rng() < 0.5 ? lo : hi;
+}
+
+/**
+ * 嘘つきの出やすさの癖。id から決まるので、同じ人はいつも同じ癖を持つ。
+ * 0.35〜2.4 倍。よく裏切る常連と、めったに裏切らない常連が自然に生まれる。
+ * 確実ではないので、記録で読み切ることはできない。
+ */
+export function liarBias(advisorId: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < advisorId.length; i++) {
+    h ^= advisorId.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return 0.35 + ((h >>> 0) % 1000) / 1000 * 2.05;
+}
+
+/** 癖で重みをつけた抽選 */
+function drawLiars(speakerIds: readonly string[], count: number, rng: Rng): string[] {
+  const pool = shuffled(speakerIds, rng);
+  const picked: string[] = [];
+  const weights = new Map(pool.map((id) => [id, liarBias(id)]));
+
+  for (let n = 0; n < count && picked.length < pool.length; n++) {
+    const rest = pool.filter((id) => !picked.includes(id));
+    const total = rest.reduce((s, id) => s + (weights.get(id) ?? 1), 0);
+    let r = rng() * total;
+    for (const id of rest) {
+      r -= weights.get(id) ?? 1;
+      if (r <= 0) { picked.push(id); break; }
+    }
+    if (picked.length === n) picked.push(rest[0] as string);
+  }
+  return picked;
 }
