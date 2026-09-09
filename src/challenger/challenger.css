@@ -664,3 +664,8 @@
   .title-ruby, .title-tagline { display: none; }
   .menu-item span { display: none; }
 }
+
+.end-stat.is-best {
+  color: var(--rust);
+  letter-spacing: 0.16em;
+}

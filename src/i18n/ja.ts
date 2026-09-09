@@ -19,6 +19,7 @@ export const ja = {
     host: '賭場を開く',
     hostNote: '観客を助言者として招く',
     advisor: '助言者として入る',
+    bestShort: (n: number) => `最高 ${n}部屋`,
     comingSoon: '準備中',
   },
 
@@ -103,6 +104,9 @@ export const ja = {
     reveal: (names: string) => `嘘つきだったのは ${names}`,
     roundLiars: (names: string) => `嘘つきは ${names} だった`,
     revealNone: '嘘つきはいなかった',
+    best: (n: number) => `最高到達 ${n}部屋`,
+    bestNone: 'まだ記録はない',
+    newBest: '最高記録を更新した',
     nameSeparator: '、',
   },
 

@@ -49,10 +49,14 @@ function renderTitle(): void {
 
   const menu = el('div', 'menu');
   const T = strings();
+  const withBest = (modeId: ModeId, note: string): string => {
+    const best = bestFor(modeId);
+    return best > 0 ? `${note}　—　${T.menu.bestShort(best)}` : note;
+  };
   menu.append(
-    menuItem(T.menu.solo, T.menu.soloNote, false, () => enterMode('standard')),
-    menuItem(T.menu.brink, T.menu.brinkNote, false, () => enterMode('brink')),
-    menuItem(T.menu.party, T.menu.partyNote, false, () => enterMode('party')),
+    menuItem(T.menu.solo, withBest('standard', T.menu.soloNote), false, () => enterMode('standard')),
+    menuItem(T.menu.brink, withBest('brink', T.menu.brinkNote), false, () => enterMode('brink')),
+    menuItem(T.menu.party, withBest('party', T.menu.partyNote), false, () => enterMode('party')),
     // 野良と賭場は通信層（段階4）が入ってから開く
     menuItem(T.menu.random, `${T.menu.randomNote}（${T.menu.comingSoon}）`, true),
     menuItem(T.menu.host, `${T.menu.hostNote}（${T.menu.comingSoon}）`, true),
@@ -89,6 +93,37 @@ function markBriefed(modeId: ModeId): void {
   } catch {
     // 保存できなくても進行には関わらない
   }
+}
+
+/* ─────────────────────────── 最高到達 ─────────────────────────── */
+
+/**
+ * 1周が10分を超えるのに、死んでも何も残らないと二度目を始めにくい。
+ * 到達部屋数だけを覚えておいて、次に越える目標にする。
+ * モードごとに部屋数が違うので記録も分ける。
+ */
+function bestKey(modeId: ModeId): string {
+  return `best:${modeId}`;
+}
+
+function bestFor(modeId: ModeId): number {
+  try {
+    const raw = Number(window.localStorage.getItem(bestKey(modeId)));
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** 更新したときだけ true。演出の出し分けに使う */
+function recordBest(modeId: ModeId, reached: number): boolean {
+  if (reached <= bestFor(modeId)) return false;
+  try {
+    window.localStorage.setItem(bestKey(modeId), String(reached));
+  } catch {
+    return false; // 保存できない環境では「更新した」と言わない
+  }
+  return true;
 }
 
 function enterMode(modeId: ModeId): void {
@@ -646,6 +681,16 @@ function renderEnd(state: EngineState): void {
   const stat = el('p', 'end-stat');
   stat.textContent = strings().verdict.reached(state.totalCleared);
 
+  // 記録は「更新したか」を先に見てから書き換える
+  const wasBest = bestFor(currentMode);
+  const renewed = recordBest(currentMode, state.totalCleared);
+  const best = el('p', renewed ? 'end-stat is-best' : 'end-stat');
+  best.textContent = renewed
+    ? strings().verdict.newBest
+    : wasBest > 0
+      ? strings().verdict.best(wasBest)
+      : strings().verdict.bestNone;
+
   // 嘘つきが誰だったかを全員に開示する
   const reveal = el('p', 'end-stat');
   const liars = new Set(state.liarLog.flatMap((r) => [...r.liarIds]));
@@ -664,7 +709,7 @@ function renderEnd(state: EngineState): void {
     renderTitle();
   });
 
-  screen.append(mark, stat, reveal, again);
+  screen.append(mark, stat, best, reveal, again);
   app!.append(screen);
   again.focus();
 }

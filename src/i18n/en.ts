@@ -21,6 +21,7 @@ export const en: Strings = {
     host: 'Open a den',
     hostNote: 'Invite your audience as advisors',
     advisor: 'Enter as an advisor',
+    bestShort: (n: number) => `Best ${n}`,
     comingSoon: 'Not yet',
   },
 
@@ -104,6 +105,9 @@ export const en: Strings = {
     reveal: (names: string) => `The liars were ${names}`,
     roundLiars: (names: string) => `The liars were ${names}`,
     revealNone: 'There were no liars',
+    best: (n: number) => `Deepest run: ${n} rooms`,
+    bestNone: 'No record yet',
+    newBest: 'A new record',
     nameSeparator: ', ',
   },
 
