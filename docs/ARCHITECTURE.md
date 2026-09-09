@@ -69,7 +69,44 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 
 - `data/*.json` は「パック」単位。プレイヤー投稿は同じ入口に増やす
 - `ClientMessage` / `ServerMessage` は Zod で定義済み。段階4はこの型に沿って実装する
-- 文言は `src/i18n/ja.ts` に集約済み。多言語化は今回やらないが、直書きはしていない
+- 文言は `src/i18n/ja.ts` に集約済み。直書きはしていない
+
+---
+
+## 段階4（通信層）の入り口
+
+**PartyKit で書く**と決めた（Cloudflare Workers 月5ドル〜を前提とする）。
+`AdvisorGateway` の差し込み口はすでに空いているので、
+本体（`GameEngine`）には手を入れずに `PartyKitGateway` を1つ足すだけで入る。
+人間が抜けた席は `CompositeAdvisorGateway` が AI に引き継がせる仕組みが
+もう動いているので、途中離脱もそのまま扱える。
+
+### 先に直すこと：ワイヤの型が今のゲームに追いついていない
+
+`ClientMessage` / `ServerMessage` は**モードが3つになる前の形**のまま。
+実装を始める前にここを合わせないと、あとで全部書き直しになる。
+
+| 足りないもの | いまの形 | なぜ足りないか |
+|---|---|---|
+| 助言者が知っていること | `round/open` の `correct?` と `role.isLiar` | 実際は `Knowledge` の4種（`liar` / `honest`（候補2〜3） / `doomed` / `trapper`）。正解1つでは目利きも耳打ちも裏切り者も表せない |
+| 通報 | なし | `moderation.ts` に通報簿はあるが、ワイヤに口がない |
+| 全員挑戦者モードの仲間の手 | なし | `AdvisorGateway.picks()` に対応するメッセージがない |
+| 休んでいる仲間 | なし | `restingIds` がサーバーとずれると発言枠の抽選が合わない |
+
+`Knowledge` は `src/core/casting.ts` にある判別共用体そのものなので、
+Zod 側も同じ4種の discriminated union にして、
+**`round/open` は助言者にだけ `knowledge` を載せる**形にするのが素直。
+`PublicRoom = RoomBaseSchema.omit({ correct, deathMessage })` の縛りは崩さないこと。
+
+### 順番
+
+1. ワイヤの型を今のゲームに合わせる（上の表）＋ `tools/` に型の検査を1つ足す
+2. `PartyKitGateway` をローカル（`partykit dev`）で通す。ルーム作成 → 助言者入室 → 助言送信まで
+3. `moderation.ts` を**サーバー側でも通す**。クライアントの検査は素通りされうる前提で書く
+4. 全員挑戦者モードの `picks` を人間で通す
+5. ランダムマッチ（待合室）
+
+3 は後回しにしない。暴言と通報は launch 時点で要る、というのが最初からの条件。
 
 ---
 
