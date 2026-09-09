@@ -139,6 +139,8 @@ export const en: Strings = {
     youOnlyKnowTrap: 'You only know the trap. You do not know the safe one',
     youKnowDoomed: 'You only know what kills. Not what lives',
     nothingDealt: 'Nothing was dealt to you this room',
+    pickPrompt: 'You walk through one too. Your own life',
+    picked: (label: string) => `You take ${label}`,
     speaking: 'You can speak',
     notSpeaking: 'You cannot speak this round',
     notSpeakingNote: 'You can see it and you cannot say it',

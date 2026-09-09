@@ -50,7 +50,6 @@ export class RemoteGame implements GameHandle {
   constructor(
     private readonly host: string,
     private readonly roomCode: string,
-    private readonly mode: ModeId,
     private readonly locale: string,
   ) {}
 
@@ -80,8 +79,8 @@ export class RemoteGame implements GameHandle {
     return () => this.statusListeners.delete(listener);
   }
 
-  start(): void {
-    this.send({ t: 'challenger/start', mode: this.mode, locale: this.locale });
+  start(mode: ModeId): void {
+    this.send({ t: 'challenger/start', mode, locale: this.locale });
   }
 
   subscribe(listener: (state: EngineState) => void): () => void {

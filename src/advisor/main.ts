@@ -36,6 +36,8 @@ export interface AdvisorView {
    */
   knowledge: Knowledge | null;
   isSpeaker: boolean;
+  /** 全員挑戦者モードでは、助言者も自分の扉を選ぶ */
+  isParty?: boolean;
 }
 
 export interface AdvisorConnection {
@@ -43,6 +45,8 @@ export interface AdvisorConnection {
   onView(listener: (view: AdvisorView | null) => void): () => void;
   sendHint(roundId: string, text: string): void;
   volunteer(roundId: string): void;
+  /** 全員挑戦者モード。自分の扉を決める */
+  pick?(roundId: string, choiceId: string): void;
   /**
    * サーバーから返る知らせ（弾かれた・黙らされた・切れた）。
    * 送る前の検査は画面側でもやっているが、最後に決めるのはサーバーなので、
@@ -199,12 +203,39 @@ function renderBoard(): void {
 
   const board = el('main', 'board');
   const prompt = el('h2', 'board-prompt');
+  const pickNote = el('p', 'pick-note');
+  pickNote.hidden = true;
   const grid = el('div', 'grid');
-  board.append(prompt, grid);
+  board.append(prompt, pickNote, grid);
 
   const compose = el('section', 'compose');
-  frame.append(role, board, compose);
+  const notice = el('p', 'board-notice');
+  notice.setAttribute('role', 'status');
+  notice.hidden = true;
+  frame.append(role, board, notice, compose);
   app!.append(frame);
+
+  // サーバーからの知らせは一箇所に集める。
+  // 助言の枠の中に出していたとき、部屋が変わると古い節点に書き込んでいた
+  connection.onNotice?.((code) => {
+    const T = strings();
+    const known: Record<string, string> = {
+      blocked: T.errors.blocked,
+      pointing: T.errors.pointing,
+      tooManyChoices: T.errors.tooManyChoices,
+      tooLong: T.errors.tooLong,
+      rateLimited: T.errors.rateLimited,
+      silenced: T.advisor.silenced,
+      survived: T.verdict.survived,
+      died: T.verdict.died,
+    };
+    const message = known[code];
+    if (!message) return;
+    notice.textContent = message;
+    notice.hidden = false;
+    notice.classList.toggle('is-fatal', code === 'died');
+    notice.classList.toggle('is-good', code === 'survived');
+  });
 
   let current: AdvisorView | null = null;
 
@@ -266,11 +297,27 @@ function renderBoard(): void {
     const trap = k.kind === 'liar' || k.kind === 'trapper' ? [k.trap] : [];
 
     grid.innerHTML = '';
+    // 全員挑戦者モードでは、助言者も自分の命を賭けて一つ選ぶ
+    const canPick = view.isParty === true && view.isSpeaker && typeof connection.pick === 'function';
+    let picked: string | null = null;
     for (const choice of view.choices) {
       const lit = marked.includes(choice.id);
       const dead = doomed.includes(choice.id);
       const isTrap = trap.includes(choice.id);
-      const cell = el('div', `cell${lit ? ' is-correct' : ''}${dead || isTrap ? ' is-doomed' : ''}`);
+      const cell = el(
+        canPick ? 'button' : 'div',
+        `cell${lit ? ' is-correct' : ''}${dead || isTrap ? ' is-doomed' : ''}${canPick ? ' is-pickable' : ''}`,
+      );
+      if (canPick) {
+        (cell as HTMLButtonElement).type = 'button';
+        cell.addEventListener('click', () => {
+          connection.pick?.(view.roundId, choice.id);
+          picked = choice.id;
+          for (const other of grid.querySelectorAll('.cell')) other.classList.remove('is-picked');
+          cell.classList.add('is-picked');
+          pickNote.textContent = strings().advisor.picked(localized(choice.label));
+        });
+      }
       const img = el('img');
       img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
       img.alt = '';
@@ -293,6 +340,11 @@ function renderBoard(): void {
       }
       grid.append(cell);
     }
+
+    pickNote.textContent = canPick ? T.advisor.pickPrompt : '';
+    pickNote.hidden = !canPick;
+    notice.hidden = true;
+    void picked;
 
     renderCompose(compose, view, () => current);
   });
@@ -336,22 +388,6 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   const status = el('p', 'status');
   const labels = view.choices.map((c) => localized(c.label));
 
-  // 最後に決めるのはサーバー。断られた理由はここに出す
-  connection.onNotice?.((code) => {
-    const T = strings();
-    const known: Record<string, string> = {
-      blocked: T.errors.blocked,
-      pointing: T.errors.pointing,
-      tooManyChoices: T.errors.tooManyChoices,
-      tooLong: T.errors.tooLong,
-      rateLimited: T.errors.rateLimited,
-      silenced: T.advisor.silenced,
-    };
-    const message = known[code];
-    if (!message) return;
-    status.textContent = message;
-    status.classList.add('is-error');
-  });
 
   // 送れないものは、送らせない。押してから断るのでは遅い
   const sync = (): void => {

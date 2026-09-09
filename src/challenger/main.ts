@@ -65,7 +65,7 @@ function renderTitle(): void {
       T.menu.host,
       PARTY_HOST ? T.menu.hostNote : `${T.menu.hostNote}（${T.menu.comingSoon}）`,
       !PARTY_HOST,
-      PARTY_HOST ? () => hostGame('standard') : undefined,
+      PARTY_HOST ? () => hostGame() : undefined,
     ),
   );
 
@@ -394,10 +394,9 @@ function newRoomCode(): string {
   return out;
 }
 
-function hostGame(modeId: ModeId): void {
-  currentMode = modeId;
+function hostGame(): void {
   const code = newRoomCode();
-  const remote = new RemoteGame(PARTY_HOST, code, modeId, currentLocale);
+  const remote = new RemoteGame(PARTY_HOST, code, currentLocale);
   engine?.dispose();
   engine = remote;
   renderLobby(code, remote);
@@ -419,14 +418,37 @@ function renderLobby(code: string, remote: RemoteGame): void {
   where.textContent = T.lobby.where(`${location.origin}/advisor.html`);
 
   const count = el('p', 'lobby-count');
+
+  // 賭場でもモードは選べる。全員挑戦者なら、来た人も自分の扉を選ぶ
+  let chosenMode: ModeId = 'standard';
+  const modes = el('div', 'lobby-modes');
+  const modeButtons: HTMLButtonElement[] = [];
+  for (const [id, label] of [
+    ['standard', T.menu.solo],
+    ['brink', T.menu.brink],
+    ['party', T.menu.party],
+  ] as ReadonlyArray<readonly [ModeId, string]>) {
+    const btn = document.createElement('button');
+    btn.className = `lobby-mode${id === chosenMode ? ' is-on' : ''}`;
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      chosenMode = id;
+      currentMode = id;
+      for (const other of modeButtons) other.classList.toggle('is-on', other === btn);
+    });
+    modeButtons.push(btn);
+    modes.append(btn);
+  }
+
   const begin = document.createElement('button');
   begin.className = 'menu-item lobby-begin';
   begin.textContent = T.lobby.begin;
   begin.addEventListener('click', () => {
+    currentMode = chosenMode;
     audio.load();
     shell = buildShell();
     unsubscribe = remote.subscribe((state) => render(state));
-    remote.start();
+    remote.start(chosenMode);
     audio.play('room-open');
     startTimerLoop();
   });
@@ -446,7 +468,7 @@ function renderLobby(code: string, remote: RemoteGame): void {
     begin.disabled = status === 'connecting' || status === 'closed';
   });
 
-  screen.append(heading, codeBox, where, count, begin, back);
+  screen.append(heading, codeBox, where, count, modes, begin, back);
   app!.append(screen);
 }
 

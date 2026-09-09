@@ -139,6 +139,8 @@ export const ja = {
     youOnlyKnowTrap: '知っているのは罠だけ。生きる方は分からない',
     youKnowDoomed: '分かるのは死ぬ方だけ。生きる方は知らない',
     nothingDealt: '今回は何も配られていない',
+    pickPrompt: 'あなたも一つ通る。命は自分持ちだ',
+    picked: (label: string) => `${label}を通る`,
     speaking: '発言できる',
     notSpeaking: '今回は発言できない',
     notSpeakingNote: '見えていても言えない',

@@ -94,7 +94,7 @@ if (board.canWrite) {
   await wait(120);
   await p.locator('.compose-row .primary').click();
   await wait(600);
-  const notice = await p.evaluate(() => document.querySelector('.status')?.textContent);
+  const notice = await p.evaluate(() => document.querySelector('.board-notice')?.textContent);
   check('サーバーに断られた理由が画面に出る', notice === '少し待て', `出たのは「${notice}」`);
   await p.screenshot({ path: `${OUT}/live-4-notice.png`, fullPage: true });
 }

@@ -13,6 +13,9 @@ import { localized } from '@/i18n';
 
 interface Incoming {
   t: string;
+  mode?: string;
+  correct?: string;
+  picks?: { advisorId: string; choiceId: string }[];
   roundId?: string;
   room?: { id: string; theme: string; prompt: Record<string, string>; choices: Choice[] };
   knowledge?: Knowledge;
@@ -29,6 +32,8 @@ export class LiveConnection implements AdvisorConnection {
   /** 最新の盤面。あとから購読した画面や、再接続した人が次の部屋まで待たされない */
   private latest: AdvisorView | null = null;
   private roomCode = '';
+  private isParty = false;
+  private myPick: { roundId: string; choiceId: string } | null = null;
   private name = '';
   private attempt = 0;
   private closed = false;
@@ -59,6 +64,11 @@ export class LiveConnection implements AdvisorConnection {
 
   volunteer(roundId: string): void {
     this.send({ t: 'advisor/volunteer', roundId });
+  }
+
+  pick(roundId: string, choiceId: string): void {
+    this.myPick = { roundId, choiceId };
+    this.send({ t: 'party/pick', roundId, choiceId });
   }
 
   close(): void {
@@ -122,6 +132,16 @@ export class LiveConnection implements AdvisorConnection {
     }
 
     switch (msg.t) {
+      case 'room/state':
+        this.isParty = msg.mode === 'party';
+        return;
+      case 'round/result': {
+        // 全員挑戦者モードでは、自分の生死がここで決まる
+        if (!this.isParty || !this.myPick || this.myPick.roundId !== msg.roundId) return;
+        this.notify(this.myPick.choiceId === msg.correct ? 'survived' : 'died');
+        this.myPick = null;
+        return;
+      }
       case 'round/open': {
         const room = msg.room;
         if (!room || !msg.roundId) return;
@@ -134,6 +154,7 @@ export class LiveConnection implements AdvisorConnection {
           // 席には居るが今回は配られていない、ということが起こりうる
           knowledge: msg.knowledge ?? null,
           isSpeaker: msg.isSpeaker === true,
+          isParty: this.isParty,
         });
         return;
       }

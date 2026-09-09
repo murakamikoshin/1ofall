@@ -709,3 +709,23 @@
 }
 
 .lobby-begin:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.lobby-modes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.lobby-mode {
+  border: var(--edge);
+  background: transparent;
+  color: var(--paper-faint);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  min-height: 36px;
+}
+
+.lobby-mode:hover,
+.lobby-mode:focus-visible { border-color: var(--rust); color: var(--paper); }
+.lobby-mode.is-on { border-color: var(--rust); color: var(--paper-bright); }
