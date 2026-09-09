@@ -1,0 +1,92 @@
+/* 闇市・賭場。すすけた木、油煙、錆びた提灯、黄ばんだ紙。
+   清潔感を出さない。祭りの華やかさに寄せない。酸化して湿った質感を保つ。 */
+:root {
+  --soot: #0b0805;   /* 最暗部。選択肢の地 */
+  --wood: #241c14;   /* 画面の基調 */
+  --rust: #b85a1e;   /* 選択中・アクセント。1箇所にしか使わない */
+  --paper: #b8a98a;  /* 文字 */
+  --dim: #3a2e22;    /* 枠線・非アクティブ要素 */
+  --blood: #9e3520;  /* 警告のみ */
+
+  /* 上の6色から導く派生。新しい色相は増やさない */
+  --paper-bright: #d8ccb2;
+  --paper-faint: #918370;  /* --soot / --wood のどちらの上でも 4.5:1 を満たす明度 */
+  --wood-lit: #2f251a;
+  /* --blood は面と枠に使う。暗地の上の「文字」はこの明度でないと AA に届かない */
+  --blood-lit: #d4472b;
+
+  --edge: 1px solid var(--dim);
+  --hush: 800ms;
+
+  --font-display: 'Zen Antique', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  --font-ui: 'Zen Kaku Gothic New', system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--soot);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  -webkit-text-size-adjust: 100%;
+}
+
+body { overflow: hidden; }
+
+/* 木地。テクスチャ画像は使わず、低不透明度の水平線を薄く重ねる */
+.grain {
+  position: relative;
+  background-color: var(--wood);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.16) 0 1px,
+    rgba(0, 0, 0, 0) 1px 4px
+  );
+}
+
+/* 画面の四辺を影に落とし、中央だけを見せる */
+.vignette::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.55) 100%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(0, 0, 0, 0.35));
+}
+
+button, input {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button { cursor: pointer; }
+
+/* キーボードフォーカスは必ず見える */
+:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

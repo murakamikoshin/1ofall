@@ -1,0 +1,29 @@
+{
+  "name": "issunsaki-wa-uso",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "一寸先は嘘 — 視聴者参加型 読み合いゲーム",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "gen:sfx": "node scripts/gen-sfx.mjs",
+    "validate:rooms": "node scripts/validate-rooms.mjs",
+    "images:manifest": "node scripts/image-manifest.mjs",
+    "shots": "node tools/shot.mjs"
+  },
+  "dependencies": {
+    "howler": "^2.2.4",
+    "motion": "^11.11.17",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.11",
+    "@types/node": "^26.5.0",
+    "playwright": "^1.63.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
