@@ -5,17 +5,13 @@ import { writeHint, voiceOf } from './hint-writer';
 import type { Choice } from './schema';
 import { liarBias } from './casting';
 import { STANDARD, type ModeConfig } from './limits';
+import { companionNames } from './companion-names';
 
 /**
  * AI の助言者。ソロモードで人間の助言者の代わりに入る。
  * 本体から見れば人間と区別がつかない（同じ AdvisorGateway）。
  */
 
-const NAMES = [
-  'たろう', 'はなこ', 'ゲンさん', 'みかん', 'クロ', 'ヤス', 'せつ', 'とんび',
-  'まめ', 'ウシオ', 'かがり', 'ノブ', 'すず', 'イチ', 'ハルさん', 'ぬい',
-  'テツ', 'こより', 'ゴロー', 'あかね', 'シノ', 'まさ', 'ちどり', 'ぜんじ',
-];
 
 export interface AiAdvisorOptions {
   count?: number;
@@ -43,12 +39,12 @@ export class AiAdvisorGateway implements AdvisorGateway {
   private lastRoundId = '';
 
   constructor(options: AiAdvisorOptions = {}) {
-    const count = Math.min(options.count ?? 12, NAMES.length);
+    const count = Math.min(options.count ?? 12, companionNames().length);
     this.rng = createRng(options.seed ?? (Date.now() & 0xffffffff));
     this.mode = options.mode ?? STANDARD;
     this.minDelay = options.minDelayMs ?? 400;
     this.maxDelay = options.maxDelayMs ?? 3400;
-    this.advisors = shuffled(NAMES, this.rng)
+    this.advisors = shuffled(companionNames(), this.rng)
       .slice(0, count)
       .map((name, i) => ({ id: `ai_${i}`, name, kind: 'ai' as const }));
   }

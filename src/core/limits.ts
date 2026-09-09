@@ -197,11 +197,21 @@ export const BRINK: ModeConfig = {
  *
  * 実測：正直者の生存率73〜76% / 他人の話の価値 +39〜42pt
  */
+/**
+ * 全員挑戦者。**命は人ごと**で、死んでも部屋は前に進む（PartyEngine）。
+ *
+ * 数字は tools/party-sim.mjs で決めた。6人・命4・20部屋のとき
+ *   1部屋あたりの生存  82.5%（数えるだけだと 41.5%）
+ *   最後まで残る       51.7%（数えるだけだと 0%）
+ *   1周               17.9部屋 ≒ 12分
+ * 命を増やすと最後まで残る割合が跳ね上がって緊張が消え、
+ * 部屋を増やすと20分を超える。この組み合わせが一番きれいだった。
+ */
 export const PARTY: ModeConfig = {
   id: 'party',
   lives: 4,
   sections: 4,
-  roomsPerSection: 8,
+  roomsPerSection: 5,
   slotsBySection: [6, 6, 6, 6],
   loneHonest: false,
   allChallengers: true,
@@ -209,5 +219,15 @@ export const PARTY: ModeConfig = {
   liarHonesty: 0.25,
   liarMimic: 0.2,
 };
+
+/**
+ * 全員挑戦者モードの人数。
+ *
+ * 4人だと正直な声が2つしか無く、運任せの部屋が27%まで増える（7分で全滅）。
+ * 12人だと声が多すぎて読める人はほぼ死なない（86%が最後まで残る）。
+ * 足りないぶんは AI で埋め、多すぎる部屋は作らない。
+ */
+export const PARTY_MIN_SEATS = 6;
+export const PARTY_MAX_SEATS = 8;
 
 export const MODES: Record<ModeId, ModeConfig> = { standard: STANDARD, brink: BRINK, party: PARTY };

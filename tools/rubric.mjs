@@ -262,19 +262,14 @@ export async function evaluate(modeName, mode, quiet) {
 }
 
 if ((process.argv[1] ?? '').endsWith('rubric.mjs')) {
-  // 実装されている設定をそのまま測る
+  // 実装されている設定をそのまま測る。
+  // 全員挑戦者モードは命が人ごとで構造が違うので、この物差しでは測れない。
+  // あちらは tools/party-sim.mjs で見る
   const std = C.MODES.standard;
   const brk = C.MODES.brink;
   await evaluate('通常', {
     honesty: (b) => Math.max(0.05, Math.min(0.5, std.liarHonesty * b)),
     mimic: std.liarMimic,
-  });
-  await evaluate('全員挑戦者', {
-    slots: C.MODES.party.slotsBySection[0], rooms: C.MODES.party.roomsPerSection,
-    lives: C.MODES.party.lives, sections: C.MODES.party.sections,
-    ownCandidates: C.MODES.party.ownCandidates, trapper: true,
-    honesty: (b) => Math.max(0.05, Math.min(0.5, C.MODES.party.liarHonesty * b)),
-    mimic: C.MODES.party.liarMimic,
   });
   await evaluate('崖っぷち', {
     brink: true, loneKnows: true, slots: brk.slotsBySection[0],

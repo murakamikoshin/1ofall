@@ -156,6 +156,19 @@ export const ja = {
     silenced: '黙らされた。もう声は届かない',
   },
 
+  /** 全員挑戦者モードだけの文言 */
+  party: {
+    you: 'あなた',
+    ready: '決めた',
+    out: '尽きた',
+    noPick: '決めなかった',
+    spoken: (got: number, all: number) => `${all}人中 ${got}人が言った`,
+    reached: (done: number, all: number) => `${all}部屋のうち ${done}部屋`,
+    survivors: (names: string) => `残ったのは ${names}`,
+    noSurvivors: '誰も残らなかった',
+    traitorsWere: (names: string) => `裏切っていたのは ${names}`,
+  },
+
   errors: {
     roomNotFound: 'その部屋はない',
     roomFull: '満員',

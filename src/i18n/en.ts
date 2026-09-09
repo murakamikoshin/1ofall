@@ -155,6 +155,18 @@ export const en: Strings = {
     silenced: 'You were silenced. Your voice no longer reaches',
   },
 
+  party: {
+    you: 'You',
+    ready: 'Locked in',
+    out: 'Spent',
+    noPick: 'Never chose',
+    spoken: (got: number, all: number) => `${got} of ${all} have spoken`,
+    reached: (done: number, all: number) => `${done} of ${all} rooms`,
+    survivors: (names: string) => `Still standing: ${names}`,
+    noSurvivors: 'Nobody was left',
+    traitorsWere: (names: string) => `The traitors were ${names}`,
+  },
+
   errors: {
     roomNotFound: 'No such room',
     roomFull: 'Full',

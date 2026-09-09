@@ -6,6 +6,7 @@ import { corePackage } from '@/core/pack';
 import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
 import { RemoteGame, type GameHandle } from './remote-game';
+import { PartyBoard } from './party-board';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
 import { MODES, type ModeId } from '@/core/limits';
@@ -363,10 +364,30 @@ function buildShell(): Shell {
   };
 }
 
+let partyBoard: PartyBoard | null = null;
+
 function startGame(modeId: ModeId): void {
   currentMode = modeId;
-  audio.load();
   engine?.dispose();
+  engine = null;
+  partyBoard?.dispose();
+  partyBoard = null;
+
+  // 全員挑戦者は命が人ごとにあり、盤面の作りが違う（PartyEngine）
+  if (modeId === 'party') {
+    partyBoard = new PartyBoard({
+      root: app!,
+      onExit: () => {
+        partyBoard?.dispose();
+        partyBoard = null;
+        renderTitle();
+      },
+    });
+    partyBoard.start();
+    return;
+  }
+
+  audio.load();
   shell = buildShell();
 
   // ソロは全員 AI。野良になっても本体はこの境界の先を知らない
