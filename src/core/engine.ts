@@ -7,7 +7,7 @@ import {
 } from './moderation';
 import {
   castLiars, castSpeakers, clampSlots, dealKnowledge, dealOwnKnowledge,
-  type Casting, type Knowledge, type SelectionMode,
+  type Casting, type SelectionMode,
 } from './casting';
 import { createRng, shuffled, pickSome, type Rng } from './rng';
 import type { AdvisorGateway, Unsubscribe } from './advisor-gateway';
@@ -151,7 +151,6 @@ export class GameEngine {
   private records = new Map<string, { hit: number; miss: number }>();
   /** 全員挑戦者モードで、死んで次の部屋を休む仲間 */
   private resting = new Set<string>();
-  private currentKnowledge = new Map<string, Knowledge>();
   private ownCandidates: readonly string[] = [];
   /** 区画のあいだ据え置く配役 */
   private sectionCasting: Casting | null = null;
@@ -434,7 +433,6 @@ export class GameEngine {
       knowledgeForSection(this.sectionIndex), this.mode.loneHonest,
       !!this.mode.allChallengers,
     );
-    this.currentKnowledge = knowledge;
 
     // 全員挑戦者モードでは、挑戦者自身にも部分情報が配られる
     this.ownCandidates = this.mode.allChallengers
@@ -523,7 +521,8 @@ export class GameEngine {
       .filter((a): a is AdvisorInfo => !!a);
 
     // 全員挑戦者モード：仲間もそれぞれ選ぶ。結果で言行のずれが見える
-    const party = this.mode.allChallengers ? this.resolveParty(round, correctId) : [];
+    // 仲間の手はゲートウェイが持つ。人間の仲間が入っても本体は変わらない
+    const party = this.mode.allChallengers ? this.collectParty(round, correctId) : [];
     this.resting = new Set(party.filter((p) => !p.survived).map((p) => p.id));
 
     this.verdict = {
@@ -543,35 +542,18 @@ export class GameEngine {
   }
 
   /**
-   * 仲間が何を選ぶかを決める。
-   * 自分の持ち情報と、他人の助言を足して選ぶ。挑戦者と同じ理屈で動く。
-   * 罠だけを知っている嘘つきは、罠を避けたうえで他人の話に乗る。
+   * 仲間の選択を集める。
+   * 本体は「誰が何を選んだか」を受け取って生死を決めるだけで、
+   * その手が AI のものか人間のものかは知らない。
+   * 返ってこなかった者は時間切れとして死ぬ。
    */
-  private resolveParty(
+  private collectParty(
     round: RoundState,
     correctId: string,
   ): { id: string; name: string; chosenId: string; survived: boolean }[] {
-    const ids = round.room.choices.map((c) => c.id);
+    const picks = this.gateway.picks?.(round.roundId) ?? new Map<string, string>();
     return round.speakers.map((speaker) => {
-      const own = this.currentKnowledge.get(speaker.id);
-      const score = new Map(ids.map((id) => [id, 0]));
-
-      // 自分が知っていることを重く見る
-      if (own?.kind === 'honest') for (const id of own.candidates) score.set(id, (score.get(id) ?? 0) + 2.5);
-      if (own?.kind === 'doomed') score.set(own.doomed, (score.get(own.doomed) ?? 0) - 3);
-      if (own?.kind === 'trapper') score.set(own.trap, (score.get(own.trap) ?? 0) - 99);
-      if (own?.kind === 'liar') score.set(own.correct, (score.get(own.correct) ?? 0) + 99);
-
-      // 他人の助言も聞く
-      for (const advice of round.advice) {
-        if (advice.advisorId === speaker.id) continue;
-        for (const c of round.room.choices) {
-          if (advice.text.includes(localized(c.label))) score.set(c.id, (score.get(c.id) ?? 0) + 0.6);
-        }
-      }
-      const max = Math.max(...score.values());
-      const best = ids.filter((id) => score.get(id) === max);
-      const chosenId = best[Math.floor(this.rng() * best.length)] ?? (ids[0] as string);
+      const chosenId = picks.get(speaker.id) ?? '';
       return { id: speaker.id, name: speaker.name, chosenId, survived: chosenId === correctId };
     });
   }

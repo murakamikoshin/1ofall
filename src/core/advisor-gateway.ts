@@ -40,6 +40,15 @@ export interface AdvisorGateway {
   onRosterChange(listener: (roster: readonly AdvisorInfo[]) => void): Unsubscribe;
   /** 指名方式の立候補者 */
   volunteers(): readonly string[];
+  /**
+   * 全員挑戦者モードで、仲間がそれぞれ何を選んだか。
+   *
+   * ここを本体の外に置いているのは、**仲間が人間になり得る**から。
+   * 本体が仲間の手を勝手に決めてしまうと、
+   * ブラウザから参加した人が仲間として遊ぶ道が塞がる。
+   * 返ってこなかった者は時間切れとして扱う（本体の規則）。
+   */
+  picks?(roundId: string): ReadonlyMap<string, string>;
   dispose(): void;
 }
 
@@ -59,6 +68,9 @@ export class NullAdvisorGateway implements AdvisorGateway {
   }
   volunteers(): readonly string[] {
     return [];
+  }
+  picks(): ReadonlyMap<string, string> {
+    return new Map();
   }
   dispose(): void {}
 }
