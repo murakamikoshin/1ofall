@@ -30,7 +30,7 @@ Room (correct あり)  ──→ AdvisorGateway ──→ 助言者
 | 実装 | 使う場面 | 状態 |
 |---|---|---|
 | `NullAdvisorGateway` | ローカル1人プレイ | 実装済み |
-| `PartyKitGateway` | 配信 / 友達内 | 段階4 |
+| `SocketAdvisorGateway` | 賭場（人間の助言者） | 実装済み |
 | `AiAdvisorGateway` | ソロモードの AI 嘘つき | フェーズ2 |
 
 本体（`GameEngine`）はどれが刺さっているか知らない。
@@ -68,47 +68,94 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 ## 未着手で、設計だけ空けてある箇所
 
 - `data/*.json` は「パック」単位。プレイヤー投稿は同じ入口に増やす
-- `ClientMessage` / `ServerMessage` は Zod で定義済み。段階4はこの型に沿って実装する
 - 文言は `src/i18n/ja.ts` に集約済み。直書きはしていない
 
 ---
 
-## 段階4（通信層）の入り口
+## 段階4（通信層）
 
-**PartyKit で書く**と決めた。費用の判断は要らない
+**PartyKit で書いた。** 費用の判断は要らない
 （SQLite バックエンドの Durable Objects は Workers 無料プランで使える。
 `docs/COST.md`）。
-`AdvisorGateway` の差し込み口はすでに空いているので、
-本体（`GameEngine`）には手を入れずに `PartyKitGateway` を1つ足すだけで入る。
-人間が抜けた席は `CompositeAdvisorGateway` が AI に引き継がせる仕組みが
-もう動いているので、途中離脱もそのまま扱える。
 
-### 先に直すこと：ワイヤの型が今のゲームに追いついていない
+### どこで何が動くか
 
-`ClientMessage` / `ServerMessage` は**モードが3つになる前の形**のまま。
-実装を始める前にここを合わせないと、あとで全部書き直しになる。
+```
+挑戦者の画面 ─┐                        ┌─ 助言者の画面（スマホ）
+              ├─ WebSocket ─ 部屋 ─────┤
+仲間の画面 ───┘   （Durable Object）   └─ 助言者の画面（スマホ）
+                        │
+                        └ RoomSession → GameEngine → CompositeAdvisorGateway
+                                                      ├ SocketAdvisorGateway（人間）
+                                                      └ AiAdvisorGateway（足りないぶん）
+```
 
-| 足りないもの | いまの形 | なぜ足りないか |
+**ゲーム本体はサーバーで回す。** 全員挑戦者モードで見知らぬ相手と
+遊ぶのに、誰か一人の端末を権威にしたくないから（正解を持っている側に
+なれてしまう）。ソロは今までどおりブラウザの中だけで完結する。
+
+| ファイル | 役 |
+|---|---|
+| `party/server.ts` | PartyKit の接ぎ手。薄い。眠らせない（盤面をメモリに持つため） |
+| `src/core/room-session.ts` | 部屋ひとつぶんの進行。**通信を知らない**（Sink 越し） |
+| `src/core/socket-gateway.ts` | 繋がっている人から助言を受け取る `AdvisorGateway` |
+| `src/challenger/remote-game.ts` | 遠くの部屋を、ローカルの本体と同じ顔にして返す |
+| `src/advisor/live-connection.ts` | 助言者ページの実接続。zod を読まない |
+
+`RoomSession` が WebSocket を知らないので、繋がずに全部試験できる
+（`tools/test-party.mjs`）。実際に線を張る試験は別（下記）。
+
+### 答えが漏れない仕組み
+
+| 誰に | 何を送るか |
+|---|---|
+| 挑戦者 | `room/view`（画面ぶん丸ごと）。部屋は `PublicRoom`、`liarLog` は載せない |
+| 助言者 | `round/open`。**自分あての `knowledge` だけ**。一人ずつ別のメッセージ |
+| 全員 | `room/state` `round/hints` `round/result` `game/over` |
+
+`liarLog` を載せないのが要点。今の部屋の嘘つきが分かると助言の意味が消える。
+終わったあとの開示は `game/over` が別に運ぶ。
+`tools/test-party.mjs` と `tools/party-live.mjs` が毎回ここを見ている。
+
+### 信用できない側
+
+ブラウザ→サーバーは `ClientMessageSchema` を必ず通す。
+助言の検査（暴言・字数・連投・選択肢の数え上げ）は `GameEngine` の
+受け口にあるので、サーバーで回す以上そこを必ず通る。
+二重に持つと片方だけ直る事故が起きるので、置き直していない。
+弾いたことは `onHintRejected` で本人に返す。
+
+締切もサーバーが持つ。挑戦者の画面任せにすると、閉じられた部屋で
+助言者が待たされ続ける。
+
+### 試験
+
+| 道具 | 何を見るか | 線 |
 |---|---|---|
-| 助言者が知っていること | `round/open` の `correct?` と `role.isLiar` | 実際は `Knowledge` の4種（`liar` / `honest`（候補2〜3） / `doomed` / `trapper`）。正解1つでは目利きも耳打ちも裏切り者も表せない |
-| 通報 | なし | `moderation.ts` に通報簿はあるが、ワイヤに口がない |
-| 全員挑戦者モードの仲間の手 | なし | `AdvisorGateway.picks()` に対応するメッセージがない |
-| 休んでいる仲間 | なし | `restingIds` がサーバーとずれると発言枠の抽選が合わない |
+| `tools/test-wire.mjs` | 型が今のゲームを運べるか。挑戦者側に答えが乗らないか | 不要 |
+| `tools/test-party.mjs` | 部屋の進行と権限、壊れた入力 | 不要 |
+| `tools/party-live.mjs` | 本物の WebSocket で通し | `npm run party` |
+| `tools/advisor-live.mjs` | 助言者ページを本物のブラウザで | 同上 + `npm run preview` |
+| `tools/host-live.mjs` | 賭場を開く→入室→助言→選択 | 同上 |
+| `tools/party-mode-live.mjs` | 全員挑戦者モードの通し | 同上 |
 
-`Knowledge` は `src/core/casting.ts` にある判別共用体そのものなので、
-Zod 側も同じ4種の discriminated union にして、
-**`round/open` は助言者にだけ `knowledge` を載せる**形にするのが素直。
-`PublicRoom = RoomBaseSchema.omit({ correct, deathMessage })` の縛りは崩さないこと。
+線を張る試験は `npm run test:live`。
+ビルド時に `VITE_PARTY_HOST` を渡すと実接続になる。渡さなければ素振り。
 
-### 順番
+### 残っているもの
 
-1. ワイヤの型を今のゲームに合わせる（上の表）＋ `tools/` に型の検査を1つ足す
-2. `PartyKitGateway` をローカル（`partykit dev`）で通す。ルーム作成 → 助言者入室 → 助言送信まで
-3. `moderation.ts` を**サーバー側でも通す**。クライアントの検査は素通りされうる前提で書く
-4. 全員挑戦者モードの `picks` を人間で通す
-5. ランダムマッチ（待合室）
+**ランダムマッチ（野良で遊ぶ）** だけが「準備中」のまま。
+待合室そのものは小さいが、その前に決めることがある。
 
-3 は後回しにしない。暴言と通報は launch 時点で要る、というのが最初からの条件。
+全員挑戦者モードは**まだ主が非対称**：
+- 主（賭場を開いた人）は挑戦者の画面で、その選択が周回の命を減らす
+- 来た人は助言者の画面で扉を選び、自分の生死だけが決まる
+
+「知らない人同士で」やるなら、ここは対等であるべきだと思う。
+対等にするには、命を人ごとに持つ（全員死んだら周回終了）形へ
+game engine の構造を変える必要があり、それは遊びの形が変わる話なので
+数字（`docs/RUBRIC.md`）を取り直さないと良し悪しが分からない。
+**待合室より先に、ここを決める。**
 
 ---
 
