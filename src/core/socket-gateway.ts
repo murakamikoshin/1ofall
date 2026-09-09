@@ -88,14 +88,23 @@ export class SocketAdvisorGateway implements AdvisorGateway {
     return () => this.closeListeners.delete(listener);
   }
 
+  /**
+   * 入室、または名乗り直し。
+   * 繋いだ時点では名前が無いので仮の名前で席を取り、
+   * あとから advisor/join が来たらそこで名乗る。
+   * 名前を後から反映しないと、全員が「名無し」のまま並ぶ。
+   */
   join(id: string, name: string | undefined, fallbackName: string): AdvisorInfo {
+    const chosen = name?.trim();
     const existing = this.advisors.get(id);
-    if (existing) return existing;
+    if (existing && !chosen) return existing;
+
     const advisor: AdvisorInfo = {
       id,
-      name: (name?.trim() || fallbackName).slice(0, ADVISOR_NAME_MAX),
+      name: (chosen || existing?.name || fallbackName).slice(0, ADVISOR_NAME_MAX),
       kind: 'human',
     };
+    if (existing && existing.name === advisor.name) return existing;
     this.advisors.set(id, advisor);
     this.emitRoster();
     return advisor;
