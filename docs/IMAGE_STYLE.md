@@ -7,15 +7,25 @@
 
 | 段階 | 部屋数 | 平均選択肢 | 枚数 |
 |---|---|---|---|
-| 現在（収録済み） | 30 | 5.3 | **160** |
-| 目標（50部屋） | 50 | 5.5 | **275** |
+| **現在（収録済み）** | **79** | 5.3 | **417** |
 
-`npm run images:manifest` で、必要なファイル名の一覧が出る。
+部屋を48→79に増やしたので、必要枚数は 275 から **417** に増えた。
+`npm run images:manifest` で必要なファイル名の一覧が出る。
+
+```bash
+npm run images:manifest              # 未生成417枚の一覧
+npm run images:manifest -- --test    # 10枚テストぶんだけ（door 5 + food 5）
+npm run images:manifest -- --prompts # 下のテンプレートを当てはめた完成プロンプト
+```
+
+`--prompts` は §2 のテンプレートに `{SUBJECT}` を差し込んで出す。
+**手で書き写さないこと**（規約のずれはそこから入る）。
 
 ## 2. 共通プロンプト（テンプレート）
 
 `{SUBJECT}` だけを差し替える。それ以外は**一字も変えない**。
 シード値とモデル設定も全枚数で固定する。
+`{SUBJECT}` に入るのは部屋データの `label.en`（`scripts/image-manifest.mjs` が差し込む）。
 
 ```
 A single {SUBJECT}, centered, isolated object illustration.
@@ -26,7 +36,7 @@ Palette: aged paper background (#C2B192), ink black lines (#14100B),
 muted desaturated fills only.
 Composition: square 1:1, object centered, generous even margin on all
 four sides, front-facing or three-quarter view, no perspective floor,
-no background scenery, no text, no watermark, no人物 unless subject is a person.
+no background scenery, no text, no watermark, no person unless subject is a person.
 Mood: worn, oxidized, dimly lit night market goods.
 ```
 
@@ -75,7 +85,22 @@ signature, border frame, vignette, cropped object, multiple objects, collage
 `image` が未指定の間は、コード側が同じ規約の仮絵を描く（`src/ui/placeholder.ts`）。
 仮絵と本番絵でレイアウトは変わらないので、差し替えは画像だけで済む。
 
-## 7. まだ決めていないこと
+## 7. まだ決めていないこと（10枚テストが止まっている理由）
 
-- 生成に使うモデル／サービス（Midjourney / NanoBanana / SDXL など）
-- 商用利用と Steam 販売の可否（**フェーズ2で有料販売するため、規約確認が必須**）
+- **生成に使うモデル／サービス**（Midjourney / NanoBanana / SDXL など）
+- **商用利用と Steam 販売の可否**（フェーズ2で有料販売するため、規約確認が必須）
+
+この二つは繋がっている。**先に決めるのは規約のほう。**
+絵柄が気に入っても販売できないサービスなら、10枚テストの結果に意味がない。
+
+選ぶときに満たす必要がある条件：
+
+| 条件 | なぜ |
+|---|---|
+| 生成物の商用再配布が可能 | Steam で有料販売する |
+| **シード固定ができる** | §2「全枚数で固定する」が守れない |
+| **参照画像（image reference）が使える** | §3 の参照画像固定が要る |
+| 417枚を回せる価格 | 1枚あたりの単価 × 417 |
+
+上2つを満たさない道具（1枚ずつ雰囲気で作る類の生成ツール）は、
+**10枚は揃って見えても417枚では揃わない。** §5の合否基準が通らないので候補から外れる。

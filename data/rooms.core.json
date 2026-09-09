@@ -3844,7 +3844,7 @@
     },
     {
       "id": "room_087",
-      "theme": "板",
+      "theme": "plank",
       "prompt": {
         "ja": "渡していいのはどれ？",
         "en": "Which plank is safe to lay down?"

@@ -89,5 +89,9 @@ AI の作りは薄い。賢くする必要が無いため。
 
 ## 費用
 
-野良と賭場は Cloudflare Workers 有料プラン（月$5〜）＋ Durable Objects の従量課金が要る。
-**一人で遊ぶモードは無料で動く。**
+野良と賭場は Cloudflare Workers（PartyKit / Durable Objects）の上に載る。
+**無料プランで始められる**（2025年4月から SQLite バックエンドの
+Durable Objects が無料枠に入った）。有料 $5/月 が要るのは無料枠を超えてから。
+計算と実装上の制約は `docs/COST.md`。
+
+**一人で遊ぶモードはそもそも通信を使わない。**
