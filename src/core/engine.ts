@@ -2,7 +2,7 @@ import type { AdvisorInfo, Hint, PublicRoom, Room, RoomPack } from './schema';
 import { RUN, knowledgeForSection } from './limits';
 import { localized } from '../i18n';
 import {
-  checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard,
+  checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard, wasTruthful,
   type HintGuardState, type ReportBook,
 } from './moderation';
 import { castLiars, castSpeakers, clampSlots, dealKnowledge, type Casting, type SelectionMode } from './casting';
@@ -452,14 +452,20 @@ export class GameEngine {
     const survived = !timedOut && chosenId === correctId;
     if (!survived) this.lives -= 1;
 
-    // 助言を送った全員について、その部屋で嘘をついていたかを記録する。
-    // 配役は区画のあいだ固定なので、この記録は次の部屋の手掛かりになる。
+    // 記録は「役」ではなく「振る舞い」で付ける。
+    // 役を出すと隠れた配役をそのまま漏らしてしまう。挑戦者に見えるのは
+    // 正解が明かされた後の「その人の助言が正解に触れていたか」だけ。
+    // 嘘つきが信用を作るために本当のことを言った回は、正しく「正」に数えられる。
+    const labels = round.room.choices.map((c) => localized(c.label));
+    const correctLabel = source
+      ? localized(source.choices.find((c) => c.id === correctId)?.label ?? { ja: '', en: '' })
+      : '';
     for (const entry of round.advice) {
       const rec = this.records.get(entry.advisorId) ?? { hit: 0, miss: 0 };
-      const liar = this.currentCasting.liarIds.includes(entry.advisorId);
+      const truthful = wasTruthful(entry.text, correctLabel, labels);
       this.records.set(entry.advisorId, {
-        hit: rec.hit + (liar ? 0 : 1),
-        miss: rec.miss + (liar ? 1 : 0),
+        hit: rec.hit + (truthful ? 1 : 0),
+        miss: rec.miss + (truthful ? 0 : 1),
       });
     }
 

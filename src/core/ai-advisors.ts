@@ -3,6 +3,7 @@ import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gatew
 import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf } from './hint-writer';
 import { liarBias } from './casting';
+import { LIE_RATE } from './limits';
 
 /**
  * AI の助言者。ソロモードで人間の助言者の代わりに入る。
@@ -56,8 +57,9 @@ export class AiAdvisorGateway implements AdvisorGateway {
       const knowledge = briefing.knowledge.get(id);
       if (!advisor || !knowledge) continue;
 
-      // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る
-      const honesty = 0.55 - Math.min(0.4, liarBias(id) * 0.16);
+      // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る。
+      // 平均すると LIE_RATE の割合で嘘をつく
+      const honesty = Math.max(0.05, Math.min(0.45, (1 - LIE_RATE) * liarBias(id)));
       const text = writeHint({
         choices: briefing.room.choices,
         knowledge,

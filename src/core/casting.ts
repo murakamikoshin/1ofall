@@ -29,8 +29,15 @@ export interface Casting {
  * 落ちたぶんがそのまま運になる（tools/sim15.mjs）。
  */
 export type Knowledge =
-  /** 嘘つきは正解を正確に知っている */
-  | { kind: 'liar'; correct: string }
+  /**
+   * 嘘つきは正解を知っていて、さらに「罠」を見ている。
+   * 罠は嘘つき全員に共通。ここへ誘い込むのが仕事。
+   *
+   * 罠を共通にしないと、嘘つきの嘘が外れの数だけ散る。
+   * 散った嘘は集計で消えるので、正直者の声だけが集まって
+   * 「一番多く名前が挙がったものを選ぶ」で必ず当たってしまう。
+   */
+  | { kind: 'liar'; correct: string; trap: string }
   /** 協力者。正解はこの中にある、というところまで */
   | { kind: 'honest'; candidates: readonly string[] }
   /** 協力者。これが死ぬ、ということだけ知っている */
@@ -112,9 +119,12 @@ export function dealKnowledge(
   const out = new Map<string, Knowledge>();
   const total = mix.narrow2 + mix.narrow3 + mix.doomed;
 
+  // その部屋の罠。嘘つき全員がここへ誘う
+  const trap = pickSome(wrong, 1, rng)[0] as string;
+
   for (const id of casting.speakerIds) {
     if (casting.liarIds.includes(id)) {
-      out.set(id, { kind: 'liar', correct });
+      out.set(id, { kind: 'liar', correct, trap });
       continue;
     }
 

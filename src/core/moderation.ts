@@ -210,3 +210,28 @@ export function fileReport(book: ReportBook, report: Report): ReportResult {
 export function reportCount(book: ReportBook, targetId: string): number {
   return book.countByTarget.get(targetId) ?? 0;
 }
+
+
+/* ───────────────────── 助言が正しかったかの判定 ───────────────────── */
+
+/** 「これは死ぬ」型の言い回し */
+const AVOID_FORMS = /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ|はずれ/;
+
+/**
+ * その助言が結果として正しかったかを判定する。
+ *
+ * 記録（正n 嘘n）はこれで付ける。役ではなく振る舞いで付けないと
+ * 隠れた配役を漏らしてしまうし、「これは死ぬ」しか言えない耳打ち役が
+ * 正直なのに毎回「嘘」と記録されてしまう。
+ */
+export function wasTruthful(text: string, correctLabel: string, allLabels: readonly string[]): boolean {
+  const mentionsCorrect = correctLabel.length > 0 && text.includes(correctLabel);
+  const mentionsAnyWrong = allLabels.some((l) => l !== correctLabel && l.length > 0 && text.includes(l));
+
+  if (AVOID_FORMS.test(text)) {
+    // 外れを避けろと言ったなら正しい。正解を避けろと言ったなら嘘
+    return !mentionsCorrect && mentionsAnyWrong;
+  }
+  // 押した先に正解が入っていれば正しい
+  return mentionsCorrect;
+}

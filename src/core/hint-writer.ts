@@ -119,15 +119,15 @@ export function writeHint({
       if (narrowed) return narrowed;
       return trySh(HEDGE, a, rng) ?? a;
     }
-    // 嘘つきは正解を知っているので言い切れる。
-    // 耳打ちのふりをして正解を「死ぬ」と潰すこともできる
-    if (rng() < 0.3) {
+    // 耳打ちのふりをして正解を「死ぬ」と潰す
+    if (rng() < 0.25) {
       const label = labelOf(choices, knowledge.correct);
       return trySh(AVOID, label, rng) ?? `${label}はだめだ`;
     }
-    const victim = wrong[Math.floor(rng() * wrong.length)];
-    const label = victim ? localized(victim.label) : '';
-    return trySh(PUSH, label, rng) ?? trySh(HEDGE, label, rng) ?? label;
+    // 罠へ誘う。嘘つき全員が同じ罠を見ているので、ここで力が集まる
+    const label = labelOf(choices, knowledge.trap);
+    const shapes = rng() < voice.assertive ? PUSH : HEDGE;
+    return trySh(shapes, label, rng) ?? trySh(HEDGE, label, rng) ?? label;
   }
 
   if (knowledge.kind === 'doomed') {

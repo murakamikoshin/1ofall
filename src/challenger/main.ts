@@ -7,7 +7,7 @@ import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
-import { liarCountFor } from '@/core/limits';
+
 import { audio } from '@/ui/audio';
 import { choiceArt } from '@/ui/placeholder';
 import { playResolution, resetStage, type ResolutionRefs } from '@/ui/death-sequence';
@@ -263,12 +263,14 @@ function renderHints(state: EngineState, s: Shell): void {
 
   const head = el('div', 'hints-head');
   const count = el('span', 'hints-count');
+  // 何人が発言済みかを出す。出そろったかどうかが分からないと待てない
   count.textContent =
     round.advice.length === 0
       ? T.challenger.hintsEmpty
-      : `${T.challenger.inbox(round.advice.length)}　${T.challenger.liarCount(liarCountFor(round.speakers.length))}`;
+      : T.challenger.speakers(round.advice.length, round.speakers.length);
   const note = el('span', 'hints-note');
-  note.textContent = T.challenger.knowsNothing;
+  // 嘘つきの人数は知らせない。0人かもしれないし全員かもしれない
+  note.textContent = T.challenger.liarUnknown;
   head.append(count, note);
   s.hints.append(head);
 

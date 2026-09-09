@@ -74,7 +74,7 @@ class RehearsalConnection implements AdvisorConnection {
         choices: room.choices,
         // 素振り用。実際の配分は core/limits.ts の knowledgeBySection が決める
         knowledge: isLiar
-          ? { kind: 'liar' as const, correct: room.correct }
+          ? { kind: 'liar' as const, correct: room.correct, trap: decoy?.id ?? room.correct }
           : roll < 0.2
             ? { kind: 'doomed' as const, doomed: decoy?.id ?? room.correct }
             : roll < 0.45
@@ -204,12 +204,15 @@ function renderBoard(): void {
     //   耳打ち   死ぬ選択肢が1つ（赤く光る）
     const marked = k.kind === 'liar' ? [k.correct] : k.kind === 'honest' ? [...k.candidates] : [];
     const doomed = k.kind === 'doomed' ? [k.doomed] : [];
+    // 嘘つきには罠も見えている。仲間全員が同じ罠を見ている
+    const trap = k.kind === 'liar' ? [k.trap] : [];
 
     grid.innerHTML = '';
     for (const choice of view.choices) {
       const lit = marked.includes(choice.id);
       const dead = doomed.includes(choice.id);
-      const cell = el('div', `cell${lit ? ' is-correct' : ''}${dead ? ' is-doomed' : ''}`);
+      const isTrap = trap.includes(choice.id);
+      const cell = el('div', `cell${lit ? ' is-correct' : ''}${dead || isTrap ? ' is-doomed' : ''}`);
       const img = el('img');
       img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
       img.alt = '';
@@ -217,9 +220,11 @@ function renderBoard(): void {
       const label = el('span');
       label.textContent = localized(choice.label);
       cell.append(img, label);
-      if (lit || dead) {
-        const flag = el('span', `cell-flag${dead ? ' is-doomed' : ''}`);
-        flag.textContent = dead
+      if (lit || dead || isTrap) {
+        const flag = el('span', `cell-flag${dead || isTrap ? ' is-doomed' : ''}`);
+        flag.textContent = isTrap
+          ? T.advisor.trapIs
+          : dead
           ? T.advisor.doomedIs
           : isLiar
             ? T.advisor.correctIs

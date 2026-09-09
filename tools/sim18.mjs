@@ -59,8 +59,7 @@ const POLICIES = {
       const r = rec.get(h.id) ?? { hit: 0, miss: 0 };
       const w = (r.hit + 1) / (r.hit + r.miss + 2);   // 信用の度合い 0〜1
       const t = l.filter((c) => h.text.includes(c.label));
-      const sign = AVOID.test(h.text) ? -1 : 1;
-      for (const c of t) s.set(c.id, s.get(c.id) + sign * w);
+      for (const c of t) s.set(c.id, s.get(c.id) + w);   // 否定の扱いは基準と揃える
     }
     return best(s, l);
   },
@@ -113,10 +112,16 @@ function runSections(slots, mix, sections) {
       const ctx = { room, hints, rec, liarIds };
       for (const n of names) if (POLICIES[n](ctx) === room.correct) wins[n]++;
       rooms++;
-      for (const id of speakerIds) {
-        const x = rec.get(id) ?? { hit: 0, miss: 0 };
-        if (liarIds.includes(id)) x.miss++; else x.hit++;
-        rec.set(id, x);
+      // 記録は振る舞いで付ける（本体と同じ判定）
+      const correctLabel = room.choices.find((c) => c.id === room.correct).label.ja;
+      const allLabels = room.choices.map((c) => c.label.ja);
+      for (const h of hints) {
+        const x = rec.get(h.id) ?? { hit: 0, miss: 0 };
+        const mc = h.text.includes(correctLabel);
+        const mw = allLabels.some((l) => l !== correctLabel && h.text.includes(l));
+        const truthful = AVOID.test(h.text) ? (!mc && mw) : mc;
+        truthful ? x.hit++ : x.miss++;
+        rec.set(h.id, x);
       }
     }
   }
