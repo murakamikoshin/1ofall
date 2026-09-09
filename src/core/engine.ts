@@ -1,5 +1,6 @@
 import type { AdvisorInfo, Hint, PublicRoom, Room, RoomPack } from './schema';
-import { HINT_MAX_LENGTH, RUN, openLimitFor } from './limits';
+import { RUN, openLimitFor } from './limits';
+import { checkHint, createHintGuard, resetGuard, type HintGuardState } from './moderation';
 import { castRound, clampSlots, type Casting, type SelectionMode } from './casting';
 import { createRng, shuffled, pickSome, type Rng } from './rng';
 import type { AdvisorGateway, Unsubscribe } from './advisor-gateway';
@@ -130,6 +131,8 @@ export class GameEngine {
   private inbox = new Map<string, Hint>();
   /** 開封した相手の当たり外れ。挑戦者が積む読み */
   private records = new Map<string, { hit: number; miss: number }>();
+  /** 文字数・連投・NGワードの検査。段階4のサーバーも同じものを通す */
+  private guard: HintGuardState = createHintGuard();
 
   private listeners = new Set<Listener>();
   private unsubs: Unsubscribe[] = [];
@@ -348,6 +351,7 @@ export class GameEngine {
     this.nominated = [];
     this.currentCasting = casting;
     this.inbox.clear();
+    resetGuard(this.guard);
 
     const speakers = casting.speakerIds
       .map((id) => eligible.find((a) => a.id === id))
@@ -383,8 +387,10 @@ export class GameEngine {
     if (hint.roundId !== round.roundId) return;
     if (this.muted.has(hint.advisorId)) return;
     if (!this.currentCasting.speakerIds.includes(hint.advisorId)) return;
-    const text = hint.text.trim();
-    if (!text || text.length > HINT_MAX_LENGTH) return;
+
+    const checked = checkHint(this.guard, hint.advisorId, hint.text, this.now());
+    if (!checked.ok) return;
+    const text = checked.text;
 
     // 1部屋につき1人1通。上書きで最新を残す
     const already = this.inbox.has(hint.advisorId);

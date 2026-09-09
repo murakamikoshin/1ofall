@@ -12,7 +12,9 @@
     "gen:sfx": "node scripts/gen-sfx.mjs",
     "validate:rooms": "node scripts/validate-rooms.mjs",
     "images:manifest": "node scripts/image-manifest.mjs",
-    "shots": "node tools/shot.mjs"
+    "shots": "node tools/shot.mjs",
+    "test": "node tools/test-moderation.mjs",
+    "sim": "node tools/sim10.mjs 38"
   },
   "dependencies": {
     "howler": "^2.2.4",

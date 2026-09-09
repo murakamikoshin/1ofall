@@ -19,7 +19,7 @@
 | 5 | 発言枠と嘘つき | **動く**（AI助言者で通しプレイできる） |
 | 6 | 命・区画・終了と開示 | **動く** |
 | 7 | 少人数モードの確認 | ロジックは対応済み、人での確認は未 |
-| 8 | 荒らし対策 | 未着手 |
+| 8 | 荒らし対策 | **文字数・連投・NGワード・人数上限は実装済み**（同一IP検知は通信層待ち） |
 | 9 | 部屋を30〜50に | **48部屋** |
 | 10 | 全画面スクショレビュー | 随時 |
 
@@ -40,6 +40,8 @@ npm run dev          # http://localhost:5173        挑戦者
 
 ```bash
 npm run build            # 型検査 + 本番ビルド
+npm run test             # 検閲（文字数・連投・NGワード）の確認
+npm run sim              # 1周の長さとバランスをシミュレーションで測る
 npm run validate:rooms   # 部屋データの検証
 npm run images:manifest  # 生成が必要な画像の一覧
 npm run gen:sfx          # 効果音を作り直す
@@ -70,6 +72,7 @@ src/core/           通信も DOM も知らない純粋ロジック
   advisor-gateway.ts 助言者の供給源。人間 / AI / なし を差し替える境界
   ai-advisors.ts    AI の助言者。ソロで人間の代わりに入る
   hint-writer.ts    助言の文面を組み立てる
+  moderation.ts     助言の検閲。段階4のサーバーも同じ関数を通す
 src/ui/             描画とそれ以外
   death-sequence.ts 死亡演出
   placeholder.ts    本番画像が来るまでの仮絵

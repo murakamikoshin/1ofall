@@ -3,6 +3,7 @@ import './advisor.css';
 
 import { choiceArt } from '@/ui/placeholder';
 import { HINT_MAX_LENGTH } from '@/core/limits';
+import { containsBlocked } from '@/core/moderation';
 import type { Choice } from '@/core/schema';
 import { t } from '@/i18n/ja';
 
@@ -237,6 +238,10 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
     const text = input.value.trim();
     const round = get();
     if (!text || !round) return;
+    if (containsBlocked(text)) {
+      status.textContent = t.errors.blocked;
+      return;
+    }
     connection.sendHint(round.roundId, text);
     input.value = '';
     sync();

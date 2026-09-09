@@ -460,6 +460,8 @@
 @media (max-width: 560px) {
   .choices { grid-template-columns: repeat(2, 1fr) !important; }
   .hints-list { grid-template-columns: 1fr; }
+  /* 横並びだと「嘘つ / きが2人」のように語の途中で折れる */
+  .hints-head { flex-direction: column; align-items: flex-start; gap: 0.15rem; }
   .hint-row { grid-template-columns: minmax(4rem, 6rem) 1fr auto; font-size: 0.82rem; }
   /* 端数の1枚は中央に。左に寄っていると答えの重みが偏って見える */
   .choices .choice:last-child:nth-child(odd) {
