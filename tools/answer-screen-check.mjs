@@ -142,9 +142,43 @@ for (const [label, viewport] of [
     await wait(120);
   }
 
-  // 終わりの画面に一周ぶんの読みが出るか（札を置いた周だけ）
+  /*
+   * 終わりの画面に一周ぶんの読みが出るか。
+   *
+   * 紙を3枚見た時点ではまだ命が残っているので、**わざと死に切って**
+   * 終わりの画面まで行く。ここを見ないと「出るはず」で終わってしまう
+   * （最初はこの検査が空振りしていて、それでも通っていた）。
+   */
   let endRead = '';
-  if (await p.locator('.end-screen').count()) {
+  if (sheets > 0) {
+    for (let i = 0; i < 60 && !(await p.locator('.end-screen').count()); i++) {
+      if (await p.locator('.answer-veil').count()) {
+        await p.locator('.answer-go').click().catch(() => {});
+        await wait(200);
+        continue;
+      }
+      const n = await p.locator('.choice:not([disabled])').count();
+      if (!n) { await wait(200); continue; }
+      // 誰も名を挙げていない扉を選んで命を使い切る
+      const blind = await p.evaluate(() => {
+        const said = [...document.querySelectorAll('.hint-text')].map((e) => e.textContent ?? '').join(' ');
+        const cells = [...document.querySelectorAll('.choice:not([disabled])')];
+        const untouched = cells.find((c) => {
+          const l = c.querySelector('.choice-label')?.textContent ?? '';
+          return l && !said.includes(l);
+        });
+        return (untouched ?? cells[0])?.dataset.choiceId ?? '';
+      });
+      if (blind) await p.locator(`.choice[data-choice-id="${blind}"]`).click().catch(() => {});
+      for (let t = 0; t < 60; t++) {
+        const ready = await p.evaluate(() => document.querySelectorAll('.end-screen').length > 0
+          || document.querySelectorAll('.answer-veil').length > 0
+          || document.querySelectorAll('.choice:not([disabled])').length > 0);
+        if (ready) break;
+        await wait(200);
+      }
+      await wait(150);
+    }
     endRead = await p.evaluate(() => {
       const line = document.querySelector('.end-stat.is-read');
       return line && !line.hidden ? (line.textContent ?? '').trim() : '';
@@ -159,8 +193,7 @@ for (const [label, viewport] of [
   // 周の終わりに読みが残る。区画ごとの点だけだと、抜けても持ち帰るものが
   // 「何部屋抜けたか」しか無い
   check(`${label}: 終わりの画面に一周ぶんの読みが出る`,
-    sheets === 0 || endRead.length > 0 || !(await p.locator('.end-screen').count()),
-    `「${endRead}」`);
+    sheets === 0 || endRead.includes('疑'), `「${endRead}」`);
   check(`${label}: 答え合わせに読みの点が出る`, sheets === 0 || scored === sheets, `${scored}/${sheets}`);
   check(`${label}: 札を置いた行に印が付く`, sheets === 0 || doubtShown > 0, `${doubtShown}/${sheets}`);
   check(`${label}: 例外なし`, errors.length === 0, errors.join(' / '));
