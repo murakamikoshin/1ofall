@@ -23,7 +23,13 @@ await build({
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent',
 });
 const C = await import(pathToFileURL(out).href);
-C.setLocale('ja');
+// 言語で読み物の厚みが変わる（英語のラベルは長いので、収まる型が減る）
+/*
+ * 言語で読み物の厚みが変わる。英語のラベルは長いので、上限に収まる型が減り、
+ * 選べないぶんだけ同じ言い方が並ぶ。日本語だけ見て英語を4種のまま
+ * 置いていたことがある（23回目）。
+ */
+let LOC = process.env.LANG_CODE ?? 'ja';
 const pack = JSON.parse(readFileSync(resolve(root, 'data/rooms.core.json'), 'utf8'));
 
 let pass = 0, fail = 0;
@@ -53,8 +59,14 @@ function frameIndex(labels) {
   return idx;
 }
 
-for (const modeId of (process.env.MODE ? [process.env.MODE] : ['standard', 'brink'])) {
-await runMode(modeId);
+const PAIRS = process.env.MODE || process.env.LANG_CODE
+  ? [[LOC, process.env.MODE ?? 'standard']]
+  // 崖っぷちは発言枠が4しかないので、言語の差が出るのは通常モード
+  : [['ja', 'standard'], ['ja', 'brink'], ['en', 'standard']];
+for (const [loc, modeId] of PAIRS) {
+  LOC = loc;
+  C.setLocale(loc);
+  await runMode(modeId);
 }
 
 async function runMode(modeId) {
@@ -114,7 +126,7 @@ const avgDistinct = perRoomDistinct.reduce((a, b) => a + b, 0) / Math.max(1, per
 const avgLines = perRoomLines.reduce((a, b) => a + b, 0) / Math.max(1, perRoomLines.length);
 // 発言枠はモードで違う（通常8・崖っぷち4）。数ではなく**比**で見る
 const spread = avgDistinct / Math.max(1, avgLines);
-console.log(`\n【${modeId}】 ${rooms}部屋　扉についての一言 ${doorLines}件　型を引けなかった ${unknown}件`);
+console.log(`\n【${modeId}/${LOC}】 ${rooms}部屋　扉についての一言 ${doorLines}件　型を引けなかった ${unknown}件`);
 console.log(`  1部屋あたりの型の数（平均）  ${avgDistinct.toFixed(1)} / 一言 ${avgLines.toFixed(1)}件 = ${(spread * 100).toFixed(0)}%`);
 console.log(`  使われた型                  ${seen.size}種`);
 console.log(`  同じ型が一部屋で重なった最大 ${worst}回　${worstRoom}`);
@@ -129,16 +141,16 @@ const tripled = repeats.filter((n) => n >= 3).length;
 const tripleRate = tripled / Math.max(1, repeats.length);
 console.log(`  3回以上重なった部屋          ${tripled}/${repeats.length}（${(tripleRate * 100).toFixed(1)}%）`);
 
-check(`${modeId}: 型を文面から引けている`, unknown < doorLines * 0.05, `${unknown}/${doorLines}`);
-check(`${modeId}: 一言のほとんどが違う言い方（75%以上）`, spread >= 0.75, `${(spread * 100).toFixed(0)}%`);
+check(`${LOC}/${modeId}: 型を文面から引けている`, unknown < doorLines * 0.05, `${unknown}/${doorLines}`);
+check(`${LOC}/${modeId}: 一言のほとんどが違う言い方（75%以上）`, spread >= 0.75, `${(spread * 100).toFixed(0)}%`);
 /*
  * 「一度も重ならない」は基準にできない。5人が言い方を選ぶので、
  * 何十部屋も回せばどこかで三人が同じ型を引く（誕生日の問題）。
  * 見るのは**四人並ばないこと**と、三人並ぶ部屋がまれであること。
  */
-check(`${modeId}: 同じ言い方が四人並ばない`, worst <= 3, `${worst}回　${worstRoom}`);
-check(`${modeId}: 三人並ぶ部屋がまれ（1割未満）`, tripleRate < 0.10, `${(tripleRate * 100).toFixed(1)}%`);
-check(`${modeId}: 一周で20種以上が使われる`, seen.size >= 20, `${seen.size}種`);
+check(`${LOC}/${modeId}: 同じ言い方が四人並ばない`, worst <= 3, `${worst}回　${worstRoom}`);
+check(`${LOC}/${modeId}: 三人並ぶ部屋がまれ（1割未満）`, tripleRate < 0.10, `${(tripleRate * 100).toFixed(1)}%`);
+check(`${LOC}/${modeId}: 一周で20種以上が使われる`, seen.size >= 20, `${seen.size}種`);
 }
 
 console.log(`\n${pass} 通過 / ${fail} 失敗`);

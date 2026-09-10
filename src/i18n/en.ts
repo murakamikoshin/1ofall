@@ -289,11 +289,27 @@ export const en: Strings = {
       (l: string) => `Leave ${l} alone`,
       (l: string) => `Don't touch ${l}`,
     ],
+    /**
+     * 一番使われる型（日本語で実測して扉についての一言の49%）。
+     * 4種しか無かったので同じ言い方が一部屋に三〜四回並んでいた。
+     * 迷いを含む言い方と含まない言い方の比は10:4で、日本語側と揃えてある。
+     */
     narrow: [
       (a: string, b: string) => `${a} or ${b}`,
       (a: string, b: string) => `Either ${a} or ${b}`,
       (a: string, b: string) => `Down to ${a}, ${b}`,
       (a: string, b: string) => `${a} or ${b}. Can't tell`,
+      (a: string, b: string) => `Maybe ${a}, maybe ${b}`,
+      (a: string, b: string) => `Either ${a} or ${b}. No more`,
+      (a: string, b: string) => `Down to two: ${a}, ${b}`,
+      (a: string, b: string) => `Looks like ${a} or ${b}`,
+      (a: string, b: string) => `${a} or ${b}, I'd guess`,
+      (a: string, b: string) => `${a} or ${b}, can't tell which`,
+      // 迷いを含まない言い方（四つだけ。marker を一つも含めない）
+      (a: string, b: string) => `${a} and ${b} remain`,
+      (a: string, b: string) => `Two left: ${a}, ${b}`,
+      (a: string, b: string) => `${a}, ${b}. One of them`,
+      (a: string, b: string) => `${a}? ${b}? One of those`,
     ],
     doubt: [
       (n: string) => `${n} is lying`,

@@ -34,6 +34,8 @@ const FOREIGN = {
   en: /[ぁ-んァ-ヶ一-龯]/,                   // 英語の助言に日本語が出る
 };
 
+const shapes = new Map();
+
 for (const loc of C.LOCALES) {
   C.setLocale(loc);
   const rng = C.createRng(20260909);
@@ -92,6 +94,43 @@ for (const loc of C.LOCALES) {
   check(`${loc}: 迷いの型がすべて迷いと読まれる`, hedgeMiss.length === 0, `漏れ: ${hedgeMiss.join(' / ')}`);
   check(`${loc}: 警告の型がすべて警告と読まれる`, avoidMiss.length === 0, `漏れ: ${avoidMiss.join(' / ')}`);
   check(`${loc}: 断言の型が迷い・警告と読まれない`, pushWrong.length === 0, `誤り: ${pushWrong.join(' / ')}`);
+
+  /*
+   * 言い回しの**数**も言語で揃える。
+   *
+   * 20回目に日本語の「二つに絞れている」型を4→14種に増やしたとき、
+   * 英語を4種のまま置いていた。文言の鍵は揃っているので検査は通り、
+   * **英語だけ同じ言い方が一部屋に三〜四回並ぶ**ままだった。
+   * 読み物の厚みは鍵の有無ではなく数で決まる。
+   */
+  const clean = (t) => t.split(label).join('　').split('◆◆').join('　');
+  shapes.set(loc, {
+    push: T.hints.push.length,
+    hedge: T.hints.hedge.length,
+    avoid: T.hints.avoid.length,
+    narrow: T.hints.narrow.length,
+    doubt: T.hints.doubt.length,
+    back: T.hints.back.length,
+    // 「二つに絞れている」型のうち迷いと読まれるもの。比が言語でずれると
+    // 読みの重み付けが変わり、腕の差が言語ごとに違うものになる
+    narrowHedged: T.hints.narrow
+      .map((f) => f(label, '◆◆'))
+      .filter((t) => T.hints.hedgePattern.test(clean(t)))
+      .length,
+  });
+}
+
+{
+  const rows = [...shapes.entries()];
+  const [firstLoc, firstTable] = rows[0];
+  for (const [loc, table] of rows.slice(1)) {
+    const diffs = Object.keys(table).filter((k) => table[k] !== firstTable[k]);
+    check(`言い回しの数が ${firstLoc} と ${loc} で揃っている`, diffs.length === 0,
+      diffs.map((k) => `${k}: ${firstLoc} ${firstTable[k]} / ${loc} ${table[k]}`).join(' / '));
+  }
+  for (const [loc, t] of rows) {
+    console.log(`   ${loc}: 押す${t.push} 迷い${t.hedge} 警告${t.avoid} 二択${t.narrow}（うち迷い${t.narrowHedged}） 疑い${t.doubt} 庇い${t.back}`);
+  }
 }
 
 console.log(`\n${pass} 通過 / ${fail} 失敗`);
