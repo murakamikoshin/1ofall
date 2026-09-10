@@ -308,10 +308,15 @@ export class RoomSession {
       }
     }
 
-    // 演出の段はサーバーが刻む。全員の画面で同じ間になる
+    // 演出の段はサーバーが刻む。全員の画面で同じ間になる。
+    // 誰も死んでいない部屋で3.4秒止めると、18部屋ぶんで無駄が積む。
+    // 死んだ者がいる部屋だけ尺を使う（悔しさはそこで出る）
+    const someoneDied = (state.verdict?.results ?? []).some((r) => !r.survived && r.chosenId !== null);
     if (state.phase === 'hush') this.laterParty(() => this.party?.advancePresentation(), 900);
     if (state.phase === 'reveal') this.laterParty(() => this.party?.advancePresentation(), 1200);
-    if (state.phase === 'verdict') this.laterParty(() => this.party?.advancePresentation(), 3400);
+    if (state.phase === 'verdict') {
+      this.laterParty(() => this.party?.advancePresentation(), someoneDied ? 3400 : 1400);
+    }
   }
 
   private planPartyRound(roundId: string, deadlineAt: number): void {

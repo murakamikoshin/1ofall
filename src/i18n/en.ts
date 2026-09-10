@@ -4,6 +4,12 @@
  */
 import type { Strings } from './ja';
 
+/**
+ * 区画の名前。奥へ行くほど、正解を一つに絞れている者が減る。
+ * 数字だけだと「進んだ」実感が出ない
+ */
+const SECTION_NAMES = ['The front', 'The yard', 'The inner room', 'The floor'] as const;
+
 export const en: Strings = {
   title: 'A Lie Ahead',
   titleRuby: 'ISSUN',
@@ -80,7 +86,7 @@ export const en: Strings = {
   hud: {
     lives: 'Lives',
     room: (n: number) => `Room ${n}`,
-    section: (n: number, total: number) => `Block ${n} / ${total}`,
+    section: (n: number, total: number) => `${SECTION_NAMES[n - 1] ?? n} ${n}/${total}`,
     slots: 'Speaking slots',
     mode: { lottery: 'Draw', nominate: 'Pick' },
   },

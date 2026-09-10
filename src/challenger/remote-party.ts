@@ -53,6 +53,10 @@ export class RemotePartySource implements PartySource {
     this.send({ t: 'advisor/hint', roundId: this.state.round?.roundId ?? '', text });
   }
 
+  report(memberId: string, text: string): void {
+    this.send({ t: 'advisor/report', targetId: memberId, roundId: this.state.round?.roundId ?? '', text });
+  }
+
   pick(choiceId: string): void {
     this.send({ t: 'party/pick', roundId: this.state.round?.roundId ?? '', choiceId });
   }

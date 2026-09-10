@@ -2,6 +2,12 @@
  * 文言はここに集約する。コードに直書きしない（多言語化は今回やらないが、
  * 後から差し替えられる形は崩さない）。
  */
+/**
+ * 区画の名前。奥へ行くほど、正解を一つに絞れている者が減る。
+ * 数字だけだと「進んだ」実感が出ない
+ */
+const SECTION_NAMES = ['表口', '中庭', '奥座敷', '底'] as const;
+
 export const ja = {
   title: '一寸先は嘘',
   titleRuby: 'いっすんさきはうそ',
@@ -79,7 +85,7 @@ export const ja = {
   hud: {
     lives: '命',
     room: (n: number) => `${n}部屋目`,
-    section: (n: number, total: number) => `${n}区画 / ${total}`,
+    section: (n: number, total: number) => `${SECTION_NAMES[n - 1] ?? n}　${n}/${total}`,
     slots: '発言枠',
     mode: { lottery: '抽選', nominate: '指名' },
   },

@@ -38,6 +38,8 @@ let unsubscribe: (() => void) | null = null;
 let timerHandle = 0;
 let resolving = false;
 let currentMode: ModeId = 'standard';
+/** この部屋で通報した相手。描き直しで表示が消えないよう覚えておく */
+const reportedThisRoom = new Set<string>();
 let lastTickSecond = -1;
 
 /* ────────────────────────────── 表題 ────────────────────────────── */
@@ -822,6 +824,7 @@ function render(state: EngineState): void {
     return;
   }
   shell.roundId = round.roundId;
+  reportedThisRoom.clear();
 
   renderLives(shell.lives, state);
   shell.roomCount.textContent = `${strings().hud.room(round.roomNumber)}　${strings().hud.section(round.sectionIndex + 1, state.sectionCount)}`;
@@ -961,9 +964,14 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean): HTMLElement {
 
   const report = document.createElement('button');
   report.className = 'hint-report';
-  report.textContent = T.challenger.report;
+  // 助言はあとからも届く。届くたびに描き直すので、
+  // 通報したことを覚えておかないと「通報済み」の表示が消える
+  const alreadyReported = reportedThisRoom.has(advice.advisorId);
+  report.textContent = alreadyReported ? T.challenger.reported : T.challenger.report;
+  report.disabled = alreadyReported;
   report.title = T.challenger.reportNote;
   report.addEventListener('click', () => {
+    reportedThisRoom.add(advice.advisorId);
     engine?.report('challenger', advice.advisorId, advice.text);
     report.textContent = T.challenger.reported;
     report.disabled = true;

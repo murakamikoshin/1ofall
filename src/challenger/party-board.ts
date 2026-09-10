@@ -34,6 +34,8 @@ export interface PartySource {
   knowledgeForMe(): Knowledge | null;
   hint(text: string): void;
   pick(choiceId: string): void;
+  /** 暴言を見た者がその場で挙げる。野良で遊ぶなら必ず要る */
+  report(memberId: string, text: string): void;
   /** 締切が来た。ローカルなら自分で閉じる */
   timeUp(): void;
   advance(): void;
@@ -76,6 +78,8 @@ export class PartyBoard {
   private timerHandle = 0;
   private unsubscribe: (() => void) | null = null;
   private playedRound: string | null = null;
+  /** この部屋で通報した相手。描き直しても消えないよう覚えておく */
+  private reported = new Set<string>();
 
   constructor(options: PartyBoardOptions) {
     this.root = options.root;
@@ -147,6 +151,7 @@ export class PartyBoard {
       this.roundId = round.roundId;
       this.myPick = null;
       this.resolving = false;
+      this.reported.clear();
       const T = strings();
       this.roomCount.textContent = `${T.hud.room(round.roomNumber)}　${T.hud.section(round.sectionIndex + 1, state.sectionCount)}`;
       this.prompt.textContent = localized(round.room.prompt);
@@ -316,6 +321,26 @@ export class PartyBoard {
       const text = el('span', 'hint-text');
       text.textContent = advice.text;
       row.append(name, text);
+
+      // 自分の発言は通報できない
+      if (advice.memberId !== this.source.meId) {
+        const actions = el('span', 'hint-actions');
+        const report = document.createElement('button');
+        report.className = 'hint-report';
+        report.type = 'button';
+        const done = this.reported.has(advice.memberId);
+        report.textContent = done ? T.challenger.reported : T.challenger.report;
+        report.disabled = done;
+        report.title = T.challenger.reportNote;
+        report.addEventListener('click', () => {
+          this.reported.add(advice.memberId);
+          this.source.report(advice.memberId, advice.text);
+          report.textContent = T.challenger.reported;
+          report.disabled = true;
+        });
+        actions.append(report);
+        row.append(actions);
+      }
       list.append(row);
     }
     this.hintsHost.append(list);

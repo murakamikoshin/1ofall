@@ -55,6 +55,10 @@ export class LocalPartySource implements PartySource {
     this.engine.hint(this.meId, text);
   }
 
+  report(memberId: string, text: string): void {
+    this.engine.report(this.meId, memberId, text);
+  }
+
   pick(choiceId: string): void {
     this.engine.pick(this.meId, choiceId);
     // 自分が決めたら仲間もすぐ決める。待たせても何も起きない
