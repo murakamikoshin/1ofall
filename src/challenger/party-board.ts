@@ -80,6 +80,7 @@ export class PartyBoard {
   private playedRound: string | null = null;
   /** この部屋で通報した相手。描き直しても消えないよう覚えておく */
   private reported = new Set<string>();
+  private ended = false;
 
   constructor(options: PartyBoardOptions) {
     this.root = options.root;
@@ -130,7 +131,11 @@ export class PartyBoard {
 
   private render(state: PartyState): void {
     if (state.phase === 'gameover' || state.phase === 'cleared') {
-      this.renderEnd(state);
+      // 状態が届くたびに呼ばれる。二度描くと終わりの画面が二枚重なる
+      if (!this.ended) {
+        this.ended = true;
+        this.renderEnd(state);
+      }
       return;
     }
     this.renderRoster(state);
@@ -391,6 +396,7 @@ export class PartyBoard {
         livesLeft: mine?.livesLeft ?? 0,
         fatal: (mine?.livesLeft ?? 0) <= 0,
         liars: [],
+        followedCrowd: mine?.followedCrowd ?? false,
         party: verdict.results.map((r) => ({
           id: r.id,
           name: r.name,
@@ -464,10 +470,27 @@ export class PartyBoard {
     const alive = state.members.filter((m) => !m.out).map((m) => (m.id === this.source.meId ? T.party.you : m.name));
     survivors.textContent = alive.length ? T.party.survivors(alive.join(T.verdict.nameSeparator)) : T.party.noSurvivors;
 
-    const traitors = el('p', 'end-stat');
-    traitors.textContent = state.traitors.length
-      ? T.party.traitorsWere(state.traitors.map((t) => (t.id === this.source.meId ? T.party.you : t.name)).join(T.verdict.nameSeparator))
-      : T.verdict.revealNone;
+    // 区画ごとに出す。まとめると「ほぼ全員が裏切り者」になって読めない
+    const traitors = el('div', 'end-reveal');
+    const nameOf = (id: string): string =>
+      id === this.source.meId ? T.party.you : (state.members.find((m) => m.id === id)?.name ?? id);
+    if (state.traitorsBySection.length === 0) {
+      const line = el('p', 'end-stat');
+      line.textContent = T.verdict.revealNone;
+      traitors.append(line);
+    } else {
+      // 区画ごとに最後の卓だけ（同じ区画に複数あれば後のもので上書き）
+      const last = new Map<number, readonly string[]>();
+      for (const e of state.traitorsBySection) last.set(e.sectionIndex, e.ids);
+      for (const entry of [...last.entries()].sort((a, b) => a[0] - b[0]).map(([sectionIndex, ids]) => ({ sectionIndex, ids }))) {
+        const line = el('p', 'end-stat');
+        line.textContent = T.verdict.revealSection(
+          entry.sectionIndex + 1,
+          entry.ids.map(nameOf).join(T.verdict.nameSeparator),
+        );
+        traitors.append(line);
+      }
+    }
 
     const again = document.createElement('button');
     again.className = 'end-action';

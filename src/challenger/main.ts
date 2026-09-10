@@ -1162,12 +1162,33 @@ function renderEnd(state: EngineState): void {
       ? strings().verdict.best(wasBest)
       : strings().verdict.bestNone;
 
-  // 嘘つきが誰だったかを全員に開示する
-  const reveal = el('p', 'end-stat');
-  const liars = new Set(state.liarLog.flatMap((r) => [...r.liarIds]));
-  const names = state.advisors.filter((a) => liars.has(a.id)).map((a) => a.name);
-  reveal.textContent =
-    names.length > 0 ? strings().verdict.reveal(names.join(strings().verdict.nameSeparator)) : strings().verdict.revealNone;
+  // 嘘つきが誰だったかを区画ごとに開示する。
+  //
+  // 全部まとめて並べていたら、卓を組み替えるたびに名前が増えて
+  // 「嘘つきだったのは こより、ウシオ、みかん、イチ、せつ、はなこ、たろう、ノブ」
+  // という、ほぼ全員が並ぶ無意味な一覧になっていた。
+  // 区画ごとなら「あの卓の嘘つきはこの三人だった」と読める。
+  const reveal = el('div', 'end-reveal');
+  // 区画ごとに、**最後に座っていた卓**の嘘つきだけを出す。
+  // 死ぬたびに卓を組み替えるので、区画内の全部を足すと
+  // 「表口の嘘つき ゲンさん、みかん、ぜんじ、かがり、ヤス、シノ、ぬい、はなこ」
+  // のようにほぼ全員が並んで読めなくなる。
+  // 知りたいのは「最後に自分が読んでいた卓は誰が嘘をついていたのか」。
+  const bySection = new Map<number, readonly string[]>();
+  for (const entry of state.liarLog) bySection.set(entry.sectionIndex, entry.liarIds);
+  const nameOf = (id: string): string => state.advisors.find((a) => a.id === id)?.name ?? id;
+  if (bySection.size === 0) {
+    const line = el('p', 'end-stat');
+    line.textContent = strings().verdict.revealNone;
+    reveal.append(line);
+  } else {
+    for (const [section, ids] of [...bySection.entries()].sort((a, b) => a[0] - b[0])) {
+      const line = el('p', 'end-stat');
+      const names = ids.map(nameOf).join(strings().verdict.nameSeparator);
+      line.textContent = strings().verdict.revealSection(section + 1, names);
+      reveal.append(line);
+    }
+  }
 
   const again = document.createElement('button');
   again.className = 'end-action';

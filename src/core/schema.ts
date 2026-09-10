@@ -192,6 +192,7 @@ export const ChallengerViewSchema = z.object({
       deathMessage: z.string(),
       livesLeft: z.number().int(),
       fatal: z.boolean(),
+      followedCrowd: z.boolean(),
       liars: z.array(AdvisorInfoSchema),
       party: z.array(
         z.object({ id: AdvisorIdSchema, name: AdvisorNameSchema, chosenId: z.string(), survived: z.boolean() }),
@@ -253,6 +254,7 @@ export const PartyViewSchema = z.object({
           survived: z.boolean(),
           livesLeft: z.number().int(),
           out: z.boolean(),
+          followedCrowd: z.boolean(),
         }),
       ),
     })
@@ -263,6 +265,7 @@ export const PartyViewSchema = z.object({
   roomNumber: z.number().int(),
   totalRooms: z.number().int(),
   traitors: z.array(AdvisorInfoSchema),
+  traitorsBySection: z.array(z.object({ sectionIndex: z.number().int(), ids: z.array(AdvisorIdSchema) })),
   /** その人自身に配られたもの。ほかの人には送らない */
   knowledge: KnowledgeSchema.nullable(),
   serverNow: z.number().int(),

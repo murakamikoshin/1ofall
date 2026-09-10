@@ -917,3 +917,11 @@
 .hud-notice.is-bad { border-color: var(--blood); color: var(--blood-lit); }
 
 .hud { position: relative; }
+
+/* 嘘つきの開示は区画ごとに並ぶ */
+.end-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}

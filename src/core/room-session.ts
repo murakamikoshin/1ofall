@@ -381,6 +381,7 @@ export class RoomSession {
         roomNumber: state.roomNumber,
         totalRooms: state.totalRooms,
         traitors: [...state.traitors],
+        traitorsBySection: state.traitorsBySection.map((t) => ({ sectionIndex: t.sectionIndex, ids: [...t.ids] })),
         knowledge: this.party?.knowledgeFor(connectionId) ?? null,
         serverNow: this.now(),
       },

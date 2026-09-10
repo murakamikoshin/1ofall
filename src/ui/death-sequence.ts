@@ -116,6 +116,14 @@ export async function playResolution(
   banner.classList.add('is-visible', 'is-death');
   await wait(soft ? 1200 : 1500);
 
+  // 一番名の挙がった扉を選んで死んだときだけ、その場で言う。
+  // このゲームで一番覚えてほしい規則（群れに従うと死ぬ）が
+  // 痛みと結びつくのはここしかない
+  if (verdict.followedCrowd) {
+    banner.textContent = strings().verdict.followedCrowd;
+    await wait(soft ? 1100 : 1400);
+  }
+
   // 外した先にあった正解を、遅れて見せる。悔しさはここで出る
   if (answer && answer !== chosen) {
     answer.classList.add('is-answer');

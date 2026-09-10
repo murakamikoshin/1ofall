@@ -85,6 +85,15 @@ export interface Verdict {
    * 言ったことと選んだことのずれが、ここで見える。
    */
   party: readonly { id: string; name: string; chosenId: string; survived: boolean }[];
+  /**
+   * 一番名の挙がった扉を選んで死んだか。
+   *
+   * このゲームで一番覚えてほしいのは「群れに従うと死ぬ」こと
+   * （一番票が集まった選択肢の的中率は85%）。
+   * 死んだ理由がそれだったときだけ、その場で言う。
+   * 手引きで読んだ規則が、痛みと結びつくのはここしかない。
+   */
+  followedCrowd: boolean;
 }
 
 export interface EngineConfig {
@@ -123,7 +132,12 @@ export interface EngineState {
    * 画面に残さないと、せっかく得た情報を人間の記憶に押しつけることになる。
    */
   confirmedLiars: readonly string[];
-  liarLog: readonly { roundId: string; liarIds: readonly string[] }[];
+  /**
+   * 部屋ごとの嘘つき。終わったあとの開示に使う。
+   * 区画も持つ：**全部まとめて名前を並べると、卓を組み替えるたびに
+   * 名前が増えて「ほぼ全員が嘘つき」という無意味な一覧になる。**
+   */
+  liarLog: readonly { roundId: string; sectionIndex: number; liarIds: readonly string[] }[];
 }
 
 export const HUSH_MS = 800;
@@ -175,7 +189,7 @@ export class GameEngine {
   private silencedThisSection = new Set<string>();
   private nextRoundPenaltyMs = 0;
   private advisors: readonly AdvisorInfo[] = [];
-  private liarLog: { roundId: string; liarIds: readonly string[] }[] = [];
+  private liarLog: { roundId: string; sectionIndex: number; liarIds: readonly string[] }[] = [];
   private nominated: string[] = [];
   private roundCounter = 0;
 
@@ -583,7 +597,7 @@ export class GameEngine {
       restingIds: [...this.resting],
     };
     this.castJustChanged = false;
-    this.liarLog = [...this.liarLog, { roundId, liarIds: casting.liarIds }];
+    this.liarLog = [...this.liarLog, { roundId, sectionIndex: this.sectionIndex, liarIds: casting.liarIds }];
     this.verdict = null;
     this.phase = 'choosing';
 
@@ -686,6 +700,7 @@ export class GameEngine {
       fatal: !survived && this.lives <= 0,
       liars,
       party,
+      followedCrowd: !survived && chosenId !== null && this.wasCrowdChoice(round, chosenId),
     };
     this.phase = 'hush';
     this.emit();
@@ -723,6 +738,23 @@ export class GameEngine {
       const chosenId = picks.get(speaker.id) ?? '';
       return { id: speaker.id, name: speaker.name, chosenId, survived: chosenId === correctId };
     });
+  }
+
+  /**
+   * その扉が「一番名の挙がった扉」だったか。
+   * 同点で一番なら群れとは言えないので、単独一番のときだけ真。
+   */
+  private wasCrowdChoice(round: RoundState, chosenId: string): boolean {
+    const labels = round.room.choices.map((c) => ({ id: c.id, label: localized(c.label) }));
+    const count = new Map(labels.map((c) => [c.id, 0]));
+    for (const advice of round.advice) {
+      for (const c of labels) {
+        if (advice.text.includes(c.label)) count.set(c.id, (count.get(c.id) ?? 0) + 1);
+      }
+    }
+    const mine = count.get(chosenId) ?? 0;
+    if (mine < 2) return false;
+    return [...count.entries()].every(([id, n]) => id === chosenId || n < mine);
   }
 
   private afterVerdict(): void {

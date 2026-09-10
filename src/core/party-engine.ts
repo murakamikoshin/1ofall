@@ -66,6 +66,8 @@ export interface PartyResult {
   survived: boolean;
   livesLeft: number;
   out: boolean;
+  /** 一番名の挙がった扉を選んで死んだか。「群れに従うと死ぬ」を痛みと結びつける */
+  followedCrowd: boolean;
 }
 
 export interface PartyVerdict {
@@ -87,6 +89,8 @@ export interface PartyState {
   totalRooms: number;
   /** 終わったときだけ入る。途中で開けると助言の意味が消える */
   traitors: readonly AdvisorInfo[];
+  /** 区画ごとの裏切り者。まとめて並べると「ほぼ全員」になって読めない */
+  traitorsBySection: readonly { sectionIndex: number; ids: readonly string[] }[];
 }
 
 export interface PartyEngineConfig {
@@ -130,6 +134,7 @@ export class PartyEngine {
   private traitorSection = -1;
   private records = new Map<string, { hit: number; miss: number }>();
   private allTraitors = new Set<string>();
+  private traitorLog: { sectionIndex: number; ids: readonly string[] }[] = [];
 
   private guard: HintGuardState = createHintGuard();
   private reports: ReportBook = createReportBook();
@@ -172,6 +177,8 @@ export class PartyEngine {
         this.phase === 'gameover' || this.phase === 'cleared'
           ? this.members.filter((m) => this.allTraitors.has(m.id)).map((m) => ({ ...m }))
           : [],
+      traitorsBySection:
+        this.phase === 'gameover' || this.phase === 'cleared' ? this.traitorLog : [],
     };
   }
 
@@ -194,6 +201,7 @@ export class PartyEngine {
     this.roomsDone = 0;
     this.traitorSection = -1;
     this.allTraitors.clear();
+    this.traitorLog = [];
     this.records.clear();
     this.muted.clear();
     this.deck = shuffled(this.pack.rooms, this.rng);
@@ -243,6 +251,7 @@ export class PartyEngine {
       this.traitorSection = this.sectionIndex;
       this.traitorIds = [...castLiars(everyone, this.rng, false)];
       for (const id of this.traitorIds) this.allTraitors.add(id);
+      this.traitorLog = [...this.traitorLog, { sectionIndex: this.sectionIndex, ids: [...this.traitorIds] }];
       this.records.clear();
     }
     // 途中で抜けた人ぶんを詰める
@@ -342,18 +351,37 @@ export class PartyEngine {
     if (!round || !source) return;
 
     const correctId = source.correct;
+
+    // 一番名の挙がった扉。同点で一番なら群れとは言えないので単独一番だけ
+    const mention = new Map(round.room.choices.map((c) => [c.id, 0]));
+    for (const advice of this.advice) {
+      for (const c of round.room.choices) {
+        if (advice.text.includes(localized(c.label))) mention.set(c.id, (mention.get(c.id) ?? 0) + 1);
+      }
+    }
+    const crowdOf = (id: string | null): boolean => {
+      if (id === null) return false;
+      const mine = mention.get(id) ?? 0;
+      if (mine < 2) return false;
+      return [...mention.entries()].every(([k, n]) => k === id || n < mine);
+    };
+
     const results: PartyResult[] = [];
     for (const member of this.members) {
       const before = this.lives.get(member.id) ?? 0;
       if (before <= 0) {
-        results.push({ id: member.id, name: member.name, chosenId: null, survived: false, livesLeft: 0, out: true });
+        results.push({ id: member.id, name: member.name, chosenId: null, survived: false, livesLeft: 0, out: true, followedCrowd: false });
         continue;
       }
       const chosenId = this.picks.get(member.id) ?? null;
       const survived = chosenId === correctId;
       const livesLeft = survived ? before : before - 1;
       this.lives.set(member.id, livesLeft);
-      results.push({ id: member.id, name: member.name, chosenId, survived, livesLeft, out: livesLeft <= 0 });
+      results.push({
+        id: member.id, name: member.name, chosenId, survived, livesLeft,
+        out: livesLeft <= 0,
+        followedCrowd: !survived && crowdOf(chosenId),
+      });
     }
 
     // 記録は「言ったことが本当だったか」で付ける。配役は覗かない

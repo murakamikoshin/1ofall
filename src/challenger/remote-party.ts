@@ -12,7 +12,7 @@ import type { PartySource } from './party-board';
 const EMPTY: PartyState = {
   phase: 'title', members: [], round: null, verdict: null,
   sectionIndex: 0, sectionCount: 1, roomsPerSection: 1, roomNumber: 0, totalRooms: 0,
-  traitors: [],
+  traitors: [], traitorsBySection: [],
 };
 
 export class RemotePartySource implements PartySource {
@@ -97,6 +97,7 @@ export class RemotePartySource implements PartySource {
       roomNumber: view.roomNumber,
       totalRooms: view.totalRooms,
       traitors: view.traitors,
+      traitorsBySection: view.traitorsBySection,
     };
     for (const l of this.listeners) l(this.state);
   }
