@@ -236,6 +236,13 @@ export class GameEngine {
   private nominated: string[] = [];
   private roundCounter = 0;
   private sectionAnswer: SectionAnswer | null = null;
+  /** この区画で扉について一言でも出した人 */
+  private spokeInSection = new Set<string>();
+  /** 前の区画で席にいたのに一言も出さなかった人。次の抽選で薄く引く */
+  private quietLastSection = new Set<string>();
+  /** 直前に引いた発言枠と、それを引いた区画 */
+  private lastCastSpeakers: readonly string[] = [];
+  private lastCastSection = -1;
 
   /** この周でまだ出していない部屋。同じ部屋を続けて見せないための山札 */
   private deck: Room[] = [];
@@ -350,6 +357,10 @@ export class GameEngine {
     this.resting.clear();
     this.sectionCasting = null;
     this.sectionAnswer = null;
+    this.spokeInSection.clear();
+    this.quietLastSection.clear();
+    this.lastCastSpeakers = [];
+    this.lastCastSection = -1;
     this.liarLog = [];
     this.nextRoundPenaltyMs = 0;
     this.deck = shuffled(this.pack.rooms, this.rng);
@@ -587,17 +598,41 @@ export class GameEngine {
     const current = this.sectionCasting;
     if (!current || this.sectionCastingIndex !== this.sectionIndex) {
       this.castJustChanged = true;
+      /*
+       * 区画が変わったなら、前の区画で黙っていた席を薄くする。
+       *
+       * 死んで引き直したぶんは数えない（区画が一部屋で終わっていることが
+       * あり、そこで黙っていたことを咎めるのは早い）。
+       */
+      if (this.lastCastSection >= 0 && this.lastCastSection !== this.sectionIndex) {
+        this.quietLastSection = new Set(
+          this.lastCastSpeakers.filter((id) => !this.spokeInSection.has(id)),
+        );
+      } else {
+        this.quietLastSection = new Set();
+      }
+      this.spokeInSection.clear();
+
+      const gatewayWeight = this.gateway.slotWeight;
+      const quiet = this.quietLastSection;
       const speakerIds = castSpeakers({
         advisors: eligible,
         slots: this.slotsForSection(),
         mode: this.selectionMode,
         volunteers: this.gateway.volunteers(),
         nominated: this.nominated,
-        // 手を挙げた人・賭けを当てている人を厚く引く。
-        // 配信で発言できない99%から枠へ上がる道
-        weight: this.gateway.slotWeight ? (id: string) => this.gateway.slotWeight?.(id) ?? 1 : undefined,
+        // 手を挙げた人・賭けを当てている人を厚く引き、
+        // 前の区画で黙っていた席を薄く引く。
+        // 配信で発言できない99%から枠へ上がる道がここ
+        weight: gatewayWeight || quiet.size > 0
+          ? (id: string) =>
+              (gatewayWeight ? gatewayWeight.call(this.gateway, id) : 1)
+              * (quiet.has(id) ? RUN.quietSlotWeight : 1)
+          : undefined,
         rng: this.rng,
       });
+      this.lastCastSpeakers = [...speakerIds];
+      this.lastCastSection = this.sectionIndex;
       this.nominated = [];
       this.sectionCasting = {
         speakerIds,
@@ -791,6 +826,10 @@ export class GameEngine {
   /** 1部屋につき、口ごとに1通。書き直しは最新で上書きする */
   private addAdvice(round: RoundState, entry: Advice): void {
     const kind = entry.kind ?? 'door';
+    // 扉について言った人だけを「喋った」に数える。
+    // 人を指した一手（「あいつは嘘だ」）は押すだけなので、
+    // それだけで席を持ち続けられると黙っているのと変わらない
+    if (kind === 'door') this.spokeInSection.add(entry.advisorId);
     const rest = round.advice.filter((a) => !(a.advisorId === entry.advisorId && (a.kind ?? 'door') === kind));
     round.advice = [...rest, entry];
     this.emit();
