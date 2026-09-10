@@ -882,3 +882,6 @@
   letter-spacing: 0.3em;
   text-transform: uppercase;
 }
+
+/* 顔ぶれが入れ替わった、という知らせは埋もれさせない */
+.hints-note.is-fresh { color: var(--rust); }

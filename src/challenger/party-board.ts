@@ -288,6 +288,12 @@ export class PartyBoard {
     const count = el('span', 'hints-count');
     count.textContent = T.party.spoken(round.advice.length, state.members.length);
     head.append(count);
+    // 裏切り者が入れ替わった部屋では、記録が白紙に戻ることを先に言う
+    if (round.freshCast) {
+      const note = el('span', 'hints-note is-fresh');
+      note.textContent = T.challenger.freshCast;
+      head.append(note);
+    }
     this.hintsHost.append(head);
 
     if (round.advice.length === 0) {

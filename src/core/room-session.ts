@@ -364,6 +364,7 @@ export class RoomSession {
               timeLimitMs: state.round.timeLimitMs,
               deadlineAt: state.round.deadlineAt,
               advice: state.round.advice.map((a) => ({ ...a, record: { ...a.record } })),
+              freshCast: state.round.freshCast,
             }
           : null,
         verdict: state.verdict
@@ -485,6 +486,7 @@ export class RoomSession {
                 record: { ...a.record },
               })),
               silenceUsed: round.silenceUsed,
+              freshCast: round.freshCast,
               ownCandidates: [...round.ownCandidates],
               restingIds: [...round.restingIds],
             }

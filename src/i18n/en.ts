@@ -91,6 +91,7 @@ export const en: Strings = {
     inbox: (n: number) => `${n} advisors have spoken`,
     record: (hit: number, miss: number) => `true ${hit} / lies ${miss}`,
     recordHint: 'How honest they have been in this block',
+    freshCast: 'New faces. The record starts blank',
     liarUnknown: 'None of them may be lying. All of them may be',
     speakers: (got: number, all: number) => `${got} of ${all} have spoken`,
     knowsNothing: 'Allies do not know the answer. They have it down to two',

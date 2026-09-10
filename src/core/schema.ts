@@ -174,6 +174,7 @@ export const ChallengerViewSchema = z.object({
       speakers: z.array(AdvisorInfoSchema),
       advice: z.array(AdviceSchema),
       silenceUsed: z.boolean(),
+      freshCast: z.boolean(),
       ownCandidates: z.array(z.string()),
       restingIds: z.array(AdvisorIdSchema),
     })
@@ -233,6 +234,7 @@ export const PartyViewSchema = z.object({
           record: z.object({ hit: z.number().int(), miss: z.number().int() }),
         }),
       ),
+      freshCast: z.boolean(),
     })
     .nullable(),
   verdict: z

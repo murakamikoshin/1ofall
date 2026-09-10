@@ -90,6 +90,7 @@ export const ja = {
     inbox: (n: number) => `${n}人が助言を送ってきた`,
     record: (hit: number, miss: number) => `正${hit} 嘘${miss}`,
     recordHint: 'この区画での、その人の正直さ',
+    freshCast: '顔ぶれが入れ替わった。記録は白紙だ',
     liarUnknown: '嘘つきは0人かもしれないし、全員かもしれない',
     speakers: (got: number, all: number) => `${all}人中 ${got}人が発言`,
     knowsNothing: '協力者は正解を知らない。二択まで絞れているだけ',

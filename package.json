@@ -18,7 +18,7 @@
     "sim": "node tools/sim10.mjs 38",
     "party": "partykit dev --port 1999",
     "test:live": "node tools/party-live.mjs && node tools/advisor-live.mjs /tmp && node tools/host-live.mjs /tmp && node tools/party-net-live.mjs /tmp && node tools/match-live.mjs /tmp",
-    "test:ui": "node tools/brief-check.mjs /tmp && node tools/a11y-check.mjs /tmp && node tools/a11y-advisor.mjs /tmp && node tools/party-board-check.mjs /tmp && node tools/title-fit.mjs /tmp",
+    "test:ui": "node tools/brief-check.mjs /tmp && node tools/a11y-check.mjs /tmp && node tools/a11y-advisor.mjs /tmp && node tools/party-board-check.mjs /tmp && node tools/fresh-cast-check.mjs && node tools/title-fit.mjs /tmp",
     "sim:party": "node tools/party-sim.mjs"
   },
   "dependencies": {

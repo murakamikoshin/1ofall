@@ -84,7 +84,7 @@ export class RemotePartySource implements PartySource {
       phase: view.phase as PartyState['phase'],
       members: view.members,
       round: view.round
-        ? { ...view.round, deadlineAt: view.round.deadlineAt - this.skewMs }
+        ? { ...view.round, freshCast: view.round.freshCast, deadlineAt: view.round.deadlineAt - this.skewMs }
         : null,
       verdict: view.verdict,
       sectionIndex: view.sectionIndex,

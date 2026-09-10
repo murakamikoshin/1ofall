@@ -56,6 +56,11 @@ export interface RoundState {
   advice: readonly Advice[];
   silenceUsed: boolean;
   /**
+   * この部屋から顔ぶれと配役が入れ替わった。
+   * 記録が白紙に戻るので、黙って消すと不具合に見える。画面で言う
+   */
+  freshCast: boolean;
+  /**
    * 全員挑戦者モードで、挑戦者自身に配られた部分情報。
    * 「このどれかが生きる」。全員を疑っても手詰まりにならないための足場。
    */
@@ -174,6 +179,8 @@ export class GameEngine {
   /** 区画のあいだ据え置く配役 */
   private sectionCasting: Casting | null = null;
   private sectionCastingIndex = -1;
+  /** 直前に配役を引き直したか。次の部屋の画面で一度だけ知らせる */
+  private castJustChanged = false;
   /** 文字数・連投・NGワードの検査。段階4のサーバーも同じものを通す */
   private guard: HintGuardState = createHintGuard();
   private rejectionListeners = new Set<(advisorId: string, reason: string) => void>();
@@ -409,6 +416,7 @@ export class GameEngine {
       this.sectionCasting.speakerIds.some((id) => !eligible.some((a) => a.id === id));
 
     if (stale) {
+      this.castJustChanged = true;
       const speakerIds = castSpeakers({
         advisors: eligible,
         slots: this.slotsForSection(),
@@ -516,9 +524,11 @@ export class GameEngine {
       speakers,
       advice: [],
       silenceUsed: false,
+      freshCast: this.castJustChanged,
       ownCandidates: this.ownCandidates,
       restingIds: [...this.resting],
     };
+    this.castJustChanged = false;
     this.liarLog = [...this.liarLog, { roundId, liarIds: casting.liarIds }];
     this.verdict = null;
     this.phase = 'choosing';

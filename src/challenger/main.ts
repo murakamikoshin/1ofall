@@ -916,8 +916,11 @@ function renderHints(state: EngineState, s: Shell): void {
       ? T.challenger.hintsEmpty
       : T.challenger.speakers(round.advice.length, round.speakers.length);
   const note = el('span', 'hints-note');
-  // 嘘つきの人数は知らせない。0人かもしれないし全員かもしれない
-  note.textContent = T.challenger.liarUnknown;
+  // 顔ぶれが入れ替わった部屋では、それを先に言う。
+  // 記録が黙って白紙に戻ると不具合に見えるし、
+  // 「前の区画の信用は持ち越せない」という規則そのものが伝わらない
+  note.textContent = round.freshCast ? T.challenger.freshCast : T.challenger.liarUnknown;
+  note.classList.toggle('is-fresh', round.freshCast);
   head.append(count, note);
   s.hints.append(head);
 

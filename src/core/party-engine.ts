@@ -55,6 +55,8 @@ export interface PartyRoundState {
   timeLimitMs: number;
   deadlineAt: number;
   advice: readonly PartyAdvice[];
+  /** この部屋から裏切り者が入れ替わった。記録も白紙 */
+  freshCast: boolean;
 }
 
 export interface PartyResult {
@@ -235,7 +237,9 @@ export class PartyEngine {
     // 裏切り者は区画のあいだ据え置く。毎回選び直すと裏切りの筋書きが立たない。
     // 死んだ人も含めて配る——**死んでも声は出せる**ので、裏切りは続く
     const everyone = this.members.map((m) => m.id);
+    let freshCast = false;
     if (this.traitorSection !== this.sectionIndex) {
+      freshCast = true;
       this.traitorSection = this.sectionIndex;
       this.traitorIds = [...castLiars(everyone, this.rng, false)];
       for (const id of this.traitorIds) this.allTraitors.add(id);
@@ -268,6 +272,7 @@ export class PartyEngine {
       timeLimitMs: ROOM_TIME_MS,
       deadlineAt: this.now() + ROOM_TIME_MS,
       advice: [],
+      freshCast,
     };
     this.emit();
   }
