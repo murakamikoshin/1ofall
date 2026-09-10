@@ -45,6 +45,10 @@ const seats = await pages[0].locator('.party-seat').count();
 check('席が埋まっている', seats >= 6, `${seats}席`);
 const humans = await pages[0].locator('.party-name').allTextContents();
 console.log(`   顔ぶれ: ${humans.join(' ')}`);
+// 名指しは名前で読むものなので、同じ名前が二人いると誰の話か分からなくなる。
+// 実際に「とんび」が二人並んでいた（AI の名を飛び飛びに引いていた）
+const dupes = humans.filter((n, i) => humans.indexOf(n) !== i);
+check('同じ名前が二人いない', dupes.length === 0, `重なり: ${dupes.join(' ')}`);
 await pages[0].screenshot({ path: `${OUT}/mm-2-room.png` });
 await pages[1].screenshot({ path: `${OUT}/mm-3-guest.png`, fullPage: true });
 

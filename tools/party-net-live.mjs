@@ -50,6 +50,8 @@ const seats = await host.locator('.party-seat').count();
 check('席が埋まっている（AIで補う）', seats >= 6, `${seats}席`);
 const names = await host.locator('.party-name').allTextContents();
 check('名乗った名前が並ぶ', names.some((n) => n.includes('みかん')), names.join('/'));
+const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+check('同じ名前が二人いない', dupes.length === 0, `重なり: ${dupes.join(' ')}`);
 
 // 自分の持ち情報は人によって違う
 const hostOwn = await host.locator('.choice.is-known, .choice.is-fatal').count();

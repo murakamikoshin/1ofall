@@ -13,7 +13,7 @@ import { ADVISOR_NAME_MAX, type ModeConfig } from './limits';
  * 直すのは後から出てきた側。人間が先に並んでいるので、
  * 名乗り直しを強いられるのは AI のほうになる。
  */
-function dedupeNames(roster: readonly AdvisorInfo[]): AdvisorInfo[] {
+export function dedupeNames<T extends { name: string }>(roster: readonly T[]): T[] {
   const used = new Set<string>();
   return roster.map((a) => {
     if (!used.has(a.name)) {

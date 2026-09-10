@@ -282,6 +282,49 @@ function renderBoard(): void {
   const notice = el('p', 'board-notice');
   notice.setAttribute('role', 'status');
   notice.hidden = true;
+
+  /*
+   * 知らせは**必ずこれだけ出す。**
+   *
+   * 部屋が変わったら消す形にしたら、消えるのが早すぎた。段を刻むのは
+   * サーバーで、誰も死ななかった部屋は1.4秒で次へ行く。賭けの当たり外れも
+   * 自分の一言の結果も、1.4秒しか出ないなら読めない。
+   * 逆に消さないと、次の部屋を見ながら前の部屋の結果を読むことになる。
+   * だから「出してから4.5秒は残す。過ぎていたら部屋が変わった時点で消す」。
+   */
+  const NOTICE_HOLD_MS = 4500;
+  let noticeAt = 0;
+  let noticeTimer = 0;
+  const clearNotice = (): void => {
+    notice.hidden = true;
+    notice.textContent = '';
+    notice.classList.remove('is-good', 'is-fatal');
+  };
+  const showNotice = (text: string, good = false, bad = false): void => {
+    if (noticeTimer) {
+      clearTimeout(noticeTimer);
+      noticeTimer = 0;
+    }
+    notice.textContent = text;
+    notice.hidden = false;
+    notice.classList.toggle('is-good', good);
+    notice.classList.toggle('is-fatal', bad);
+    noticeAt = Date.now();
+  };
+  /** 部屋が変わった。読む間だけ残して消す */
+  const fadeNotice = (): void => {
+    if (notice.hidden) return;
+    const left = NOTICE_HOLD_MS - (Date.now() - noticeAt);
+    if (left <= 0) {
+      clearNotice();
+      return;
+    }
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = window.setTimeout(() => {
+      noticeTimer = 0;
+      clearNotice();
+    }, left);
+  };
   frame.append(role, board, notice, floor, compose);
   app!.append(frame);
 
@@ -299,6 +342,12 @@ function renderBoard(): void {
       silenced: T.advisor.silenced,
       survived: T.verdict.survived,
       died: T.verdict.died,
+      // 発言枠にいた人へ、自分の一言がどうなったか。
+      // ここまで枠にいる人には何も返っていなかった（枠外には通算が返るのに）
+      followedLived: T.advisor.followedLived,
+      followedDied: T.advisor.followedDied,
+      ignoredLived: T.advisor.ignoredLived,
+      ignoredDied: T.advisor.ignoredDied,
     };
     // 枠外の賭けは当たり外れを通算で出す。手柄がここに積む
     if (code === 'voteHit' || code === 'voteMiss') {
@@ -306,18 +355,22 @@ function renderBoard(): void {
       const rank = connection.betRank?.() ?? null;
       // 順位は賭けた人だけを分母にする（見ているだけの人を入れると意味が消える）
       const place = rank && rank.of > 1 ? `　${T.advisor.betRank(rank.place, rank.of)}` : '';
-      notice.textContent = `${code === 'voteHit' ? T.advisor.betHit : T.advisor.betMiss}　${T.advisor.betRecord(rec.hit, rec.miss)}${place}`;
-      notice.hidden = false;
-      notice.classList.toggle('is-good', code === 'voteHit');
-      notice.classList.toggle('is-fatal', code === 'voteMiss');
+      showNotice(
+        `${code === 'voteHit' ? T.advisor.betHit : T.advisor.betMiss}　${T.advisor.betRecord(rec.hit, rec.miss)}${place}`,
+        code === 'voteHit',
+        code === 'voteMiss',
+      );
       return;
     }
     const message = known[code];
     if (!message) return;
-    notice.textContent = message;
-    notice.hidden = false;
-    notice.classList.toggle('is-fatal', code === 'died');
-    notice.classList.toggle('is-good', code === 'survived');
+    // 「刺さった」を良い色で出すのは嘘つきにとっての手柄なので、
+    // 色は**挑戦者の生死**ではなく**自分の言葉が通ったか**に付ける
+    showNotice(
+      message,
+      code === 'survived' || code === 'followedLived' || code === 'followedDied',
+      code === 'died' || code === 'ignoredLived',
+    );
   });
 
   /** 出している答え合わせ。次の部屋が届いたら下ろす */
@@ -412,6 +465,14 @@ function renderBoard(): void {
     if (view && view.roundId !== answerRound) {
       answerRound = view.roundId;
       dismissAnswer?.();
+      /*
+       * 前の部屋の知らせを引き取る。
+       *
+       * 「あなたの言葉で死んだ」が次の部屋のあいだも残っていた（実測）。
+       * 新しい部屋を見ながら前の結果を読むと、いま起きたことだと取り違える。
+       * ただし即座に消すと、1.4秒で次へ行く部屋では誰も読めない。
+       */
+      fadeNotice();
     }
     if (!view) {
       prompt.textContent = connection.waitingFor?.() === 'betweenRuns'
@@ -546,7 +607,6 @@ function renderBoard(): void {
           : T.advisor.votePrompt
         : '';
     pickNote.hidden = !canPick && !canVote;
-    notice.hidden = true;
     void picked;
 
     renderFloor(floor, view);

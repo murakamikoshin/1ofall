@@ -65,6 +65,8 @@ const screen = async (p) => p.evaluate(() => {
     // 区画の答え合わせ。助言者は自分の役しか知らないので、ここでしか他人の役を見られない
     answer: [...document.querySelectorAll('.answer-row')].map((e) => (e.textContent ?? '').trim()),
     answerHead: t('.answer-heading'),
+    // 部屋が終わったあと、自分の一言がどうなったかが返る（枠にいた人だけ）
+    notice: t('.board-notice'),
   };
 });
 
@@ -76,6 +78,9 @@ let mixedFloor = 0;
 let callsSeen = 0;
 let answerSeen = 0;
 let answerNoRole = 0;
+let spokeRooms = 0;
+let outcomeSeen = 0;
+const lastOutcome = new Map();
 
 for (let step = 0; step < 60; step++) {
   const v = view();
@@ -118,8 +123,29 @@ for (let step = 0; step < 60; step++) {
   callsSeen += call.length;
 
   // 助言者の画面が同じものを見ているか
+  let iSpoke = false;
   for (const { name, p } of pages) {
     const sc = await screen(p);
+    /*
+     * 枠にいるなら一言書かせる。書かないと「枠にいた人へ結果が返る」を
+     * 確かめられない（返るのは自分の一言があった人だけ）。
+     * 扉の名前をそのまま入れる（検閲は通る文にする）。
+     */
+    if (sc.canWrite) {
+      const label = v2.round.room.choices[0]?.label?.ja ?? '';
+      const box = p.locator('.compose-row .field');
+      if (label && (await box.count())) {
+        await box.fill(`${label}は死ぬ`);
+        await wait(150);
+        const send = p.locator('.compose-row .primary');
+        if (!(await send.isDisabled().catch(() => true))) {
+          await send.click().catch(() => {});
+          await wait(300);
+          iSpoke = true;
+          say(`    〔${name}〕 書いた「${label}は死ぬ」`);
+        }
+      }
+    }
 
     if (sc.canWrite) {
       say(`    〔${name}〕 ${sc.role} / 場に${sc.floor.length}件 / 撃てる:${sc.canPoint} ${sc.note2 ? `「${sc.note2}」` : ''}`);
@@ -147,6 +173,14 @@ for (let step = 0; step < 60; step++) {
     send({ t: 'challenger/advance' });
     await wait(220);
     for (const { name, p } of pages) {
+      const outcome = await p.evaluate(() =>
+        (document.querySelector('.board-notice')?.textContent ?? '').trim());
+      // 知らせは押すまで残るので、段ごとに見ると同じ行が何度も出る
+      if (/あなたの言葉|信じられなかった/.test(outcome) && lastOutcome.get(name) !== outcome) {
+        lastOutcome.set(name, outcome);
+        outcomeSeen++;
+        say(`    〔${name}〕 ${outcome}`);
+      }
       const sheet = await p.evaluate(() => ({
         rows: [...document.querySelectorAll('.answer-row')].map((e) => (e.textContent ?? '').trim()),
         head: (document.querySelector('.answer-heading')?.textContent ?? '').trim(),
@@ -161,6 +195,7 @@ for (let step = 0; step < 60; step++) {
   }
   await wait(400);
   const after = view();
+  if (iSpoke) spokeRooms++;
   if (after && after.lives < beforeLives) { deaths++; say(`    → 死んだ（命 ${beforeLives}→${after.lives}）`); }
   if (after?.phase === 'over') { say('\n  ▼ 終わり'); break; }
   if (sectionsSeen.size >= 2 && deaths >= 1) break;
@@ -232,6 +267,10 @@ check('助言者の「場」に名指しが混ざらない', mixedFloor === 0, `
 if (sectionsSeen.size >= 2) {
   check('助言者にも区画の答え合わせが届く', answerSeen > 0, `${answerSeen}回`);
   check('答え合わせに役が並んでいる', answerNoRole === 0, `${answerNoRole}回は役が無かった`);
+}
+// 枠にいて一言を書いた部屋があるなら、結果が本人へ返っているはず
+if (spokeRooms > 0) {
+  check('枠にいた人へ部屋の結果が返る', outcomeSeen > 0, `書いた部屋${spokeRooms} / 返り${outcomeSeen}`);
 }
 check('例外なし', errors.length === 0, errors.join(' / '));
 if (volunteerCleared !== null) check('手を挙げた扱いが区画の頭で切れている', volunteerCleared === true);

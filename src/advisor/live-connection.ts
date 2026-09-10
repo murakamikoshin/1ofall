@@ -1,6 +1,7 @@
 import type { AdvisorConnection, AdvisorView, SectionAnswerView } from './main';
 import type { Choice, Knowledge } from '@/core/schema';
 import { localized } from '@/i18n';
+import { wasTruthful } from '@/core/moderation';
 
 /**
  * 本物の線。PartyKit の部屋に繋いで、自分あての知識だけを受け取る。
@@ -31,6 +32,8 @@ interface Incoming {
   cleared?: boolean;
   rows?: { id: string; name: string; liar: boolean; hit: number; miss: number }[];
   rank?: { place: number; of: number };
+  /** 挑戦者が選んだ扉。round/result で全員に配られる */
+  chosen?: string;
 }
 
 const RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
@@ -197,9 +200,13 @@ export class LiveConnection implements AdvisorConnection {
         return;
       case 'round/result': {
         // 全員挑戦者モードでは、自分の生死がここで決まる
-        if (!this.isParty || !this.myPick || this.myPick.roundId !== msg.roundId) return;
-        this.notify(this.myPick.choiceId === msg.correct ? 'survived' : 'died');
-        this.myPick = null;
+        if (this.isParty) {
+          if (!this.myPick || this.myPick.roundId !== msg.roundId) return;
+          this.notify(this.myPick.choiceId === msg.correct ? 'survived' : 'died');
+          this.myPick = null;
+          return;
+        }
+        this.reportMyRound(msg);
         return;
       }
       case 'round/open': {
@@ -271,6 +278,40 @@ export class LiveConnection implements AdvisorConnection {
         this.notify(msg.code ?? 'unknown');
         return;
     }
+  }
+
+  /**
+   * 発言枠にいた人へ、自分の一言がどうなったかを返す。
+   *
+   * ここまで、**枠にいる人には何も返っていなかった。**
+   * 枠外の賭けには当たり外れと通算が返るのに、言葉を書いた5〜8人には
+   * 挑戦者が自分を信じたのかも、生きたのかも返らない。
+   * 嘘つきは罠が刺さったかを知らないまま次の部屋へ行っていた。
+   *
+   * 線は増やさない。`round/result` は選んだ扉と正解を全員に配っているので、
+   * 自分の一言と突き合わせれば画面の中で出せる。
+   */
+  private reportMyRound(msg: Incoming): void {
+    const view = this.latest;
+    const me = this.myId;
+    if (!view || !me || !msg.chosen || !msg.correct) return;
+    // 扉についての自分の一言。名指し（人を撃った一言）は数えない
+    const mine = this.said.filter((h) => h.advisorId === me && (h.kind ?? 'door') === 'door').at(-1);
+    if (!mine) return;
+
+    const labels: string[] = view.choices.map((c) => localized(c.label as never));
+    const labelOf = (id: string): string =>
+      localized((view.choices.find((c) => c.id === id)?.label ?? { ja: '', en: '' }) as never);
+    /*
+     * 「信じられたか」は「挑戦者が選んだ扉に対して自分の言葉が当たっていたか」。
+     * 正解を当たりに置けば正誤の判定になるので、同じ関数を選んだ扉で回す
+     * （「Xは死ぬ」と言って挑戦者が X を避けたなら、信じられている）。
+     */
+    const followed = wasTruthful(mine.text, labelOf(msg.chosen), labels);
+    const survived = msg.chosen === msg.correct;
+    this.notify(followed
+      ? (survived ? 'followedLived' : 'followedDied')
+      : (survived ? 'ignoredLived' : 'ignoredDied'));
   }
 
   private push(view: AdvisorView | null): void {

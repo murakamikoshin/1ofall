@@ -1,6 +1,6 @@
 import { GameEngine, type EngineState } from './engine';
 import { SocketAdvisorGateway } from './socket-gateway';
-import { CompositeAdvisorGateway } from './composite-gateway';
+import { CompositeAdvisorGateway, dedupeNames } from './composite-gateway';
 import { MODES, PARTY, PARTY_MIN_SEATS, PARTY_MAX_SEATS, type ModeId } from './limits';
 import { PartyEngine, type PartyMember, type PartyState } from './party-engine';
 import { companionNames } from './companion-names';
@@ -295,14 +295,32 @@ export class RoomSession {
           `?${i}`,
         kind: 'human' as const,
       }));
-    // 4人だと正直な声が2つしか無く運任せになる。足りないぶんは AI で埋める
+    /*
+     * 4人だと正直な声が2つしか無く運任せになる。足りないぶんは AI で埋める。
+     *
+     * **まだ出ていない名前から取る。** 添字を `members.length + i` で
+     * 進めていたので飛び飛びに引き、名乗らなかった人に振った名前と
+     * ぶつかった。野良の卓に**「とんび」が二人**並んでいた（実測）。
+     * 名指しは名前で読むものなので、同じ名前が二人いると
+     * 「とんびを信じるな」がどちらの話か分からない。
+     */
+    const taken = new Set(members.map((m) => m.name));
     let i = 0;
-    while (members.length < PARTY_MIN_SEATS) {
-      members.push({ id: `ai_${i}`, name: names[(members.length + i) % names.length] ?? `AI${i}`, kind: 'ai' });
+    for (const name of names) {
+      if (members.length >= PARTY_MIN_SEATS) break;
+      if (taken.has(name)) continue;
+      taken.add(name);
+      members.push({ id: `ai_${i}`, name, kind: 'ai' });
       i += 1;
     }
+    while (members.length < PARTY_MIN_SEATS) {
+      members.push({ id: `ai_${i}`, name: `AI${i}`, kind: 'ai' });
+      i += 1;
+    }
+    // 人間が仲間と同じ名を名乗ることもある。最後にまとめてほどく
+    const seated = dedupeNames(members);
 
-    const party = new PartyEngine({ pack: this.pack, members, mode: PARTY, now: this.now });
+    const party = new PartyEngine({ pack: this.pack, members: seated, mode: PARTY, now: this.now });
     this.party = party;
     this.unsubs.push(party.subscribe((state) => this.onPartyState(state)));
     party.start();
