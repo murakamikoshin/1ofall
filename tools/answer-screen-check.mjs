@@ -142,12 +142,25 @@ for (const [label, viewport] of [
     await wait(120);
   }
 
-  console.log(`   ${label} ${runs}周で 答え合わせ ${sheets}回`);
+  // 終わりの画面に一周ぶんの読みが出るか（札を置いた周だけ）
+  let endRead = '';
+  if (await p.locator('.end-screen').count()) {
+    endRead = await p.evaluate(() => {
+      const line = document.querySelector('.end-stat.is-read');
+      return line && !line.hidden ? (line.textContent ?? '').trim() : '';
+    });
+  }
+  console.log(`   ${label} ${runs}周で 答え合わせ ${sheets}回　終わりの画面の読み「${endRead}」`);
   check(`${label}: 区画を離れると答え合わせが出る`, sheets > 0, `${sheets}回`);
   check(`${label}: 嘘つきの行に印が付く`, sheets === 0 || liarMarked > 0, `${liarMarked}/${sheets}`);
   check(`${label}: 押すと次の部屋へ入る（詰まらない）`, stuck === 0, `${stuck}回詰まった`);
   check(`${label}: 紙面が画面から出ない`, overflowed === 0, `${overflowed}回`);
   check(`${label}: 疑いの札が置ける`, doubtsPlaced > 0, `${doubtsPlaced}回`);
+  // 周の終わりに読みが残る。区画ごとの点だけだと、抜けても持ち帰るものが
+  // 「何部屋抜けたか」しか無い
+  check(`${label}: 終わりの画面に一周ぶんの読みが出る`,
+    sheets === 0 || endRead.length > 0 || !(await p.locator('.end-screen').count()),
+    `「${endRead}」`);
   check(`${label}: 答え合わせに読みの点が出る`, sheets === 0 || scored === sheets, `${scored}/${sheets}`);
   check(`${label}: 札を置いた行に印が付く`, sheets === 0 || doubtShown > 0, `${doubtShown}/${sheets}`);
   check(`${label}: 例外なし`, errors.length === 0, errors.join(' / '));

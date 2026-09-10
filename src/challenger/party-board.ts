@@ -103,6 +103,8 @@ export class PartyBoard {
    * 区画の答え合わせで、置いた札と本当の役を突き合わせる。
    */
   private doubted = new Set<string>();
+  /** 一周ぶんの読み。区画の答え合わせのたびに積んで、終わりの画面で出す */
+  private runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
   private ended = false;
   /** 乗せた終わりの画面。主が次の周を始めたら、自分で押していなくても下ろす */
   private endScreen: HTMLElement | null = null;
@@ -551,6 +553,14 @@ export class PartyBoard {
     survivors.textContent = alive.length ? T.party.survivors(alive.join(T.verdict.nameSeparator)) : T.party.noSurvivors;
 
     // 区画ごとに出す。まとめると「ほぼ全員が裏切り者」になって読めない
+    // 一周ぶんの読み。札を置かなかった周には出さない
+    const TA = strings().answer;
+    const readLine = el('p', 'end-stat is-read');
+    readLine.textContent = this.runRead.wrong === 0
+      ? TA.readScore(this.runRead.caught, this.runRead.liars)
+      : `${TA.readScore(this.runRead.caught, this.runRead.liars)}　${TA.readWrong(this.runRead.wrong)}`;
+    readLine.hidden = this.runRead.marked === 0;
+
     const traitors = el('div', 'end-reveal');
     const nameOf = (id: string): string =>
       id === this.source.meId ? T.party.you : (state.members.find((m) => m.id === id)?.name ?? id);
@@ -584,6 +594,9 @@ export class PartyBoard {
          * 下ろさないまま次の周が来ると、盤面が画面の裏に隠れたままになる。
          */
         this.dropEnd();
+        // 次の周は読みの記録も白紙から
+        this.runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+        this.doubted.clear();
         this.onAgainHere?.();
       });
       buttons.push(stay);
@@ -609,7 +622,7 @@ export class PartyBoard {
     buttons.push(again);
     tail.push(again);
 
-    screen.append(mark, stat, survivors, traitors, ...tail);
+    screen.append(mark, stat, survivors, readLine, traitors, ...tail);
     this.endScreen = screen;
     this.root.append(screen);
     buttons[0]?.focus();
@@ -666,6 +679,12 @@ export class PartyBoard {
     const liars = others.filter((r) => r.liar);
     const caught = marked.filter((r) => r.liar).length;
     const wrong = marked.length - caught;
+    this.runRead = {
+      caught: this.runRead.caught + caught,
+      liars: this.runRead.liars + liars.length,
+      wrong: this.runRead.wrong + wrong,
+      marked: this.runRead.marked + marked.length,
+    };
     const score = el('p', 'answer-score');
     score.textContent = marked.length === 0
       ? T.readNone

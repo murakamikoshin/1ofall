@@ -50,6 +50,13 @@ const reportedThisRoom = new Set<string>();
  * 顔ぶれが入れ替わったら捨てる（別人の札になる）。
  */
 const doubted = new Set<string>();
+/**
+ * 一周ぶんの読み。区画の答え合わせのたびに積んで、終わりの画面で出す。
+ *
+ * 区画ごとの点だけだと、抜けたときに持ち帰るものが「何部屋抜けたか」しか無い。
+ * 読み合いの遊びなのに、一周を通してどれだけ読めていたかが残らなかった。
+ */
+let runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
 let lastTickSecond = -1;
 
 /* ────────────────────────────── 表題 ────────────────────────────── */
@@ -433,6 +440,9 @@ let partyBoard: PartyBoard | null = null;
 
 function startGame(modeId: ModeId): void {
   currentMode = modeId;
+  // 周ごとに読みの記録を白紙に戻す。持ち越すと前の周の点が混ざる
+  runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+  doubted.clear();
   engine?.dispose();
   engine = null;
   partyBoard?.dispose();
@@ -1141,6 +1151,13 @@ function showSectionAnswer(answer: SectionAnswer): Promise<void> {
     const liars = answer.rows.filter((r) => r.liar);
     const caught = marked.filter((r) => r.liar).length;
     const wrong = marked.length - caught;
+    // 一周ぶんに積む。区画は捨てられても、読んだ記録は周の終わりまで残る
+    runRead = {
+      caught: runRead.caught + caught,
+      liars: runRead.liars + liars.length,
+      wrong: runRead.wrong + wrong,
+      marked: runRead.marked + marked.length,
+    };
     for (const r of answer.rows) {
       const mine = doubted.has(r.id);
       const row = el('div', `answer-row${r.liar ? ' is-liar' : ''}${mine ? ' is-doubted' : ''}`);
@@ -1367,6 +1384,17 @@ function renderEnd(state: EngineState): void {
   // 「嘘つきだったのは こより、ウシオ、みかん、イチ、せつ、はなこ、たろう、ノブ」
   // という、ほぼ全員が並ぶ無意味な一覧になっていた。
   // 区画ごとなら「あの卓の嘘つきはこの三人だった」と読める。
+  /*
+   * 一周ぶんの読み。札を一枚も置かなかった周には出さない
+   * （0/12 と出しても「使わなかった」以上の意味が無い）。
+   */
+  const readLine = el('p', 'end-stat is-read');
+  const TA = strings().answer;
+  readLine.textContent = runRead.wrong === 0
+    ? TA.readScore(runRead.caught, runRead.liars)
+    : `${TA.readScore(runRead.caught, runRead.liars)}　${TA.readWrong(runRead.wrong)}`;
+  readLine.hidden = runRead.marked === 0;
+
   const reveal = el('div', 'end-reveal');
   // 区画ごとに、**最後に座っていた卓**の嘘つきだけを出す。
   // 死ぬたびに卓を組み替えるので、区画内の全部を足すと
@@ -1411,6 +1439,10 @@ function renderEnd(state: EngineState): void {
        */
       screen.remove();
       resolving = false;
+      // 次の周は読みの記録も白紙から（同じ部屋のまま続くので消えない）
+      runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+      doubted.clear();
+      endRenewed = false;
       here(currentMode);
     });
     buttons.push(stay);
@@ -1428,7 +1460,7 @@ function renderEnd(state: EngineState): void {
   });
   buttons.push(again);
 
-  screen.append(mark, stat, best, reveal, ...buttons);
+  screen.append(mark, stat, best, readLine, reveal, ...buttons);
   app!.append(screen);
   buttons[0]?.focus();
 }

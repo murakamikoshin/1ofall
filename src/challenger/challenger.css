@@ -711,6 +711,12 @@
   .title-ruby { display: none; }
 }
 
+/* 一周ぶんの読み。持ち帰るものの一つなので、記録の隣に並べる */
+.end-stat.is-read {
+  color: var(--paper-bright);
+  letter-spacing: 0.06em;
+}
+
 .end-stat.is-best {
   color: var(--rust);
   letter-spacing: 0.16em;
