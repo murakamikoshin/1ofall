@@ -73,6 +73,13 @@ export interface AdvisorConnection {
   /** 枠外の賭けの通算。当てられているかが自分の手柄になる */
   betRecord?(): { hit: number; miss: number };
   /**
+   * 賭けている人の中での順位。
+   *
+   * 「当4 外1」だけでは、自分が上手いのか下手なのか分からない。
+   * 当てているほど発言枠へ上がりやすいので、順位は**上がる道**そのもの。
+   */
+  betRank?(): { place: number; of: number } | null;
+  /**
    * 人を指す。「あいつは嘘だ」。
    * 扉について言う口とは別なので、指しても自分の一言は消えない。
    */
@@ -93,6 +100,20 @@ export interface AdvisorConnection {
    * 断られた理由を本人へ出す口が要る。
    */
   onNotice?(listener: (code: string) => void): () => void;
+  /**
+   * 区画の答え合わせ。誰が嘘つきだったかが、区画を離れる瞬間に届く。
+   *
+   * 助言者は自分の役しか知らない。ここまで、嘘が刺さったのかも、
+   * 正直に言ったのに信じられなかった理由も、一度も返らなかった。
+   */
+  onAnswer?(listener: (answer: SectionAnswerView) => void): () => void;
+}
+
+/** 区画の答え合わせの中身。画面はこれだけ受け取る */
+export interface SectionAnswerView {
+  sectionIndex: number;
+  cleared: boolean;
+  rows: readonly { id: string; name: string; liar: boolean; hit: number; miss: number }[];
 }
 
 /**
@@ -282,7 +303,10 @@ function renderBoard(): void {
     // 枠外の賭けは当たり外れを通算で出す。手柄がここに積む
     if (code === 'voteHit' || code === 'voteMiss') {
       const rec = connection.betRecord?.() ?? { hit: 0, miss: 0 };
-      notice.textContent = `${code === 'voteHit' ? T.advisor.betHit : T.advisor.betMiss}　${T.advisor.betRecord(rec.hit, rec.miss)}`;
+      const rank = connection.betRank?.() ?? null;
+      // 順位は賭けた人だけを分母にする（見ているだけの人を入れると意味が消える）
+      const place = rank && rank.of > 1 ? `　${T.advisor.betRank(rank.place, rank.of)}` : '';
+      notice.textContent = `${code === 'voteHit' ? T.advisor.betHit : T.advisor.betMiss}　${T.advisor.betRecord(rec.hit, rec.miss)}${place}`;
       notice.hidden = false;
       notice.classList.toggle('is-good', code === 'voteHit');
       notice.classList.toggle('is-fatal', code === 'voteMiss');
@@ -294,6 +318,77 @@ function renderBoard(): void {
     notice.hidden = false;
     notice.classList.toggle('is-fatal', code === 'died');
     notice.classList.toggle('is-good', code === 'survived');
+  });
+
+  /** 出している答え合わせ。次の部屋が届いたら下ろす */
+  let answerVeil: HTMLElement | null = null;
+  let dismissAnswer: (() => void) | null = null;
+  let answerRound = '';
+
+  /**
+   * 区画の答え合わせ。押すか、次の部屋が届くまで出したままにする。
+   *
+   * 挑戦者側と同じ紙面だが、こちらは自分の行に印を付ける
+   * （自分の役はもう知っているので、見るのは他人の役）。
+   */
+  connection.onAnswer?.((answer) => {
+    const T = strings().answer;
+    answerVeil?.remove();
+    const veil = el('div', 'answer-veil');
+    veil.setAttribute('role', 'dialog');
+    veil.setAttribute('aria-modal', 'true');
+    const sheet = el('div', 'answer-sheet');
+    const heading = el('h2', `answer-heading${answer.cleared ? '' : ' is-death'}`);
+    heading.textContent = T.advisorHeading(answer.sectionIndex + 1);
+    const sub = el('p', 'answer-sub');
+    sub.textContent = answer.cleared ? T.cleared(answer.sectionIndex + 1) : T.lost(answer.sectionIndex + 1);
+    sheet.append(heading, sub);
+
+    const rows = el('div', 'answer-rows');
+    const myId = current?.myId;
+    for (const r of answer.rows) {
+      const row = el('div', `answer-row${r.liar ? ' is-liar' : ''}${r.id === myId ? ' is-me' : ''}`);
+      const name = el('span', 'answer-name');
+      name.textContent = r.id === myId ? `${r.name}（${T.yours}）` : r.name;
+      const role = el('span', 'answer-role');
+      role.textContent = r.liar ? T.liar : T.honest;
+      const rec = el('span', 'answer-record');
+      rec.textContent = r.hit + r.miss === 0 ? T.noRecord : T.record(r.hit, r.miss);
+      // 信用を積んでから裏切った者。助言者の側でも、誰が上手かったかが分かる
+      if (r.liar && r.hit >= 3 && r.hit >= r.miss * 2) {
+        const built = el('span', 'answer-built');
+        built.textContent = T.builtCredit;
+        rec.append(built);
+      }
+      row.append(name, role, rec);
+      rows.append(row);
+    }
+    sheet.append(rows);
+
+    const note = el('p', 'answer-note');
+    note.textContent = T.note;
+    const go = document.createElement('button');
+    go.className = 'answer-go';
+    go.textContent = T.go;
+    const done = (): void => {
+      veil.remove();
+      if (answerVeil === veil) answerVeil = null;
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault();
+        done();
+      }
+    };
+    go.addEventListener('click', done);
+    document.addEventListener('keydown', onKey);
+    sheet.append(note, go);
+    veil.append(sheet);
+    document.body.append(veil);
+    answerVeil = veil;
+    dismissAnswer = done;
+    go.focus();
   });
 
   let current: AdvisorView | null = null;
@@ -309,6 +404,15 @@ function renderBoard(): void {
 
   connection.onView((view) => {
     current = view;
+    /*
+     * 次の部屋が届いたら答え合わせを下ろす。
+     * 押さない人がいるのは前提で、押さないと盤面が覆われたまま
+     * 助言の受付が終わってしまう（読んでいるつもりで一部屋落とす）。
+     */
+    if (view && view.roundId !== answerRound) {
+      answerRound = view.roundId;
+      dismissAnswer?.();
+    }
     if (!view) {
       prompt.textContent = connection.waitingFor?.() === 'betweenRuns'
         ? strings().advisor.waitingNextRun

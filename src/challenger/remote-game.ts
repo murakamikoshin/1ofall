@@ -39,6 +39,7 @@ const EMPTY: EngineState = {
   sectionIndex: 0, sectionCount: 1, clearedInSection: 0, roomsPerSection: 1,
   totalCleared: 0, totalRooms: 0, selectionMode: 'lottery',
   advisors: [], mutedIds: [], confirmedLiars: [], canSilence: false, liarLog: [],
+  sectionAnswer: null,
 };
 
 export type RoomStatus = 'connecting' | 'open' | 'playing' | 'closed';
@@ -213,6 +214,8 @@ export class RemoteGame implements GameHandle {
           }
         : null,
       verdict: view.verdict,
+      // 区画を離れる瞬間だけ届く。遊んでいるあいだは null
+      sectionAnswer: view.sectionAnswer,
     };
     if (view.phase !== 'title') this.setStatus('playing');
     for (const l of this.listeners) l(this.state);

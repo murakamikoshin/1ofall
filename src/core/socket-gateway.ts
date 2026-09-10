@@ -128,6 +128,23 @@ export class SocketAdvisorGateway implements AdvisorGateway {
     return this.voteRecords.get(id) ?? { hit: 0, miss: 0 };
   }
 
+  /**
+   * 賭けている人の中での順位。当たりの多い順、同数なら外しの少ない順。
+   *
+   * 賭けた人だけを数に入れる（見ているだけの人を分母に入れると、
+   * 一度当てただけで「1000人中3位」になって意味が消える）。
+   */
+  voteRank(id: string): { place: number; of: number } | null {
+    const mine = this.voteRecords.get(id);
+    if (!mine) return null;
+    let better = 0;
+    for (const [other, rec] of this.voteRecords) {
+      if (other === id) continue;
+      if (rec.hit > mine.hit || (rec.hit === mine.hit && rec.miss < mine.miss)) better += 1;
+    }
+    return { place: better + 1, of: this.voteRecords.size };
+  }
+
   countVote(id: string, hit: boolean): { hit: number; miss: number } {
     const rec = this.voteRecord(id);
     const next = { hit: rec.hit + (hit ? 1 : 0), miss: rec.miss + (hit ? 0 : 1) };

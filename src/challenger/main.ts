@@ -4,7 +4,7 @@ import './challenger.css';
 
 import { corePackage } from '@/core/pack';
 import type { Choice } from '@/core/schema';
-import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
+import { GameEngine, type EngineState, type SectionAnswer, type Verdict } from '@/core/engine';
 import { RemoteGame, type GameHandle } from './remote-game';
 import { PartyBoard } from './party-board';
 import { aiHintDelays } from '@/ui/test-speed';
@@ -41,6 +41,15 @@ let resolving = false;
 let currentMode: ModeId = 'standard';
 /** この部屋で通報した相手。描き直しで表示が消えないよう覚えておく */
 const reportedThisRoom = new Set<string>();
+/**
+ * 置いた疑いの札。**送らない。自分の覚え書き。**
+ *
+ * 読み合いは頭の中でやるものだったので、区画の答え合わせが来ても
+ * 「自分は当てていたのか」を数えられなかった（覚えていた人だけが数えられた）。
+ * 札を置けるようにすると、読みが手になり、答え合わせに点が付く。
+ * 顔ぶれが入れ替わったら捨てる（別人の札になる）。
+ */
+const doubted = new Set<string>();
 let lastTickSecond = -1;
 
 /* ────────────────────────────── 表題 ────────────────────────────── */
@@ -834,6 +843,8 @@ function render(state: EngineState): void {
   }
   shell.roundId = round.roundId;
   reportedThisRoom.clear();
+  // 顔ぶれごと引き直されたら、札は別人のものになる
+  if (round.freshCast) doubted.clear();
 
   renderLives(shell.lives, state);
   shell.roomCount.textContent = `${strings().hud.room(round.roomNumber)}　${strings().hud.section(round.sectionIndex + 1, state.sectionCount)}`;
@@ -1030,13 +1041,41 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
   // 同じ人の扉についての行に同じ手が並ぶので、二つ出すと押し間違える
   if (isCall) {
     row.append(name, text);
+    row.dataset.advisorId = advice.advisorId;
+    if (doubted.has(advice.advisorId)) row.classList.add('is-doubted');
     return row;
   }
+
+  // 疑いの札。盤面は何も変わらない（送らない）。答え合わせで突き合わせる
+  const doubt = document.createElement('button');
+  doubt.type = 'button';
+  const paint = (): void => {
+    const on = doubted.has(advice.advisorId);
+    doubt.className = `hint-doubt${on ? ' is-on' : ''}`;
+    doubt.textContent = on ? T.challenger.doubtOn : T.challenger.doubt;
+    doubt.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
+  doubt.title = T.challenger.doubtHint;
+  doubt.addEventListener('click', () => {
+    if (doubted.has(advice.advisorId)) doubted.delete(advice.advisorId);
+    else doubted.add(advice.advisorId);
+    paint();
+    // 同じ人の行が複数あることがある（扉の一言と名指し）。まとめて塗り直す
+    for (const other of document.querySelectorAll<HTMLElement>('.hint-row')) {
+      other.classList.toggle(
+        'is-doubted',
+        doubted.has(other.dataset.advisorId ?? ''),
+      );
+    }
+  });
+  paint();
+  row.dataset.advisorId = advice.advisorId;
+  if (doubted.has(advice.advisorId)) row.classList.add('is-doubted');
 
   // 黙らせるは崖っぷちだけの道具。通常モードでは効かないうえに
   // 外すと時間が減るので、押すほど損をする罠になっていた
   if (canSilence) actions.append(silence);
-  actions.append(report);
+  actions.append(doubt, report);
   row.append(name, text, actions);
   return row;
 }
@@ -1073,6 +1112,102 @@ function timeOut(): void {
   runResolution();
 }
 
+/**
+ * 区画の答え合わせ。抜けても落ちても、離れる瞬間に一枚出す。
+ *
+ * ここまで「誰が嘘つきだったか」は終わりの画面でしか返らなかった。
+ * 一周12分・区画四つの遊びで、読み合いの答えが最後に一度だけ返る形になっていた。
+ * 顔ぶれと配役は区画をまたいで残らないので、ここで開いても先へは漏れない。
+ */
+function showSectionAnswer(answer: SectionAnswer): Promise<void> {
+  return new Promise((resolve) => {
+    const T = strings().answer;
+    const veil = el('div', 'answer-veil');
+    veil.setAttribute('role', 'dialog');
+    veil.setAttribute('aria-modal', 'true');
+
+    const sheet = el('div', 'answer-sheet');
+    const heading = el('h2', `answer-heading${answer.cleared ? '' : ' is-death'}`);
+    heading.textContent = answer.cleared
+      ? T.cleared(answer.sectionIndex + 1)
+      : T.lost(answer.sectionIndex + 1);
+    const sub = el('p', 'answer-sub');
+    sub.textContent = T.heading;
+    sheet.append(heading, sub);
+
+    const rows = el('div', 'answer-rows');
+    // 置いた札と突き合わせる。読み合いに点が付くのはここだけ
+    const marked = answer.rows.filter((r) => doubted.has(r.id));
+    const liars = answer.rows.filter((r) => r.liar);
+    const caught = marked.filter((r) => r.liar).length;
+    const wrong = marked.length - caught;
+    for (const r of answer.rows) {
+      const mine = doubted.has(r.id);
+      const row = el('div', `answer-row${r.liar ? ' is-liar' : ''}${mine ? ' is-doubted' : ''}`);
+      const name = el('span', 'answer-name');
+      name.textContent = r.name;
+      if (mine) {
+        // 名前の横に足すと名前の桁を押し出すので、下に置く
+        const mark = el('span', 'answer-mark');
+        mark.textContent = T.doubted;
+        name.append(mark);
+      }
+      const role = el('span', 'answer-role');
+      role.textContent = r.liar ? T.liar : T.honest;
+      const rec = el('span', 'answer-record');
+      rec.textContent = r.hit + r.miss === 0 ? T.noRecord : T.record(r.hit, r.miss);
+      /*
+       * 「よく当てていたのに嘘つきだった」を数字のほうから指す。
+       * 信用を作ってから裏切る形にしたので、ここが一番効く一行になる。
+       *
+       * 「正2 嘘1」でも出していたが、それは積んだとは言えない
+       * （区画は4〜5部屋あるので、二回当てて一回外した程度では信用にならない）。
+       * 三回以上当てて、外しの倍以上当てている場合だけにした。
+       */
+      if (r.liar && r.hit >= 3 && r.hit >= r.miss * 2) {
+        const built = el('span', 'answer-built');
+        built.textContent = T.builtCredit;
+        rec.append(built);
+      }
+      row.append(name, role, rec);
+      rows.append(row);
+    }
+    sheet.append(rows);
+
+    const score = el('p', 'answer-score');
+    score.textContent = marked.length === 0
+      ? T.readNone
+      : wrong === 0
+        ? T.readScore(caught, liars.length)
+        : `${T.readScore(caught, liars.length)}　${T.readWrong(wrong)}`;
+    score.classList.toggle('is-good', marked.length > 0 && caught === liars.length && wrong === 0);
+    sheet.append(score);
+
+    const note = el('p', 'answer-note');
+    note.textContent = T.note;
+    const go = document.createElement('button');
+    go.className = 'answer-go';
+    go.textContent = T.go;
+    const done = (): void => {
+      veil.remove();
+      document.removeEventListener('keydown', onKey);
+      resolve();
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+        e.preventDefault();
+        done();
+      }
+    };
+    go.addEventListener('click', done);
+    document.addEventListener('keydown', onKey);
+    sheet.append(note, go);
+    veil.append(sheet);
+    app!.append(veil);
+    go.focus();
+  });
+}
+
 async function runResolution(): Promise<void> {
   if (!engine || !shell) return;
   // 遠くの部屋では、選んだ返事が戻ってくるまで判定が立たない
@@ -1092,11 +1227,18 @@ async function runResolution(): Promise<void> {
     showParty: () => renderPartyResult(verdict),
   });
 
-  resolving = false;
   const next = engine.snapshot();
-  engine.advancePresentation(); // verdict → 次の部屋 / 終了
+  engine.advancePresentation(); // verdict → 答え合わせ / 次の部屋 / 終了
 
-  const after = (await waitFor((s) => s.phase !== 'verdict')) ?? engine.snapshot();
+  let after = (await waitFor((s) => s.phase !== 'verdict')) ?? engine.snapshot();
+  // 区画を離れるときだけ一枚挟まる。読んでいるあいだは resolving を下ろさない
+  // （時間切れと手引きがこの上から割り込む）
+  if (after.phase === 'answer' && after.sectionAnswer) {
+    await showSectionAnswer(after.sectionAnswer);
+    engine.advancePresentation(); // 答え合わせ → 次の部屋
+    after = (await waitFor((s) => s.phase !== 'answer')) ?? engine.snapshot();
+  }
+  resolving = false;
   if (after.phase === 'choosing' && next.phase !== 'gameover') {
     resetStage(shell.refs);
     audio.play('room-open');

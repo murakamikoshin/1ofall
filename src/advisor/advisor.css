@@ -294,3 +294,94 @@ body { overflow: auto; }
   border-color: var(--rust);
   box-shadow: inset 0 0 0 1px var(--rust);
 }
+
+/* ─────────────────── 区画の答え合わせ ───────────────────
+   誰が嘘つきだったかが、区画を離れる瞬間に届く。
+   自分の役はもう知っているので、読むのは他人の行 */
+
+.answer-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 1rem;
+  background: rgba(0, 0, 0, 0.9);
+  overflow-y: auto;
+}
+
+.answer-sheet {
+  width: min(26rem, 100%);
+  border: var(--edge);
+  background: var(--soot);
+  padding: 1.25rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.answer-heading {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.16em;
+  color: var(--paper-bright);
+}
+
+.answer-heading.is-death { color: var(--blood-lit); }
+
+.answer-sub {
+  margin: -0.5rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  color: var(--rust);
+}
+
+.answer-rows { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.answer-row {
+  display: grid;
+  grid-template-columns: minmax(4rem, 1fr) 4rem auto;
+  gap: 0.45rem;
+  align-items: baseline;
+  padding: 0.4rem 0.5rem;
+  border-left: 2px solid var(--dim);
+  font-size: 0.86rem;
+}
+
+.answer-row.is-liar { border-left-color: var(--blood); background: rgba(120, 20, 20, 0.12); }
+.answer-row.is-me { border-left-color: var(--rust); }
+
+.answer-name { color: var(--paper-bright); letter-spacing: 0.06em; }
+.answer-role { color: var(--paper-faint); letter-spacing: 0.12em; }
+.answer-row.is-liar .answer-role { color: var(--blood-lit); }
+.answer-record { color: var(--paper-faint); font-size: 0.78rem; }
+
+/* 「積んで、崩した」は行の中で折り返すと語が割れる。数字の下に置く */
+.answer-built {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--blood-lit);
+  letter-spacing: 0.06em;
+}
+
+.answer-note {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--paper-faint);
+}
+
+.answer-go {
+  align-self: stretch;
+  border: var(--edge);
+  background: var(--soot);
+  color: var(--paper-bright);
+  padding: 0.75rem 1rem;
+  letter-spacing: 0.14em;
+}
+
+.answer-go:hover,
+.answer-go:focus-visible { border-color: var(--rust); }

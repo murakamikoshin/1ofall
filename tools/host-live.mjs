@@ -96,6 +96,12 @@ await host.screenshot({ path: `${OUT}/host-6-after.png` });
  * 終わりの画面に「同じ賭場でもう一度」が出ることを固定する。
  */
 for (let i = 0; i < 60 && !(await host.locator('.end-screen').count()); i++) {
+  // 区画の答え合わせが乗っていたら送る（16回目に足した段）
+  if (await host.locator('.answer-veil').count()) {
+    await host.locator('.answer-go').click().catch(() => {});
+    await wait(250);
+    continue;
+  }
   const n = await host.locator('.choice:not([disabled])').count();
   if (!n) { await wait(200); continue; }
   // 誰も触れていない扉を選んで、命を早く使い切る
@@ -114,6 +120,7 @@ for (let i = 0; i < 60 && !(await host.locator('.end-screen').count()); i++) {
   for (let t = 0; t < 60; t++) {
     const ready = await host.evaluate(() =>
       document.querySelectorAll('.end-screen').length > 0
+      || document.querySelectorAll('.answer-veil').length > 0
       || document.querySelectorAll('.choice:not([disabled])').length > 0);
     if (ready) break;
     await wait(200);

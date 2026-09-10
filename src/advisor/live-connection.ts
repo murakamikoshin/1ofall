@@ -1,4 +1,4 @@
-import type { AdvisorConnection, AdvisorView } from './main';
+import type { AdvisorConnection, AdvisorView, SectionAnswerView } from './main';
 import type { Choice, Knowledge } from '@/core/schema';
 import { localized } from '@/i18n';
 
@@ -27,6 +27,10 @@ interface Incoming {
   roomInSection?: number;
   code?: string;
   hints?: { advisorId: string; advisorName: string; text: string; kind?: string }[];
+  sectionIndex?: number;
+  cleared?: boolean;
+  rows?: { id: string; name: string; liar: boolean; hit: number; miss: number }[];
+  rank?: { place: number; of: number };
 }
 
 const RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
@@ -35,6 +39,7 @@ export class LiveConnection implements AdvisorConnection {
   private socket: WebSocket | null = null;
   private viewListeners = new Set<(v: AdvisorView | null) => void>();
   private noticeListeners = new Set<(code: string) => void>();
+  private answerListeners = new Set<(a: SectionAnswerView) => void>();
   /** 最新の盤面。あとから購読した画面や、再接続した人が次の部屋まで待たされない */
   private latest: AdvisorView | null = null;
   private roomCode = '';
@@ -53,6 +58,8 @@ export class LiveConnection implements AdvisorConnection {
   /** 手を挙げたか。区画のあいだ続く（サーバー側と同じ規則） */
   private volunteered = false;
   private voteRecord: { hit: number; miss: number } = { hit: 0, miss: 0 };
+  /** 賭けている人の中での順位。届いていなければ null */
+  private voteRank: { place: number; of: number } | null = null;
   private name = '';
   private attempt = 0;
   private closed = false;
@@ -77,6 +84,10 @@ export class LiveConnection implements AdvisorConnection {
     return this.voteRecord;
   }
 
+  betRank(): { place: number; of: number } | null {
+    return this.voteRank;
+  }
+
   /** 部屋がまだ開いていないのか、次の周を待っているのか */
   waitingFor(): 'notOpen' | 'betweenRuns' {
     return this.played ? 'betweenRuns' : 'notOpen';
@@ -85,6 +96,11 @@ export class LiveConnection implements AdvisorConnection {
   onNotice(listener: (code: string) => void): () => void {
     this.noticeListeners.add(listener);
     return () => this.noticeListeners.delete(listener);
+  }
+
+  onAnswer(listener: (a: SectionAnswerView) => void): () => void {
+    this.answerListeners.add(listener);
+    return () => this.answerListeners.delete(listener);
   }
 
   sendHint(roundId: string, text: string): void {
@@ -230,7 +246,19 @@ export class LiveConnection implements AdvisorConnection {
         return;
       case 'advisor/voteResult': {
         this.voteRecord = msg.record ?? this.voteRecord;
+        this.voteRank = msg.rank ?? this.voteRank;
         this.notify(msg.hit ? 'voteHit' : 'voteMiss');
+        return;
+      }
+      case 'section/answer': {
+        // 区画を離れた。誰が嘘つきだったかがここで開く
+        if (!msg.rows) return;
+        const answer = {
+          sectionIndex: msg.sectionIndex ?? 0,
+          cleared: msg.cleared === true,
+          rows: msg.rows,
+        };
+        for (const l of this.answerListeners) l(answer);
         return;
       }
       case 'advisor/silenced':

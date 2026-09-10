@@ -1,7 +1,7 @@
 # 数字の外側を潰した記録
 
 盤面のバランスは `docs/RUBRIC.md` の7項目でもう基準を満たしている
-（通常 7/7・全員挑戦者 7/7・崖っぷち 6/7）。
+（通常 7/7・全員挑戦者 7/7・崖っぷち 7/7）。
 そこから先、**「面白い」と言ってもらえない理由はバランス以外にある**
 という前提で潰したものを、症状ごとに並べる。
 
@@ -16,6 +16,11 @@
 | `tools/a11y-advisor.mjs` | 助言者画面。320px幅まで |
 | `tools/advisor-roles.mjs` | 5つの立場×2言語の画面 |
 | `tools/title-fit.mjs` | 表題が画面に収まるか |
+| `tools/end-screen-check.mjs` | 終わりの画面。何を持ち帰れるか |
+| `tools/answer-screen-check.mjs` | 区画の答え合わせの紙面。疑いの札との突き合わせ |
+| `tools/art-check.mjs` | 部屋の中で絵が被らないか、題材と形が合っているか |
+| `tools/report-check.mjs` | 通報の的と、押したあとの見え方 |
+| `tools/silence-check.mjs` | 黙らせて当たったことが画面に残るか |
 
 ---
 

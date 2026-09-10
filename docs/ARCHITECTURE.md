@@ -111,11 +111,19 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 |---|---|
 | 挑戦者 | `room/view`（画面ぶん丸ごと）。部屋は `PublicRoom`、`liarLog` は載せない |
 | 助言者 | `round/open`。**自分あての `knowledge` だけ**。一人ずつ別のメッセージ |
-| 全員 | `room/state` `round/hints` `round/result` `game/over` |
+| 全員 | `room/state` `round/hints` `round/result` `section/answer` `game/over` |
 
 `liarLog` を載せないのが要点。今の部屋の嘘つきが分かると助言の意味が消える。
 終わったあとの開示は `game/over` が別に運ぶ。
 `tools/test-party.mjs` と `tools/party-live.mjs` が毎回ここを見ている。
+
+配役が開くのは**二か所だけ**。区画を離れるときの `section/answer` と、
+一周の終わりの `game/over`。それ以外の便には載らない。
+
+> 判定（`verdict`）に `liars` を積んでいた時期がある。画面には出していないが、
+> 一部屋抜けるたびに区画ぶんの配役が挑戦者の線へ流れていた。顔ぶれは区画のあいだ
+> 変わらないので、**一部屋目の判定を覗くだけでその区画の読み合いが終わっていた。**
+> 型から外して、`tools/answer-check.mjs` が毎回見ている。
 
 ### 信用できない側
 
@@ -148,12 +156,50 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 | `tools/slot-check.mjs` | 発言枠へ上がる道（立候補・賭けの重み） | 不要 |
 | `tools/arc-probe.mjs` | 区画の中で、部屋番号ごとの読みしろ | 不要 |
 | `tools/soak-live.mjs` | **繋ぎ目**（区画の変わり目・死んだ直後）を二つのブラウザで | `npm run party` + `npm run preview` |
+| `tools/answer-check.mjs` | 区画の答え合わせ（出る場所・出ない場所・線に漏れないこと） | 不要 |
+| `tools/rank-check.mjs` | 枠外の賭けの順位（返るか・分母が賭けた人だけか） | 不要 |
+| `tools/answer-screen-check.mjs` | 答え合わせの紙面を本物のブラウザで | `npm run preview` |
+| `tools/party-again-live.mjs` | 全員挑戦者の連戦（主と客） | `npm run party` + `npm run preview` |
 
 線を張る試験は `npm run test:live`。
 助言者ページは繋ぎ先（`VITE_PARTY_HOST`）が無いと**素振りに落ちる**ので、
 `pretest:live` が必ず繋ぎ先を埋めて建て直す。ここを渡し忘れて、
 「本物の線を通した」つもりで素振りを測っていたことがある。
 画面の試験（`npm run test:ui`）は逆に素振りで回す（`pretest:ui`）。
+
+### 区画の答え合わせ
+
+演出の段に一つ足した。`hush → reveal → verdict → **answer** → 次の部屋`。
+
+`answer` は**区画を離れるときだけ**挟まる。抜けたとき、あるいは深く行って
+落ちたとき（顔ぶれと配役はどちらでも引き直される）。命が尽きたときは出さない
+——終わりの画面が区画ぶん全部開くので二重になる。区画の頭で落ちたときも出さない
+（記録が「正1 嘘0」しかない紙が8人ぶん並ぶだけで、読み合いの答えにならない）。
+
+離れる条件は `GameEngine.answerForLeavingSection()` と `afterVerdict()` の
+二か所に書いてある。**食い違うと、紙だけ出て区画が変わらない**（あるいは逆）ので、
+`tools/answer-check.mjs` が両方を突き合わせている。
+
+送る段は遊び方で違う。一人用と賭場は**挑戦者が押して**送る（読み終わるまで待つ）。
+全員挑戦者は6〜8人の合図を待てないので、`untilMs` を載せて**時間で**送る。
+
+助言者にも `section/answer` を配る。助言者は自分の役しか知らないので、
+嘘が刺さったのかも、正直に言ったのに信じられなかった理由も、
+ここまで一度も返っていなかった。
+
+### 疑いの札は送らない
+
+助言の各行に置ける疑いの札（`hint-doubt`）は、**画面の中だけにある。**
+サーバーへ送らないし、通信の型にも無い。置いた相手にも見えない。
+
+送らない理由は二つ。均衡が動かないこと（盤面に何の影響も無い）と、
+公開すると撃たれた側が振る舞いを変えられること。
+区画の答え合わせで、置いた札と本当の役を突き合わせて点を出すだけに使う。
+
+`main.ts` の `doubted` と `PartyBoard.doubted` に別々に持っている。
+盤面が二つあり（`GameEngine` 側と `PartyEngine` 側）、
+どちらも自分の描画の中でしか使わないので、共通の置き場を作っていない。
+捨て時は両方とも同じで、`round.freshCast` が立った部屋（顔ぶれの引き直し）。
 
 ### 一部屋につき、口は二つ
 

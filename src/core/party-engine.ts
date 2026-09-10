@@ -23,7 +23,31 @@ import { chooseCall, resolveTruth, type Said } from './name-calling';
  * 配役・知識・言葉の検査は共通のものを使う。
  */
 
-export type PartyPhase = 'title' | 'choosing' | 'hush' | 'reveal' | 'verdict' | 'gameover' | 'cleared';
+export type PartyPhase =
+  | 'title' | 'choosing' | 'hush' | 'reveal' | 'verdict'
+  /**
+   * 区画の答え合わせ。裏切り者は区画のあいだ据え置きで、離れれば引き直すので、
+   * 離れる瞬間に開いても先の部屋には漏れない。
+   * ここで開かないと、読み合いの答えが一周の終わりまで一度も返らない。
+   */
+  | 'answer'
+  | 'gameover' | 'cleared';
+
+/** 区画の答え合わせの一行。全員挑戦者では「席にいる全員」が並ぶ */
+export interface PartyAnswerRow {
+  id: string;
+  name: string;
+  liar: boolean;
+  hit: number;
+  miss: number;
+}
+
+export interface PartySectionAnswer {
+  sectionIndex: number;
+  rows: readonly PartyAnswerRow[];
+  /** 読み終える猶予。全員の合図は待てないので、時間で送る */
+  untilMs: number;
+}
 
 export interface PartyMember {
   id: string;
@@ -94,6 +118,8 @@ export interface PartyState {
   traitors: readonly AdvisorInfo[];
   /** 区画ごとの裏切り者。まとめて並べると「ほぼ全員」になって読めない */
   traitorsBySection: readonly { sectionIndex: number; ids: readonly string[] }[];
+  /** 区画を離れるときの答え合わせ。phase==='answer' のあいだだけ入る */
+  sectionAnswer: PartySectionAnswer | null;
 }
 
 export interface PartyEngineConfig {
@@ -136,6 +162,7 @@ export class PartyEngine {
   private traitorIds: string[] = [];
   private traitorSection = -1;
   private records = new Map<string, { hit: number; miss: number }>();
+  private sectionAnswer: PartySectionAnswer | null = null;
   private allTraitors = new Set<string>();
   private traitorLog: { sectionIndex: number; ids: readonly string[] }[] = [];
 
@@ -182,6 +209,7 @@ export class PartyEngine {
           : [],
       traitorsBySection:
         this.phase === 'gameover' || this.phase === 'cleared' ? this.traitorLog : [],
+      sectionAnswer: this.sectionAnswer,
     };
   }
 
@@ -206,6 +234,7 @@ export class PartyEngine {
     this.allTraitors.clear();
     this.traitorLog = [];
     this.records.clear();
+    this.sectionAnswer = null;
     this.muted.clear();
     this.deck = shuffled(this.pack.rooms, this.rng);
     this.openRoom();
@@ -466,7 +495,23 @@ export class PartyEngine {
       case 'reveal':
         this.phase = 'verdict';
         break;
-      case 'verdict':
+      case 'verdict': {
+        /*
+         * 区画を離れるなら、答え合わせを一枚挟む。
+         * 一人用と違って全員の合図は待てないので、時間で送る（サーバーが刻む）。
+         */
+        const answer = this.answerForLeavingSection();
+        if (answer) {
+          this.sectionAnswer = answer;
+          this.phase = 'answer';
+          break;
+        }
+        this.roomsDone += 1;
+        this.openRoom();
+        return;
+      }
+      case 'answer':
+        this.sectionAnswer = null;
         this.roomsDone += 1;
         this.openRoom();
         return;
@@ -474,6 +519,35 @@ export class PartyEngine {
         return;
     }
     this.emit();
+  }
+
+  /** 読み終える猶予。死亡演出より長く、部屋の持ち時間より短く */
+  static readonly ANSWER_MS = 7000;
+
+  /**
+   * この部屋で区画が終わるなら、答え合わせを組む。
+   *
+   * 区画の切り替えは `roomsDone` の割り算で決まる（openRoom が読む）。
+   * ここが食い違うと、答え合わせだけ出て裏切り者が変わらない。
+   */
+  private answerForLeavingSection(): PartySectionAnswer | null {
+    const per = this.mode.roomsPerSection;
+    const next = this.roomsDone + 1;
+    if (Math.floor(next / per) === Math.floor(this.roomsDone / per)) return null;
+    // 最後の部屋を抜けたら終わり。終わりの画面が区画ぶん全部開くので出さない
+    if (next >= this.mode.sections * per) return null;
+
+    const rows = this.members.map((m) => {
+      const rec = this.records.get(m.id) ?? { hit: 0, miss: 0 };
+      return {
+        id: m.id,
+        name: m.name,
+        liar: this.traitorIds.includes(m.id),
+        hit: rec.hit,
+        miss: rec.miss,
+      };
+    });
+    return { sectionIndex: this.sectionIndex, rows, untilMs: this.now() + PartyEngine.ANSWER_MS };
   }
 
   report(reporterId: string, targetId: string, text: string): void {

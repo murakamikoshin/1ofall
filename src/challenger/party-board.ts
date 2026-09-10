@@ -98,9 +98,20 @@ export class PartyBoard {
   private playedRound: string | null = null;
   /** この部屋で通報した相手。描き直しても消えないよう覚えておく */
   private reported = new Set<string>();
+  /**
+   * 置いた疑いの札。**送らない。自分の覚え書き。**
+   * 区画の答え合わせで、置いた札と本当の役を突き合わせる。
+   */
+  private doubted = new Set<string>();
   private ended = false;
   /** 乗せた終わりの画面。主が次の周を始めたら、自分で押していなくても下ろす */
   private endScreen: HTMLElement | null = null;
+  /** 区画の答え合わせ。時間で送るので、押す口は無い */
+  private answerVeil: HTMLElement | null = null;
+  private answerSection = -1;
+  private answerTick = 0;
+  /** 一人遊びの全員挑戦者では、段を刻むのがこちら側になる */
+  private answerTimer = 0;
 
   constructor(options: PartyBoardOptions) {
     this.root = options.root;
@@ -146,6 +157,7 @@ export class PartyBoard {
   dispose(): void {
     this.unsubscribe?.();
     this.stopTimer();
+    this.dropAnswer();
     this.source.dispose();
   }
 
@@ -174,14 +186,29 @@ export class PartyBoard {
       void this.playOut(state);
       return;
     }
-    if (state.phase !== 'choosing' || !state.round) return;
-    // 演出の最中に次の部屋が届くことがある（段を刻むのはサーバー）。
-    // そこで描き直すと、死んだ瞬間が飛ぶ
+    // 演出の最中に次の部屋（や答え合わせ）が届くことがある。段を刻むのはサーバーで、
+    // 死んだ者がいる部屋でも3.4秒で送ってくる。そこで描き直すと死んだ瞬間が飛ぶ。
+    // **答え合わせもここより後で出す。** 先に出すと演出を紙で潰す
     if (this.resolving) return;
+
+    /*
+     * 区画の答え合わせ。誰が裏切っていたかがここで開く。
+     * 全員挑戦者は合図を待てない（6〜8人の押すのを待つと場が止まる）ので、
+     * サーバーが刻む時間だけ出して自分で消える。
+     */
+    if (state.phase === 'answer' && state.sectionAnswer) {
+      this.showAnswer(state.sectionAnswer);
+      return;
+    }
+    this.dropAnswer();
+
+    if (state.phase !== 'choosing' || !state.round) return;
 
     const round = state.round;
     if (round.roundId !== this.roundId) {
       this.roundId = round.roundId;
+      // 裏切り者ごと引き直されたら、札は別人のものになる
+      if (round.freshCast) this.doubted.clear();
       this.myPick = null;
       this.resolving = false;
       this.reported.clear();
@@ -361,10 +388,29 @@ export class PartyBoard {
       const text = el('span', 'hint-text');
       text.textContent = advice.text;
       row.append(name, text);
+      if (this.doubted.has(advice.memberId)) row.classList.add('is-doubted');
 
       // 自分の発言は通報できない。人を指した一言にも手を出さない
       if (!isCall && advice.memberId !== this.source.meId) {
         const actions = el('span', 'hint-actions');
+        // 疑いの札。押しても盤面は動かない（答え合わせで突き合わせる）
+        const doubt = document.createElement('button');
+        doubt.type = 'button';
+        doubt.title = T.challenger.doubtHint;
+        const paint = (): void => {
+          const on = this.doubted.has(advice.memberId);
+          doubt.className = `hint-doubt${on ? ' is-on' : ''}`;
+          doubt.textContent = on ? T.challenger.doubtOn : T.challenger.doubt;
+          doubt.setAttribute('aria-pressed', on ? 'true' : 'false');
+          row.classList.toggle('is-doubted', on);
+        };
+        doubt.addEventListener('click', () => {
+          if (this.doubted.has(advice.memberId)) this.doubted.delete(advice.memberId);
+          else this.doubted.add(advice.memberId);
+          paint();
+        });
+        paint();
+        actions.append(doubt);
         const report = document.createElement('button');
         report.className = 'hint-report';
         report.type = 'button';
@@ -430,7 +476,6 @@ export class PartyBoard {
         deathMessage: verdict.deathMessage,
         livesLeft: mine?.livesLeft ?? 0,
         fatal: (mine?.livesLeft ?? 0) <= 0,
-        liars: [],
         followedCrowd: mine?.followedCrowd ?? false,
         party: verdict.results.map((r) => ({
           id: r.id,
@@ -568,6 +613,109 @@ export class PartyBoard {
     this.endScreen = screen;
     this.root.append(screen);
     buttons[0]?.focus();
+  }
+
+  /** 区画の答え合わせを出す。同じ区画ぶんを二度描かない */
+  private showAnswer(answer: NonNullable<PartyState['sectionAnswer']>): void {
+    if (this.answerVeil && this.answerSection === answer.sectionIndex) return;
+    this.dropAnswer();
+    this.answerSection = answer.sectionIndex;
+    this.stopTimer();
+    const T = strings().answer;
+
+    const veil = el('div', 'answer-veil');
+    veil.setAttribute('role', 'dialog');
+    veil.setAttribute('aria-modal', 'true');
+    const sheet = el('div', 'answer-sheet');
+    const heading = el('h2', 'answer-heading');
+    heading.textContent = T.advisorHeading(answer.sectionIndex + 1);
+    const sub = el('p', 'answer-sub');
+    sub.textContent = T.heading;
+    sheet.append(heading, sub);
+
+    const rows = el('div', 'answer-rows');
+    for (const r of answer.rows) {
+      const mine = r.id === this.source.meId;
+      const row = el('div', `answer-row${r.liar ? ' is-liar' : ''}${mine ? ' is-me' : ''}`);
+      const name = el('span', 'answer-name');
+      name.textContent = mine ? `${r.name}（${T.yours}）` : r.name;
+      if (this.doubted.has(r.id)) {
+        row.classList.add('is-doubted');
+        const mark = el('span', 'answer-mark');
+        mark.textContent = T.doubted;
+        name.append(mark);
+      }
+      const role = el('span', 'answer-role');
+      role.textContent = r.liar ? T.liar : T.honest;
+      const rec = el('span', 'answer-record');
+      rec.textContent = r.hit + r.miss === 0 ? T.noRecord : T.record(r.hit, r.miss);
+      // 信用を積んでから裏切った者を、数字のほうから指す（一人用と同じ線）
+      if (r.liar && r.hit >= 3 && r.hit >= r.miss * 2) {
+        const built = el('span', 'answer-built');
+        built.textContent = T.builtCredit;
+        rec.append(built);
+      }
+      row.append(name, role, rec);
+      rows.append(row);
+    }
+    sheet.append(rows);
+
+    // 置いた札との突き合わせ。自分は数に入れない（役は最初から知っている）
+    const others = answer.rows.filter((r) => r.id !== this.source.meId);
+    const marked = others.filter((r) => this.doubted.has(r.id));
+    const liars = others.filter((r) => r.liar);
+    const caught = marked.filter((r) => r.liar).length;
+    const wrong = marked.length - caught;
+    const score = el('p', 'answer-score');
+    score.textContent = marked.length === 0
+      ? T.readNone
+      : wrong === 0
+        ? T.readScore(caught, liars.length)
+        : `${T.readScore(caught, liars.length)}　${T.readWrong(wrong)}`;
+    score.classList.toggle('is-good', marked.length > 0 && caught === liars.length && wrong === 0);
+    sheet.append(score);
+
+    const note = el('p', 'answer-note');
+    note.setAttribute('role', 'status');
+    const countdown = (): void => {
+      const left = Math.max(0, Math.ceil((answer.untilMs - Date.now()) / 1000));
+      note.textContent = `${T.note}　${strings().party.answerIn(left)}`;
+    };
+    countdown();
+    this.answerTick = window.setInterval(countdown, 500);
+    /*
+     * 段を刻むのがこちら側（ブラウザの中だけで動く全員挑戦者）なら、
+     * 猶予が切れたところで自分で進める。**忘れると紙が出たまま止まる。**
+     * 遠くの部屋ではサーバーが刻むので、ここでは何もしない。
+     */
+    if (this.source.drivesPresentation) {
+      this.answerTimer = window.setTimeout(
+        () => this.source.advance(),
+        Math.max(0, answer.untilMs - Date.now()),
+      );
+    }
+    sheet.append(note);
+    veil.append(sheet);
+    // 押す口が無いので、焦点を紙そのものへ移す。
+    // 移さないと読み上げに何も渡らない（時間で消えるだけの紙になる）
+    sheet.tabIndex = -1;
+    this.root.append(veil);
+    sheet.focus();
+    this.answerVeil = veil;
+  }
+
+  private dropAnswer(): void {
+    if (this.answerTick) {
+      clearInterval(this.answerTick);
+      this.answerTick = 0;
+    }
+    if (this.answerTimer) {
+      clearTimeout(this.answerTimer);
+      this.answerTimer = 0;
+    }
+    this.answerVeil?.remove();
+    this.answerVeil = null;
+    this.answerSection = -1;
   }
 
   /** 終わりの画面を下ろす。押した本人からも、主が始めたときからも通る */

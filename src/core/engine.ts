@@ -29,8 +29,26 @@ export type Phase =
   | 'reveal'
   /** 生死の確定 */
   | 'verdict'
+  /**
+   * 区画の答え合わせ。
+   *
+   * 顔ぶれと配役は区画をまたいで残らない（抜けても死んでも引き直す）。
+   * だから離れる瞬間に誰が嘘つきだったかを開いても、先の部屋には何も漏れない。
+   * 逆に開かないと、**読み合いの答えが終わりの画面まで一度も返らない。**
+   */
+  | 'answer'
   | 'gameover'
   | 'cleared';
+
+/** 区画の答え合わせの一行。挑戦者が見ていた記録と、本当の役を並べる */
+export interface AnswerRow {
+  id: string;
+  name: string;
+  liar: boolean;
+  /** その人の助言に従っていたらどうだったか（挑戦者が見ていた数字そのまま） */
+  hit: number;
+  miss: number;
+}
 
 /** 届いた助言。中身は最初から見えている（伏せると運ゲーになる） */
 export interface Advice {
@@ -93,8 +111,6 @@ export interface Verdict {
   deathMessage: string;
   livesLeft: number;
   fatal: boolean;
-  /** この部屋で嘘をついていた面々（開封の有無にかかわらず開示する） */
-  liars: readonly AdvisorInfo[];
   /**
    * 全員挑戦者モードで、仲間がそれぞれ何を選んだか。
    * 言ったことと選んだことのずれが、ここで見える。
@@ -155,6 +171,16 @@ export interface EngineState {
    * 名前が増えて「ほぼ全員が嘘つき」という無意味な一覧になる。**
    */
   liarLog: readonly { roundId: string; sectionIndex: number; liarIds: readonly string[] }[];
+  /** 区画の答え合わせ。phase==='answer' のあいだだけ入る */
+  sectionAnswer: SectionAnswer | null;
+}
+
+/** 区画を離れるときに開くもの。抜けたのか死んだのかで見出しが変わる */
+export interface SectionAnswer {
+  sectionIndex: number;
+  /** 抜けて次の区画へ進むのか、死んで最初から引き直すのか */
+  cleared: boolean;
+  rows: readonly AnswerRow[];
 }
 
 export const HUSH_MS = 800;
@@ -209,6 +235,7 @@ export class GameEngine {
   private liarLog: { roundId: string; sectionIndex: number; liarIds: readonly string[] }[] = [];
   private nominated: string[] = [];
   private roundCounter = 0;
+  private sectionAnswer: SectionAnswer | null = null;
 
   /** この周でまだ出していない部屋。同じ部屋を続けて見せないための山札 */
   private deck: Room[] = [];
@@ -292,6 +319,7 @@ export class GameEngine {
       canSilence: !!this.mode.canSilence,
       confirmedLiars: [...this.silencedThisSection],
       liarLog: this.liarLog,
+      sectionAnswer: this.sectionAnswer,
     };
   }
 
@@ -321,6 +349,7 @@ export class GameEngine {
     this.records.clear();
     this.resting.clear();
     this.sectionCasting = null;
+    this.sectionAnswer = null;
     this.liarLog = [];
     this.nextRoundPenaltyMs = 0;
     this.deck = shuffled(this.pack.rooms, this.rng);
@@ -447,7 +476,23 @@ export class GameEngine {
       case 'reveal':
         this.phase = 'verdict';
         break;
-      case 'verdict':
+      case 'verdict': {
+        /*
+         * 区画を離れるなら、その前に答え合わせを一枚挟む。
+         * 「あの人は本当に嘘つきだったのか」が返らないまま次の卓が来ると、
+         * 読み合いの手応えが一周ぶん（12分）貯まったまま流れる。
+         */
+        const answer = this.answerForLeavingSection();
+        if (answer) {
+          this.sectionAnswer = answer;
+          this.phase = 'answer';
+          break;
+        }
+        this.afterVerdict();
+        return;
+      }
+      case 'answer':
+        this.sectionAnswer = null;
         this.afterVerdict();
         return;
       default:
@@ -456,10 +501,51 @@ export class GameEngine {
     this.emit();
   }
 
+  /**
+   * この判定で区画を離れるなら、答え合わせを組む。離れないなら null。
+   *
+   * 離れる条件は afterVerdict と同じでなければならない
+   * （食い違うと、答え合わせだけ出て区画が変わらない／変わっても出ない）。
+   * 命が尽きたときは出さない。終わりの画面が区画ぶん全部開くので二重になる。
+   */
+  private answerForLeavingSection(): SectionAnswer | null {
+    const verdict = this.verdict;
+    if (!verdict || verdict.fatal) return null;
+    const casting = this.sectionCasting;
+    if (!casting) return null;
+    const leaving = verdict.survived
+      ? this.clearedInSection + 1 >= this.roomsFor(this.sectionIndex)
+      : true; // 死ぬと区画の最初へ戻り、顔ぶれも配役も引き直す
+    if (!leaving) return null;
+
+    /*
+     * 区画の頭で死んだときは出さない。
+     *
+     * 出してみたら、記録が「正1 嘘0」しかない紙が8人ぶん並んだ。
+     * 一部屋しか聞いていない相手の役を開いても読み合いの答えにならず、
+     * 死ぬたびに割り込む段が増えるだけだった。
+     * 抜けたときは常に出す（4〜5部屋ぶん積んでいる）。
+     */
+    if (!verdict.survived && this.clearedInSection < 2) return null;
+
+    const rows = casting.speakerIds.map((id) => {
+      const rec = this.records.get(id) ?? { hit: 0, miss: 0 };
+      return {
+        id,
+        name: this.advisors.find((a) => a.id === id)?.name ?? id,
+        liar: casting.liarIds.includes(id),
+        hit: rec.hit,
+        miss: rec.miss,
+      };
+    });
+    return { sectionIndex: this.sectionIndex, cleared: verdict.survived, rows };
+  }
+
   retryFromTitle(): void {
     this.phase = 'title';
     this.round = null;
     this.verdict = null;
+    this.sectionAnswer = null;
     this.emit();
   }
 
@@ -786,10 +872,6 @@ export class GameEngine {
       });
     }
 
-    const liars = this.currentCasting.liarIds
-      .map((id) => this.advisors.find((a) => a.id === id))
-      .filter((a): a is AdvisorInfo => !!a);
-
     // 全員挑戦者モード：仲間もそれぞれ選ぶ。結果で言行のずれが見える
     // 仲間の手はゲートウェイが持つ。人間の仲間が入っても本体は変わらない
     const party = this.mode.allChallengers ? this.collectParty(round, correctId) : [];
@@ -804,7 +886,6 @@ export class GameEngine {
       deathMessage: source ? localized(source.deathMessage) : '',
       livesLeft: Math.max(0, this.lives),
       fatal: !survived && this.lives <= 0,
-      liars,
       party,
       followedCrowd: !survived && chosenId !== null && this.wasCrowdChoice(round, chosenId),
     };

@@ -62,6 +62,9 @@ const screen = async (p) => p.evaluate(() => {
     canPoint: document.querySelectorAll('.floor-act').length > 0,
     volunteer: t('.locked + .primary') || t('.primary'),
     note2: t('.floor-note'),
+    // 区画の答え合わせ。助言者は自分の役しか知らないので、ここでしか他人の役を見られない
+    answer: [...document.querySelectorAll('.answer-row')].map((e) => (e.textContent ?? '').trim()),
+    answerHead: t('.answer-heading'),
   };
 });
 
@@ -71,6 +74,8 @@ let freshSeen = false;
 let volunteerCleared = null;
 let mixedFloor = 0;
 let callsSeen = 0;
+let answerSeen = 0;
+let answerNoRole = 0;
 
 for (let step = 0; step < 60; step++) {
   const v = view();
@@ -115,6 +120,7 @@ for (let step = 0; step < 60; step++) {
   // 助言者の画面が同じものを見ているか
   for (const { name, p } of pages) {
     const sc = await screen(p);
+
     if (sc.canWrite) {
       say(`    〔${name}〕 ${sc.role} / 場に${sc.floor.length}件 / 撃てる:${sc.canPoint} ${sc.note2 ? `「${sc.note2}」` : ''}`);
       if (sc.calls) mixedFloor++;
@@ -130,7 +136,29 @@ for (let step = 0; step < 60; step++) {
     ? v2.round.room.choices[v2.round.room.choices.length - 1].id
     : bestGuess(v2.round);
   send({ t: 'challenger/choose', choiceId: pick, roundId: v2.round.roundId });
-  for (let i = 0; i < 6; i++) { send({ t: 'challenger/advance' }); await wait(220); }
+  /*
+   * 段を送りながら、助言者の画面に答え合わせが出るところを見る。
+   *
+   * **次の部屋が届いた時点で紙は下ろされる**（押さない人が盤面を覆われた
+   * まま助言の受付を逃さないため）。ここの挑戦者は人ではなく即座に段を
+   * 送る botなので、部屋の頭で見にいくともう消えている。段の途中で見る。
+   */
+  for (let i = 0; i < 6; i++) {
+    send({ t: 'challenger/advance' });
+    await wait(220);
+    for (const { name, p } of pages) {
+      const sheet = await p.evaluate(() => ({
+        rows: [...document.querySelectorAll('.answer-row')].map((e) => (e.textContent ?? '').trim()),
+        head: (document.querySelector('.answer-heading')?.textContent ?? '').trim(),
+      }));
+      if (sheet.rows.length === 0) continue;
+      answerSeen++;
+      say(`    〔${name}〕 答え合わせ「${sheet.head}」`);
+      for (const row of sheet.rows) say(`        ${row}`);
+      if (!sheet.rows.some((r) => r.includes('嘘つき'))) answerNoRole++;
+      await p.locator('.answer-go').click().catch(() => {});
+    }
+  }
   await wait(400);
   const after = view();
   if (after && after.lives < beforeLives) { deaths++; say(`    → 死んだ（命 ${beforeLives}→${after.lives}）`); }
@@ -199,6 +227,12 @@ if (sectionsSeen.size >= 2) check('区画をまたいでも壊れない', true);
 else say(`   （この周は区画をまたげなかった。見たのは区画${sectionsSeen.size}ぶん）`);
 check('名指しが起きている', callsSeen > 0, `${callsSeen}件`);
 check('助言者の「場」に名指しが混ざらない', mixedFloor === 0, `${mixedFloor}回`);
+// 区画をまたいだ走りなので、助言者にも一度は答え合わせが届いているはず。
+// 届いていなければ「配っている」と書いてあるだけの機能になる
+if (sectionsSeen.size >= 2) {
+  check('助言者にも区画の答え合わせが届く', answerSeen > 0, `${answerSeen}回`);
+  check('答え合わせに役が並んでいる', answerNoRole === 0, `${answerNoRole}回は役が無かった`);
+}
 check('例外なし', errors.length === 0, errors.join(' / '));
 if (volunteerCleared !== null) check('手を挙げた扱いが区画の頭で切れている', volunteerCleared === true);
 

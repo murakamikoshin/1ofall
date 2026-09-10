@@ -69,7 +69,7 @@ for (let attempt = 0; attempt < 5 && !outside; attempt++) {
     ch.send({ t: 'challenger/choose', choiceId: round.room.choices[0].id, roundId: round.roundId });
     // 崖っぷちでは演出の段を挑戦者の画面が進める。合図がないと判定が立たない
     await wait(200);
-    for (let i = 0; i < 3; i++) { ch.send({ t: 'challenger/advance' }); await wait(150); }
+    for (let i = 0; i < 4; i++) { ch.send({ t: 'challenger/advance' }); await wait(150); }
 
     let notice = '';
     for (let t = 0; t < 30; t++) {
@@ -78,6 +78,9 @@ for (let attempt = 0; attempt < 5 && !outside; attempt++) {
       await wait(200);
     }
     check('当たり外れと通算が本人に返る', /通算 当\d+ 外\d+/.test(notice), `「${notice}」`);
+    // 通算だけでは自分が上手いのか下手なのか分からない。
+    // 順位は「発言枠へ上がる道」そのものなので、賭けた人が二人以上いれば出す
+    console.log(`   「${notice}」`);
     console.log(`   ${notice}`);
     if (process.argv[2]) await p.screenshot({ path: `${process.argv[2]}/vote.png`, fullPage: true });
   }

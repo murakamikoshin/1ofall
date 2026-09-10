@@ -52,6 +52,8 @@ export const ja = {
       // 隠すのは盤面（誰が嘘つきか）だけで、規則は先に言う
       '嘘つきは信用を作ってから裏切る。区画の序盤はよく当て、奥へ行くほど崩れる。',
       '正直か嘘かの記録は区画ごとに消える。前の区画で積んだ信用は持ち越せない。',
+      // 読み合いの答えが返る場所を先に言う。返ることを知らないと、記録を見なくなる
+      '区画を二部屋以上進んで離れると、誰が嘘つきだったかが開く。読みの答えはそこで返る。',
       // 名指しは8回目に足した。赤い一行が何なのか分からないままだと読めない
       '助言者は互いを指せる。「あいつは嘘だ」も助言と同じ列に並ぶ。',
       '嘘つきは正解を口にした者を潰したがる。撃たれている者ほど、本当のことを言っている。',
@@ -107,6 +109,14 @@ export const ja = {
     inbox: (n: number) => `${n}人が助言を送ってきた`,
     record: (hit: number, miss: number) => `正${hit} 嘘${miss}`,
     recordHint: 'この区画での、その人の正直さ',
+    /*
+     * 疑いの札。押しても盤面は何も変わらない（自分の覚え書き）。
+     * 読み合いは頭の中でやるものだったので、区画の答え合わせで
+     * 「当たっていたか」を数えられなかった。札を置けば数えられる。
+     */
+    doubt: '疑う',
+    doubtOn: '疑っている',
+    doubtHint: '自分の覚え書き。相手には見えない',
     reportedNotice: '通報した。その者の声はもう届かない',
     confirmedLiar: '黙らせた。嘘つきで確定',
     freshCast: '顔ぶれが入れ替わった。記録は白紙だ',
@@ -156,6 +166,35 @@ export const ja = {
     nameSeparator: '、',
   },
 
+  /**
+   * 区画の答え合わせ。
+   *
+   * 顔ぶれと配役は区画をまたいで残らないので、離れる瞬間に開いても
+   * 先の部屋には何も漏れない。開かないと、読み合いの答えが
+   * 終わりの画面まで一度も返らない（1周12分ぶん貯まる）。
+   */
+  answer: {
+    cleared: (n: number) => `${SECTION_NAMES[n - 1] ?? n}を抜けた`,
+    lost: (n: number) => `${SECTION_NAMES[n - 1] ?? n}で落ちた`,
+    heading: '答え合わせ',
+    note: 'ここで席は組み替わる。次は別の顔ぶれ、別の配役',
+    liar: '嘘つき',
+    honest: '正直',
+    record: (hit: number, miss: number) => `正${hit}　嘘${miss}`,
+    noRecord: '何も言わなかった',
+    // 信用を作ってから裏切る者を、数字のほうから指す
+    builtCredit: '積んで、崩した',
+    go: '次へ',
+    // 置いた疑いの札と突き合わせる。読み合いに点が付く
+    doubted: '疑っていた',
+    readScore: (hit: number, all: number) => `嘘つき ${all}人のうち ${hit}人を疑っていた`,
+    readWrong: (n: number) => `正直な ${n}人を疑った`,
+    readNone: '誰も疑わなかった',
+    // 助言者側。自分の役はもう知っているので、見るのは他人の役
+    yours: 'あなた',
+    advisorHeading: (n: number) => `${SECTION_NAMES[n - 1] ?? n}の答え合わせ`,
+  },
+
   advisor: {
     join: '入室',
     namePlaceholder: '名前（任意）',
@@ -185,6 +224,8 @@ export const ja = {
     betHit: '当てた',
     betMiss: '外した',
     betRecord: (hit: number, miss: number) => `通算 当${hit} 外${miss}`,
+    // 賭けた人だけを分母にする。当てているほど発言枠へ上がりやすい
+    betRank: (place: number, of: number) => `賭けた${of}人中 ${place}位`,
     votePrompt: '喋れないが、一票は入れられる',
     /**
      * 場に出ている言葉。**これまで自分の一言しか見えていなかった。**
@@ -227,6 +268,8 @@ export const ja = {
     spoken: (got: number, all: number) => `${all}人中 ${got}人が言った`,
     reached: (done: number, all: number) => `${all}部屋のうち ${done}部屋`,
     survivors: (names: string) => `残ったのは ${names}`,
+    // 答え合わせは時間で送る（6〜8人の合図は待てない）
+    answerIn: (sec: number) => `あと${sec}秒`,
     noSurvivors: '誰も残らなかった',
     traitorsWere: (names: string) => `裏切っていたのは ${names}`,
   },

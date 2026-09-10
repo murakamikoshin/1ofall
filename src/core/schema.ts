@@ -177,6 +177,29 @@ export const AdviceSchema = z.object({
   kind: z.enum(['door', 'call']).optional(),
 });
 
+/**
+ * 区画の答え合わせ。
+ *
+ * **遊んでいるあいだ、嘘つきは線に載せない。** 判定に `liars` を積んでいたので、
+ * 部屋を一つ抜けるたびに区画ぶんの配役が挑戦者の線へ流れていた（画面には
+ * 出していないが、開けば読める）。顔ぶれは区画のあいだ変わらないので、
+ * 一部屋目の判定を覗くだけで、その区画の読み合いが全部終わっていた。
+ * 開くのは区画を離れる瞬間だけにする。
+ */
+export const SectionAnswerSchema = z.object({
+  sectionIndex: z.number().int(),
+  cleared: z.boolean(),
+  rows: z.array(
+    z.object({
+      id: AdvisorIdSchema,
+      name: AdvisorNameSchema,
+      liar: z.boolean(),
+      hit: z.number().int().nonnegative(),
+      miss: z.number().int().nonnegative(),
+    }),
+  ),
+});
+
 export const ChallengerViewSchema = z.object({
   phase: z.string(),
   mode: ModeIdSchema,
@@ -225,12 +248,13 @@ export const ChallengerViewSchema = z.object({
       livesLeft: z.number().int(),
       fatal: z.boolean(),
       followedCrowd: z.boolean(),
-      liars: z.array(AdvisorInfoSchema),
       party: z.array(
         z.object({ id: AdvisorIdSchema, name: AdvisorNameSchema, chosenId: z.string(), survived: z.boolean() }),
       ),
     })
     .nullable(),
+  /** 区画を離れるときの答え合わせ。離れる瞬間だけ載る */
+  sectionAnswer: SectionAnswerSchema.nullable(),
   serverNow: z.number().int(),
 });
 
@@ -299,6 +323,13 @@ export const PartyViewSchema = z.object({
   totalRooms: z.number().int(),
   traitors: z.array(AdvisorInfoSchema),
   traitorsBySection: z.array(z.object({ sectionIndex: z.number().int(), ids: z.array(AdvisorIdSchema) })),
+  /**
+   * 区画の答え合わせ。離れる瞬間だけ載る。
+   * 全員の合図は待てないので、いつまで出すかを時刻で運ぶ
+   */
+  sectionAnswer: SectionAnswerSchema.extend({ untilMs: z.number().int() })
+    .omit({ cleared: true })
+    .nullable(),
   /** その人自身に配られたもの。ほかの人には送らない */
   knowledge: KnowledgeSchema.nullable(),
   serverNow: z.number().int(),
@@ -364,6 +395,28 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
     picks: z.array(z.object({ advisorId: AdvisorIdSchema, choiceId: z.string() })).optional(),
   }),
   /**
+   * 区画の答え合わせ。**助言者にも配る。**
+   *
+   * 助言者は自分の役しか知らない。嘘をついた側は「刺さったのか」を、
+   * 正直に言った側は「なぜ信じられなかったのか」を、
+   * ここまで一度も知らないまま部屋を出ていた。
+   * 顔ぶれは区画をまたいで残らないので、離れる瞬間に開いても先へは漏れない。
+   */
+  z.object({
+    t: z.literal('section/answer'),
+    sectionIndex: z.number().int(),
+    cleared: z.boolean(),
+    rows: z.array(
+      z.object({
+        id: AdvisorIdSchema,
+        name: AdvisorNameSchema,
+        liar: z.boolean(),
+        hit: z.number().int().nonnegative(),
+        miss: z.number().int().nonnegative(),
+      }),
+    ),
+  }),
+  /**
    * 枠外から一票入れた本人にだけ、当たり外れと通算を返す。
    *
    * 配信で1000人いても発言できるのは8人。残りに渡せるのは自分の賭けだけ。
@@ -376,6 +429,16 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
     hit: z.boolean(),
     correct: z.string(),
     record: z.object({ hit: z.number().int(), miss: z.number().int() }),
+  /**
+   * 賭けている人の中での順位。
+   *
+   * 配信で1000人が見ていると、発言できるのは8人。残りに渡せる手は
+   * 一票だけで、当たり外れの通算しか返していなかった。
+   * 「4/1」だけ見ても自分が上手いのか下手なのか分からない。
+   * 順位は、当てているほど発言枠へ上がりやすい仕組み（slotWeight）と
+   * 地続きなので、上がる道が見える形になる。
+   */
+    rank: z.object({ place: z.number().int().positive(), of: z.number().int().positive() }).optional(),
   }),
   /** 黙らされた本人にだけ送る。以降その部屋の助言は届かない */
   z.object({ t: z.literal('advisor/silenced'), roundId: z.string() }),

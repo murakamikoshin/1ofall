@@ -341,6 +341,10 @@ export class RoomSession {
     if (state.phase === 'verdict') {
       this.laterParty(() => this.party?.advancePresentation(), someoneDied ? 3400 : 1400);
     }
+    // 区画の答え合わせ。全員の合図は待てないので時間で送る
+    if (state.phase === 'answer') {
+      this.laterParty(() => this.party?.advancePresentation(), PartyEngine.ANSWER_MS);
+    }
   }
 
   private planPartyRound(roundId: string, deadlineAt: number): void {
@@ -412,6 +416,13 @@ export class RoomSession {
         totalRooms: state.totalRooms,
         traitors: [...state.traitors],
         traitorsBySection: state.traitorsBySection.map((t) => ({ sectionIndex: t.sectionIndex, ids: [...t.ids] })),
+        sectionAnswer: state.sectionAnswer
+          ? {
+              sectionIndex: state.sectionAnswer.sectionIndex,
+              rows: state.sectionAnswer.rows.map((r) => ({ ...r })),
+              untilMs: state.sectionAnswer.untilMs,
+            }
+          : null,
         knowledge: this.party?.knowledgeFor(connectionId) ?? null,
         serverNow: this.now(),
       },
@@ -475,12 +486,15 @@ export class RoomSession {
           for (const [id, choiceId] of this.humans.votesByPerson()) {
             const hit = choiceId === v.correctId;
             const record = this.humans.countVote(id, hit);
+            const rank = this.humans.voteRank(id);
             this.sink.send(id, {
               t: 'advisor/voteResult',
               roundId: v.roundId,
               hit,
               correct: v.correctId,
               record,
+              // 賭けている人の中での順位。発言枠へ上がる道が見える
+              ...(rank ? { rank } : {}),
             });
           }
         }
@@ -491,6 +505,20 @@ export class RoomSession {
           correct: v.correctId,
           survived: v.survived,
           ...(v.party.length ? { picks: v.party.map((p) => ({ advisorId: p.id, choiceId: p.chosenId })) } : {}),
+        });
+      }
+      /*
+       * 区画の答え合わせは助言者にも配る。
+       * 自分の役しか知らないので、嘘が刺さったのかも、正直に言ったのに
+       * 信じられなかった理由も、ここまで一度も返っていなかった。
+       */
+      if (state.phase === 'answer' && state.sectionAnswer) {
+        const answer = state.sectionAnswer;
+        this.sink.broadcast({
+          t: 'section/answer',
+          sectionIndex: answer.sectionIndex,
+          cleared: answer.cleared,
+          rows: answer.rows.map((r) => ({ ...r })),
         });
       }
       if (state.phase === 'gameover' || state.phase === 'cleared') {
@@ -569,9 +597,11 @@ export class RoomSession {
         verdict: state.verdict
           ? {
               ...state.verdict,
-              liars: [...state.verdict.liars],
               party: state.verdict.party.map((p) => ({ ...p })),
             }
+          : null,
+        sectionAnswer: state.sectionAnswer
+          ? { ...state.sectionAnswer, rows: state.sectionAnswer.rows.map((r) => ({ ...r })) }
           : null,
         serverNow: this.now(),
       },

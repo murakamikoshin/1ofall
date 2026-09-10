@@ -37,6 +37,11 @@ for (let i = 0; i < 6 && !hit; i++) {
     await p.locator('.choice').first().click();
     await wait(8000);
     if (await p.locator('.end-screen').count()) break;
+    // 区画の答え合わせが乗っていたら送る（16回目に足した段）
+    if (await p.locator('.answer-veil').count()) {
+      await p.locator('.answer-go').click().catch(() => {});
+      await wait(400);
+    }
     await wait(5000);
   }
 }

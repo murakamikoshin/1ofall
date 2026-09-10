@@ -58,14 +58,18 @@ async function blindPick(p) {
   return !!id;
 }
 
-for (let i = 0; i < 80; i++) {
+for (let i = 0; i < 120; i++) {
   const done = await host.evaluate(() => document.querySelectorAll('.end-screen').length > 0);
   if (done) break;
+  // 区画の答え合わせは押す口が無く、時間で消える。消えるまで待つ
+  if (await host.locator('.answer-veil').count()) { await wait(600); continue; }
   await blindPick(host);
   await blindPick(guest);
   for (let t = 0; t < 60; t++) {
     const ready = await host.evaluate(() =>
       document.querySelectorAll('.end-screen').length > 0
+      // 区画の答え合わせは全員挑戦者では時間で消える（押す口が無い）
+      || document.querySelectorAll('.answer-veil').length > 0
       || document.querySelectorAll('.choice:not([disabled])').length > 0);
     if (ready) break;
     await wait(200);

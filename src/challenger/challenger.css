@@ -380,6 +380,7 @@
 /* 押し間違いが痛い二つ（黙らせる・通報）なので、
    触れる的は 28px を下回らせない。指では 32px */
 .hint-silence,
+.hint-doubt,
 .hint-report {
   min-height: 28px;
   border: 1px solid var(--dim);
@@ -398,8 +399,20 @@
 .hint-silence:disabled,
 .hint-report:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* 疑いの札。盤面は動かないので、色は一段控える（黙らせると間違えさせない） */
+.hint-doubt:hover,
+.hint-doubt:focus-visible { border-color: var(--paper-faint); color: var(--paper-bright); }
+.hint-doubt.is-on {
+  border-color: var(--rust);
+  color: var(--rust);
+}
+
+/* 札を置いた行は、助言欄の中でも見分けが付く */
+.hint-row.is-doubted { border-left: 2px solid var(--rust); }
+
 @media (pointer: coarse), (max-width: 560px) {
   .hint-silence,
+  .hint-doubt,
   .hint-report { min-height: 32px; padding-inline: 0.7rem; }
 }
 
@@ -969,4 +982,130 @@
   align-items: center;
 }
 
+/* ─────────────────────── 区画の答え合わせ ─────────────────────── */
 
+.answer-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1.25rem;
+  background: rgba(0, 0, 0, 0.88);
+  overflow-y: auto;
+  animation: answer-in 420ms ease-out both;
+}
+
+.answer-sheet {
+  width: min(30rem, 100%);
+  border: var(--edge);
+  background: var(--soot);
+  padding: clamp(1.25rem, 4vw, 1.9rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.answer-heading {
+  margin: 0;
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  letter-spacing: 0.18em;
+  color: var(--paper-bright);
+}
+
+.answer-heading.is-death { color: var(--blood-lit); }
+
+.answer-sub {
+  margin: -0.6rem 0 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.3em;
+  color: var(--rust);
+}
+
+.answer-rows { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* 名前・役・記録の三列。記録は「積んで、崩した」で伸びるので折り返させる */
+.answer-row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 7rem) 4.5rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.45rem 0.55rem;
+  border-left: 2px solid var(--dim);
+  font-size: 0.9rem;
+}
+
+.answer-row.is-liar { border-left-color: var(--blood); background: rgba(120, 20, 20, 0.12); }
+
+.answer-name { color: var(--paper-bright); letter-spacing: 0.08em; }
+.answer-role { color: var(--paper-faint); letter-spacing: 0.14em; }
+.answer-row.is-liar .answer-role { color: var(--blood-lit); }
+.answer-record { color: var(--paper-faint); font-size: 0.82rem; }
+
+/* 「積んで、崩した」は行の中で折り返すと語が割れる。数字の下に置く */
+.answer-built {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--blood-lit);
+  letter-spacing: 0.06em;
+}
+
+.answer-row.is-doubted { box-shadow: inset 2px 0 0 var(--rust); }
+
+/* 置いた札の印。名前の横に足すと名前の桁を押し出すので、下に置く */
+.answer-mark {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--rust);
+}
+
+/* 読みの点。置いた札と役を突き合わせた一行 */
+.answer-score {
+  margin: 0;
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  color: var(--paper-bright);
+}
+
+.answer-score.is-good { color: var(--rust); }
+
+.answer-note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--paper-faint);
+}
+
+.answer-go {
+  align-self: stretch;
+  border: var(--edge);
+  background: var(--soot);
+  color: var(--paper-bright);
+  padding: 0.8rem 1rem;
+  letter-spacing: 0.14em;
+}
+
+.answer-go:hover,
+.answer-go:focus-visible { border-color: var(--rust); }
+
+/* 全員挑戦者の紙には押す口が無い。焦点は紙そのものに来る（枠は出さない） */
+.answer-sheet:focus { outline: none; }
+.answer-sheet:focus-visible { border-color: var(--rust); }
+
+@keyframes answer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 560px) {
+  .answer-row { grid-template-columns: minmax(4rem, 6rem) 4rem 1fr; font-size: 0.84rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answer-veil { animation: none; }
+}

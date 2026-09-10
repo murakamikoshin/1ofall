@@ -24,6 +24,12 @@ for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['崖っぷち', '
   // 決め打ちで待たず、部屋が変わるまで見る
   for (let i = 0; i < 80; i++) {
     if (await p.locator('.end-screen').count()) break;
+    // 区画の答え合わせが乗っていたら送る（16回目に足した段）
+    if (await p.locator('.answer-veil').count()) {
+      await p.locator('.answer-go').click().catch(() => {});
+      await wait(250);
+      continue;
+    }
     const n = await p.locator('.choice:not([disabled])').count();
     if (!n) { await wait(150); continue; }
     // 部屋の番号だけで見分けると、死んで区画の頭へ戻ったときに

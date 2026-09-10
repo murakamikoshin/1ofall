@@ -12,6 +12,11 @@ async function playUntilDeath() {
   await p.getByRole('button', { name: /一人で遊ぶ/ }).click();
   for (let i = 0; i < 60; i++) {
     if (await p.locator('.end-screen').count()) break;
+    if (await p.locator('.answer-veil').count()) {
+      await p.locator('.answer-go').click().catch(() => {});
+      await p.waitForTimeout(250);
+      continue;
+    }
     const n = await p.locator('.choice:not([disabled])').count();
     if (!n) { await p.waitForTimeout(500); continue; }
     await p.locator('.choice:not([disabled])').nth(Math.floor(Math.random() * n)).click();

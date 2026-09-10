@@ -12,7 +12,7 @@ import type { PartySource } from './party-board';
 const EMPTY: PartyState = {
   phase: 'title', members: [], round: null, verdict: null,
   sectionIndex: 0, sectionCount: 1, roomsPerSection: 1, roomNumber: 0, totalRooms: 0,
-  traitors: [], traitorsBySection: [],
+  traitors: [], traitorsBySection: [], sectionAnswer: null,
 };
 
 export class RemotePartySource implements PartySource {
@@ -98,6 +98,10 @@ export class RemotePartySource implements PartySource {
       totalRooms: view.totalRooms,
       traitors: view.traitors,
       traitorsBySection: view.traitorsBySection,
+      // 時刻はサーバーのもの。ずれを引いて自分の時計に直す
+      sectionAnswer: view.sectionAnswer
+        ? { ...view.sectionAnswer, untilMs: view.sectionAnswer.untilMs - this.skewMs }
+        : null,
     };
     for (const l of this.listeners) l(this.state);
   }

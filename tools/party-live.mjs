@@ -86,7 +86,8 @@ check('助言者は扉を選べない', a1.inbox.some((m) => m.t === 'error' && 
 ch.send({ t: 'challenger/choose', choiceId: openOf(ch).room.choices[0].id, roundId: openOf(ch).roundId });
 await wait(200);
 // 演出の段は挑戦者の画面が進める
-for (let i = 0; i < 3; i++) { ch.send({ t: 'challenger/advance' }); await wait(120); }
+// 段は hush→reveal→verdict→（区画の答え合わせ）→次。境目に当たると一段増える
+for (let i = 0; i < 4; i++) { ch.send({ t: 'challenger/advance' }); await wait(120); }
 check('結果が全員に流れる', a1.inbox.some((m) => m.t === 'round/result') && ch.inbox.some((m) => m.t === 'round/result'));
 
 for (const c of [ch, a1, a2]) c.ws.close();
