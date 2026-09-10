@@ -1,6 +1,6 @@
 import type { AdvisorInfo, Hint, Knowledge, PublicRoom, Room, RoomPack } from './schema';
 import { LIAR_FRACTION, RUN, knowledgeForSection, STANDARD, type ModeConfig } from './limits';
-import { localized } from '../i18n';
+import { localized, strings } from '../i18n';
 import {
   checkHint, createHintGuard, createReportBook, fileReport, reportCount, resetGuard, wasTruthful,
   type HintGuardState, type ReportBook,
@@ -12,6 +12,7 @@ import {
 import { createRng, shuffled, pickSome, type Rng } from './rng';
 import type { AdvisorGateway, Unsubscribe } from './advisor-gateway';
 import { NullAdvisorGateway } from './advisor-gateway';
+import { resolveTruth } from './name-calling';
 
 /**
  * ゲーム本体のロジック。DOM も通信も知らない純粋な状態機械。
@@ -39,6 +40,8 @@ export interface Advice {
   sentAt: number;
   /** この区画で、この人の助言に従っていたらどうだったか。区画が変わると消える */
   record: { hit: number; miss: number };
+  /** 扉について言ったのか、人を指したのか。既定は扉 */
+  kind?: 'door' | 'call' | undefined;
 }
 
 export interface RoundState {
@@ -246,6 +249,7 @@ export class GameEngine {
     this.advisors = this.gateway.roster();
     this.unsubs.push(
       this.gateway.onHint((hint) => this.receiveHint(hint)),
+      this.gateway.onCall?.((call) => this.point(call.advisorId, call.targetId, call.doubt)) ?? (() => {}),
       this.gateway.onRosterChange((roster) => {
         this.advisors = roster;
         this.emit();
@@ -666,17 +670,68 @@ export class GameEngine {
     }
     const text = checked.text;
 
-    // 1部屋につき1人1通。書き直しは最新で上書きする
-    const entry = {
+    this.addAdvice(round, {
       advisorId: hint.advisorId,
       advisorName: hint.advisorName,
       text,
       sentAt: hint.sentAt,
       record: this.records.get(hint.advisorId) ?? { hit: 0, miss: 0 },
-    };
-    const rest = round.advice.filter((a) => a.advisorId !== hint.advisorId);
+      kind: 'door',
+    });
+  }
+
+  /** 1部屋につき、口ごとに1通。書き直しは最新で上書きする */
+  private addAdvice(round: RoundState, entry: Advice): void {
+    const kind = entry.kind ?? 'door';
+    const rest = round.advice.filter((a) => !(a.advisorId === entry.advisorId && (a.kind ?? 'door') === kind));
     round.advice = [...rest, entry];
     this.emit();
+  }
+
+  /**
+   * 人を指す。「あいつは嘘だ」。
+   *
+   * 扉について言う口とは別なので、指しても扉の情報は減らない。
+   * 文面はここで組む（送らせない）ので、暴言の検査を通す必要が無い。
+   *
+   * 実測（tools/name-call.mjs）：**撃たれた者ほど正解を口にしている。**
+   * 崖っぷちで二人から撃たれた者は 97.7% が正解を口にしていた（撃たれて
+   * いない者は 28.2%）。嘘つきは全員が同じ正解を知っているので、
+   * 真実を言った者に群がるしかない。「群れに従うと死ぬ」の裏返しになる。
+   */
+  point(advisorId: string, targetId: string, doubt: boolean): void {
+    const round = this.round;
+    if (!round || this.phase !== 'choosing') return;
+    if (advisorId === targetId) return;
+    if (this.muted.has(advisorId) || this.silencedThisSection.has(advisorId)) return;
+    if (!this.currentCasting.speakerIds.includes(advisorId)) {
+      this.rejectHint(advisorId, 'notSpeaking');
+      return;
+    }
+    // 指せるのは、この部屋で扉について何か言った者だけ。
+    // 黙っている相手を撃てると、言っていないことで裁かれる形になる
+    const target = round.advice.find((a) => a.advisorId === targetId && (a.kind ?? 'door') === 'door');
+    if (!target) return;
+    // **自分も先に扉について言っていること。**
+    // 撃つだけで済むなら、自分の言葉を晒さずに人を潰せてしまう。
+    // 先に自分の一言を置かせれば、撃つ側も同じだけ裁かれる場に立つ
+    const spoke = round.advice.some((a) => a.advisorId === advisorId && (a.kind ?? 'door') === 'door');
+    if (!spoke) {
+      this.rejectHint(advisorId, 'speakFirst');
+      return;
+    }
+    const me = this.advisors.find((a) => a.id === advisorId);
+    const shapes = doubt ? strings().hints.doubt : strings().hints.back;
+    const shape = shapes[Math.floor(this.rng() * shapes.length)] ?? shapes[0];
+    if (!shape) return;
+    this.addAdvice(round, {
+      advisorId,
+      advisorName: me?.name ?? '',
+      text: shape(target.advisorName),
+      sentAt: this.now(),
+      record: this.records.get(advisorId) ?? { hit: 0, miss: 0 },
+      kind: 'call',
+    });
   }
 
   private settle(round: RoundState, chosenId: string | null, timedOut: boolean): void {
@@ -694,10 +749,16 @@ export class GameEngine {
     const correctLabel = source
       ? localized(source.choices.find((c) => c.id === correctId)?.label ?? { ja: '', en: '' })
       : '';
-    for (const entry of round.advice) {
-      const rec = this.records.get(entry.advisorId) ?? { hit: 0, miss: 0 };
-      const truthful = wasTruthful(entry.text, correctLabel, labels);
-      this.records.set(entry.advisorId, {
+    // 人を指した助言（「あいつは嘘だ」）は扉に触れていないので、
+    // 指した相手の言が嘘だったかで正誤を決める。辿れないものは記録を付けない
+    const truth = resolveTruth(
+      round.advice.map((a) => ({ id: a.advisorId, name: a.advisorName, text: a.text, kind: a.kind ?? 'door' })),
+      (text) => wasTruthful(text, correctLabel, labels),
+      round.room.choices,
+    );
+    for (const { id: advisorId, truthful } of truth) {
+      const rec = this.records.get(advisorId) ?? { hit: 0, miss: 0 };
+      this.records.set(advisorId, {
         hit: rec.hit + (truthful ? 1 : 0),
         miss: rec.miss + (truthful ? 0 : 1),
       });
@@ -771,6 +832,7 @@ export class GameEngine {
     const labels = round.room.choices.map((c) => ({ id: c.id, label: localized(c.label) }));
     const count = new Map(labels.map((c) => [c.id, 0]));
     for (const advice of round.advice) {
+      if ((advice.kind ?? 'door') !== 'door') continue;
       for (const c of labels) {
         if (advice.text.includes(c.label)) count.set(c.id, (count.get(c.id) ?? 0) + 1);
       }

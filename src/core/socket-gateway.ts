@@ -1,4 +1,4 @@
-import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
+import type { AdvisorCall, AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import type { AdvisorInfo, Hint } from './schema';
 import { ADVISOR_NAME_MAX } from './limits';
 
@@ -19,6 +19,7 @@ export class SocketAdvisorGateway implements AdvisorGateway {
   private hintListeners = new Set<(hint: Hint) => void>();
   private rosterListeners = new Set<(roster: readonly AdvisorInfo[]) => void>();
   private roundListeners = new Set<(briefing: RoundBriefing) => void>();
+  private callListeners = new Set<(call: AdvisorCall) => void>();
   private closeListeners = new Set<(roundId: string) => void>();
 
   private currentRoundId: string | null = null;
@@ -60,6 +61,18 @@ export class SocketAdvisorGateway implements AdvisorGateway {
   onRosterChange(listener: (roster: readonly AdvisorInfo[]) => void): Unsubscribe {
     this.rosterListeners.add(listener);
     return () => this.rosterListeners.delete(listener);
+  }
+
+  onCall(listener: (call: AdvisorCall) => void): Unsubscribe {
+    this.callListeners.add(listener);
+    return () => this.callListeners.delete(listener);
+  }
+
+  /** 繋がっている人が誰かを指した。押した本人のIDと向きだけを運ぶ */
+  point(advisorId: string, roundId: string, targetId: string, doubt: boolean): void {
+    if (roundId !== this.currentRoundId) return;
+    if (!this.advisors.has(advisorId)) return;
+    for (const l of this.callListeners) l({ advisorId, targetId, doubt, roundId });
   }
 
   volunteers(): readonly string[] {
@@ -111,6 +124,7 @@ export class SocketAdvisorGateway implements AdvisorGateway {
   }
 
   dispose(): void {
+    this.callListeners.clear();
     this.hintListeners.clear();
     this.rosterListeners.clear();
     this.roundListeners.clear();
@@ -132,6 +146,34 @@ export class SocketAdvisorGateway implements AdvisorGateway {
   }
 
   /**
+   * すでに使われている名前を教える。
+   *
+   * AI の仲間の名前も含めて渡してもらう。
+   * **同じ名前が二人いると「あいつは嘘だ」が別人を指す。**
+   * 人を指す一手は名前で照合するので、名前が被ったままだと
+   * 撃った相手と記録が付く相手がずれる。
+   */
+  setTakenNames(names: readonly string[]): void {
+    this.taken = names;
+  }
+
+  private taken: readonly string[] = [];
+
+  /** 被ったら後ろに印を足す。元の名前は残す（本人が自分を見失わないため） */
+  private uniqueName(id: string, wanted: string): string {
+    const used = new Set<string>([
+      ...this.taken,
+      ...[...this.advisors.values()].filter((a) => a.id !== id).map((a) => a.name),
+    ]);
+    if (!used.has(wanted)) return wanted;
+    for (let n = 2; n <= 99; n++) {
+      const mark = `${wanted.slice(0, Math.max(1, ADVISOR_NAME_MAX - 2))}${n}`;
+      if (!used.has(mark)) return mark;
+    }
+    return wanted;
+  }
+
+  /**
    * 入室、または名乗り直し。
    * 繋いだ時点では名前が無いので仮の名前で席を取り、
    * あとから advisor/join が来たらそこで名乗る。
@@ -144,7 +186,7 @@ export class SocketAdvisorGateway implements AdvisorGateway {
 
     const advisor: AdvisorInfo = {
       id,
-      name: (chosen || existing?.name || fallbackName).slice(0, ADVISOR_NAME_MAX),
+      name: this.uniqueName(id, (chosen || existing?.name || fallbackName).slice(0, ADVISOR_NAME_MAX)),
       kind: 'human',
     };
     if (existing && existing.name === advisor.name) return existing;

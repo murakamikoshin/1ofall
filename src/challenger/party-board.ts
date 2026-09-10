@@ -296,7 +296,12 @@ export class PartyBoard {
 
     const head = el('div', 'hints-head');
     const count = el('span', 'hints-count');
-    count.textContent = T.party.spoken(round.advice.length, state.members.length);
+    // 一人が二つ喋る（扉について一つ、人を指して一つ）ので、
+    // 行の数ではなく扉について言った人の数を数える
+    const spoke = new Set(
+      round.advice.filter((a) => (a.kind ?? 'door') === 'door').map((a) => a.memberId),
+    ).size;
+    count.textContent = T.party.spoken(spoke, state.members.length);
     head.append(count);
     // 裏切り者が入れ替わった部屋では、記録が白紙に戻ることを先に言う
     if (round.freshCast) {
@@ -316,7 +321,9 @@ export class PartyBoard {
     const list = el('div', 'hints-list');
     for (const advice of round.advice) {
       const member = state.members.find((m) => m.id === advice.memberId);
-      const row = el('div', `hint-row${member?.out ? ' is-dead' : ''}`);
+      // 人を指した一言は扉についての助言と見た目を分ける（数えるものではない）
+      const isCall = (advice.kind ?? 'door') === 'call';
+      const row = el('div', `hint-row${member?.out ? ' is-dead' : ''}${isCall ? ' is-call' : ''}`);
       const name = el('span', 'hint-name');
       name.textContent = advice.memberName;
       const rec = el('span', 'hint-record');
@@ -327,8 +334,8 @@ export class PartyBoard {
       text.textContent = advice.text;
       row.append(name, text);
 
-      // 自分の発言は通報できない
-      if (advice.memberId !== this.source.meId) {
+      // 自分の発言は通報できない。人を指した一言にも手を出さない
+      if (!isCall && advice.memberId !== this.source.meId) {
         const actions = el('span', 'hint-actions');
         const report = document.createElement('button');
         report.className = 'hint-report';

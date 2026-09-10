@@ -11,6 +11,15 @@ import type { Casting, Knowledge } from './casting';
 
 export type Unsubscribe = () => void;
 
+/** 人を指した一手 */
+export interface AdvisorCall {
+  advisorId: string;
+  targetId: string;
+  /** true なら疑う、false なら庇う */
+  doubt: boolean;
+  roundId: string;
+}
+
 /**
  * 部屋ごとに助言者側へ配る情報。正解はここにしか乗らない。
  *
@@ -36,6 +45,13 @@ export interface AdvisorGateway {
   closeRound(roundId: string): void;
   /** ヒント受信 */
   onHint(listener: (hint: Hint) => void): Unsubscribe;
+  /**
+   * 人を指した（「あいつは嘘だ」）。扉について言う口とは別。
+   *
+   * 文面ではなく相手のIDと向きだけを運ぶ。文面は本体が組むので、
+   * 暴言の検査を通す必要が無く、日本語を打てない人でも押せる。
+   */
+  onCall?(listener: (call: AdvisorCall) => void): Unsubscribe;
   /** 名簿の変化（入退室） */
   onRosterChange(listener: (roster: readonly AdvisorInfo[]) => void): Unsubscribe;
   /** 指名方式の立候補者 */

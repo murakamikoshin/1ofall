@@ -169,6 +169,18 @@ export const ja = {
     betMiss: '外した',
     betRecord: (hit: number, miss: number) => `通算 当${hit} 外${miss}`,
     votePrompt: '喋れないが、一票は入れられる',
+    /**
+     * 場に出ている言葉。**これまで自分の一言しか見えていなかった。**
+     * 互いの言葉が見えないと、誰も誰かを指せない
+     */
+    floorTitle: '場に出ている言葉',
+    floorEmpty: 'まだ誰も言っていない',
+    pointNote: '一人だけ撃てる。撃っても自分の一言は消えない',
+    pointNeedsHint: 'まず自分の一言を出す',
+    doubtButton: '嘘だ',
+    backButton: '本当だ',
+    pointed: (name: string) => `${name}を撃った`,
+    backed: (name: string) => `${name}に乗った`,
     voted: (label: string) => `${label}に入れた`,
     notSpeakingButVote: '言葉は届かない。だが票は届く',
     pickPrompt: 'あなたも一つ通る。命は自分持ちだ',
@@ -209,6 +221,7 @@ export const ja = {
     pointing: '番号と位置は使えない',
     tooManyChoices: '触れていいのは二つまで',
     tooLong: '長すぎる',
+    speakFirst: 'まず自分の一言を出す',
   },
 
   language: {
@@ -258,6 +271,28 @@ export const ja = {
       (a: string, b: string) => `${a}と${b}まで絞れた`,
       (a: string, b: string) => `${a}か${b}。決めきれん`,
     ],
+    /**
+     * 人を指して疑う。**扉の名前を一つも含まないのが要点。**
+     * 言えるのは一つだけなので、人を指した回は扉について何も言えない。
+     */
+    doubt: [
+      (n: string) => `${n}は嘘だ`,
+      (n: string) => `${n}を信じるな`,
+      (n: string) => `${n}が嘘つきだ`,
+      (n: string) => `${n}に乗るな`,
+      (n: string) => `${n}は嘘をついている`,
+    ],
+    /** 人を指して庇う */
+    back: [
+      (n: string) => `${n}は本当だ`,
+      (n: string) => `${n}を信じろ`,
+      (n: string) => `${n}は正しい`,
+      (n: string) => `${n}に乗れ`,
+    ],
+    /** 疑ったかどうか。doubt と必ず揃えること */
+    doubtPattern: /嘘だ|信じるな|嘘つきだ|乗るな|嘘をついている/,
+    /** 庇ったかどうか。back と必ず揃えること */
+    backPattern: /本当だ|信じろ|正しい|乗れ/,
     /** 「これは死ぬ」型かどうかの判定。記録の正誤に使う */
     avoidPattern: /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ|はずれ|外せ|触るな/,
     /** 迷いを含む言い方かどうか */

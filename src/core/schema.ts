@@ -82,6 +82,15 @@ export const HintSchema = z.object({
   text: z.string().trim().min(1).max(HINT_MAX_LENGTH),
   roundId: z.string().min(1),
   sentAt: z.number().int().nonnegative(),
+  /**
+   * 扉について言ったのか、人を指したのか。
+   *
+   * 一部屋につき、扉の話が一つと人を指すのが一つ。**別の口**にしてある。
+   * 同じ口にすると人を指すたびに扉の情報が減り、実測で読める打ち手が
+   * 5pt 落ちた（tools/rubric.mjs、指す率0.3）。別にすれば情報は減らず、
+   * 崖っぷちでは読める打ち手が 72.0%→77.2% に上がる。
+   */
+  kind: z.enum(['door', 'call']).optional(),
 });
 
 export type AdvisorInfo = z.infer<typeof AdvisorInfoSchema>;
@@ -118,6 +127,18 @@ export const ClientMessageSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('advisor/join'), name: AdvisorNameSchema.optional(), roomCode: z.string().length(ROOM_CODE_LENGTH) }),
   z.object({ t: z.literal('advisor/hint'), text: z.string().max(HINT_MAX_LENGTH), roundId: z.string() }),
   z.object({ t: z.literal('advisor/volunteer'), roundId: z.string() }),
+  /**
+   * 人を指す。「あいつは嘘だ」「あいつは本当だ」。
+   *
+   * **文面は送らせない。** 相手のIDと向きだけ受け取ってサーバーが書く。
+   * こうすると暴言の検査を通す必要が無く、日本語を打てない人でも押せる。
+   */
+  z.object({
+    t: z.literal('advisor/point'),
+    roundId: z.string(),
+    targetId: AdvisorIdSchema,
+    doubt: z.boolean(),
+  }),
   /** 発言枠の外の人が一票入れる。1000人の視聴者に渡す唯一の手 */
   z.object({ t: z.literal('advisor/vote'), roundId: z.string(), choiceId: z.string().min(1) }),
   /** 助言者どうしの通報。暴言を見た者がその場で挙げる */
@@ -152,6 +173,8 @@ export const AdviceSchema = z.object({
   text: z.string(),
   sentAt: z.number().int(),
   record: z.object({ hit: z.number().int(), miss: z.number().int() }),
+  /** 扉について言ったのか、人を指したのか */
+  kind: z.enum(['door', 'call']).optional(),
 });
 
 export const ChallengerViewSchema = z.object({
@@ -240,6 +263,7 @@ export const PartyViewSchema = z.object({
           text: z.string(),
           sentAt: z.number().int(),
           record: z.object({ hit: z.number().int(), miss: z.number().int() }),
+          kind: z.enum(['door', 'call']).optional(),
         }),
       ),
       freshCast: z.boolean(),
@@ -306,6 +330,12 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
      */
     knowledge: KnowledgeSchema.optional(),
     isSpeaker: z.boolean().optional(),
+    /**
+     * 受け取る本人のID。
+     * 場に並ぶ言葉のどれが自分のものかを見分けるために要る
+     * （自分を撃つ手を出してしまわないように）。
+     */
+    you: AdvisorIdSchema.optional(),
     /** 自分が枠外の票をどこへ入れたか（画面に残すため） */
     myVote: z.string().optional(),
     /** 全員挑戦者モードで、その人自身に配られた候補 */

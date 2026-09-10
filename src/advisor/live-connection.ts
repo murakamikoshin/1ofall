@@ -23,7 +23,9 @@ interface Incoming {
   room?: { id: string; theme: string; prompt: Record<string, string>; choices: Choice[] };
   knowledge?: Knowledge;
   isSpeaker?: boolean;
+  you?: string;
   code?: string;
+  hints?: { advisorId: string; advisorName: string; text: string; kind?: string }[];
 }
 
 const RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
@@ -38,6 +40,13 @@ export class LiveConnection implements AdvisorConnection {
   private isParty = false;
   private myPick: { roundId: string; choiceId: string } | null = null;
   private myVote: string | null = null;
+  /** この部屋でほかの人が言ったこと。届いた順のまま持つ */
+  private said: { advisorId: string; advisorName: string; text: string; kind?: string }[] = [];
+  private myCall: { targetId: string; doubt: boolean } | null = null;
+  /** この部屋で自分の一言をもう出したか。出す前は人を指せない */
+  private spoke = false;
+  /** 自分のID。場に並ぶ言葉のどれが自分のものかを見分けるため */
+  private myId = '';
   private voteRecord: { hit: number; miss: number } = { hit: 0, miss: 0 };
   private name = '';
   private attempt = 0;
@@ -70,10 +79,18 @@ export class LiveConnection implements AdvisorConnection {
 
   sendHint(roundId: string, text: string): void {
     this.send({ t: 'advisor/hint', roundId, text });
+    this.spoke = true;
+    this.publish();
   }
 
   volunteer(roundId: string): void {
     this.send({ t: 'advisor/volunteer', roundId });
+  }
+
+  point(roundId: string, targetId: string, doubt: boolean): void {
+    this.myCall = { targetId, doubt };
+    this.send({ t: 'advisor/point', roundId, targetId, doubt });
+    this.publish();
   }
 
   vote(roundId: string, choiceId: string): void {
@@ -160,7 +177,13 @@ export class LiveConnection implements AdvisorConnection {
       case 'round/open': {
         const room = msg.room;
         if (!room || !msg.roundId) return;
-        if (msg.roundId !== this.latest?.roundId) this.myVote = null;
+        this.myId = msg.you ?? this.myId;
+        if (msg.roundId !== this.latest?.roundId) {
+          this.myVote = null;
+          this.said = [];
+          this.myCall = null;
+          this.spoke = false;
+        }
         this.push({
           roundId: msg.roundId,
           roomId: room.id,
@@ -170,9 +193,20 @@ export class LiveConnection implements AdvisorConnection {
           // 席には居るが今回は配られていない、ということが起こりうる
           knowledge: msg.knowledge ?? null,
           isSpeaker: msg.isSpeaker === true,
+          myId: msg.you ?? this.myId,
           isParty: this.isParty,
           myVote: msg.myVote ?? this.myVote,
+          said: this.said,
+          myCall: this.myCall,
+          spoke: this.spoke,
         });
+        return;
+      }
+      case 'round/hints': {
+        // ほかの人が言ったことが届く。これが見えないと誰も指せない
+        if (!msg.hints || msg.roundId !== this.latest?.roundId) return;
+        this.said = msg.hints;
+        this.publish();
         return;
       }
       case 'game/over':
@@ -198,6 +232,12 @@ export class LiveConnection implements AdvisorConnection {
   private push(view: AdvisorView | null): void {
     this.latest = view;
     for (const l of this.viewListeners) l(view);
+  }
+
+  /** 盤面のうち、こちら側で持っているぶんだけ差し替えて描き直させる */
+  private publish(): void {
+    if (!this.latest) return;
+    this.push({ ...this.latest, said: this.said, myCall: this.myCall, myVote: this.myVote, spoke: this.spoke, myId: this.myId });
   }
 
   private notify(code: string): void {

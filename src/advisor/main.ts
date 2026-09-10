@@ -40,6 +40,20 @@ export interface AdvisorView {
   isParty?: boolean;
   /** 枠外の票を自分がどこへ入れたか */
   myVote?: string | null;
+  /**
+   * この部屋でほかの人が言ったこと。
+   *
+   * これまで助言者の画面には**自分の一言しか出ていなかった**。
+   * 8人が扉の名前を言うだけで、互いの言葉が見えないので会話が起きない。
+   * 見えれば「誰かが嘘を言っている」と気づけて、指せるようになる。
+   */
+  said?: readonly { advisorId: string; advisorName: string; text: string; kind?: string }[];
+  /** 自分が誰を指したか */
+  myCall?: { targetId: string; doubt: boolean } | null;
+  /** この部屋で自分の一言をもう出したか。出す前は人を指せない */
+  spoke?: boolean;
+  /** 自分のID。場に並ぶ言葉のどれが自分のものかを見分けるため */
+  myId?: string;
 }
 
 export interface AdvisorConnection {
@@ -56,6 +70,11 @@ export interface AdvisorConnection {
   vote?(roundId: string, choiceId: string): void;
   /** 枠外の賭けの通算。当てられているかが自分の手柄になる */
   betRecord?(): { hit: number; miss: number };
+  /**
+   * 人を指す。「あいつは嘘だ」。
+   * 扉について言う口とは別なので、指しても自分の一言は消えない。
+   */
+  point?(roundId: string, targetId: string, doubt: boolean): void;
   /**
    * サーバーから返る知らせ（弾かれた・黙らされた・切れた）。
    * 送る前の検査は画面側でもやっているが、最後に決めるのはサーバーなので、
@@ -224,11 +243,13 @@ function renderBoard(): void {
   const grid = el('div', 'grid');
   board.append(prompt, pickNote, grid);
 
+  // 場に出ている言葉。ここが無いと、8人が扉の名前を言うだけで会話が起きない
+  const floor = el('section', 'floor');
   const compose = el('section', 'compose');
   const notice = el('p', 'board-notice');
   notice.setAttribute('role', 'status');
   notice.hidden = true;
-  frame.append(role, board, notice, compose);
+  frame.append(role, board, notice, floor, compose);
   app!.append(frame);
 
   // サーバーからの知らせは一箇所に集める。
@@ -240,6 +261,7 @@ function renderBoard(): void {
       pointing: T.errors.pointing,
       tooManyChoices: T.errors.tooManyChoices,
       tooLong: T.errors.tooLong,
+      speakFirst: T.errors.speakFirst,
       rateLimited: T.errors.rateLimited,
       silenced: T.advisor.silenced,
       survived: T.verdict.survived,
@@ -263,15 +285,33 @@ function renderBoard(): void {
   });
 
   let current: AdvisorView | null = null;
+  /**
+   * 扉と入力欄を描き直した部屋。
+   *
+   * 場に出ている言葉は助言が届くたびに増えるので、そのたびに全部描き直すと
+   * **打ちかけの文字が消える。** 実際に、書いている途中で仲間の助言が届くと
+   * 入力欄が空になって送信が空振りしていた。
+   * 部屋が変わったときだけ扉と入力欄を作り直し、場だけ描き直す。
+   */
+  let drawnFor = '';
 
   connection.onView((view) => {
     current = view;
     if (!view) {
       prompt.textContent = strings().advisor.waiting;
       grid.innerHTML = '';
+      floor.innerHTML = '';
       compose.innerHTML = '';
+      drawnFor = '';
       return;
     }
+    const roomKey = `${view.roundId}|${view.isSpeaker ? 's' : '-'}|${view.knowledge?.kind ?? '-'}`;
+    if (roomKey === drawnFor) {
+      // 増えたのは場の言葉だけ。扉と入力欄には触らない
+      renderFloor(floor, view);
+      return;
+    }
+    drawnFor = roomKey;
 
     const T = strings();
     const k = view.knowledge;
@@ -293,6 +333,7 @@ function renderBoard(): void {
         cell.append(img, label);
         grid.append(cell);
       }
+      renderFloor(floor, view);
       renderCompose(compose, view, () => current);
       return;
     }
@@ -390,8 +431,91 @@ function renderBoard(): void {
     notice.hidden = true;
     void picked;
 
+    renderFloor(floor, view);
     renderCompose(compose, view, () => current);
   });
+}
+
+/**
+ * 場に出ている言葉と、人を指す手。
+ *
+ * これまで助言者の画面には自分の一言しか出ていなかった。
+ * 8人が扉の名前を言うだけで、互いの言葉が見えないので会話が起きない。
+ * 見えれば「あいつは嘘を言っている」と気づけて、指せるようになる。
+ *
+ * 指すのは**扉について言う口とは別**なので、指しても自分の一言は消えない。
+ * 文面は送らない（相手のIDと向きだけ送ってサーバーが書く）ので、
+ * 暴言の検査を通す必要が無く、日本語を打てない人でも押せる。
+ */
+function renderFloor(host: HTMLElement, view: AdvisorView): void {
+  const T = strings();
+  host.innerHTML = '';
+  const said = (view.said ?? []).filter((h) => (h.kind ?? 'door') === 'door');
+  if (!view.isSpeaker && said.length === 0) return;
+
+  const title = el('p', 'floor-title');
+  title.textContent = T.advisor.floorTitle;
+  host.append(title);
+
+  if (said.length === 0) {
+    const empty = el('p', 'floor-empty');
+    empty.textContent = T.advisor.floorEmpty;
+    host.append(empty);
+    return;
+  }
+
+  // 指せるのは発言枠の人だけ。指した一言は挑戦者の画面に並ぶので、
+  // 枠外から撃てると枠の意味が消える。
+  // さらに、**自分の一言を出してからでないと撃てない**。
+  // 撃つだけで済むなら、自分の言葉を晒さずに人を潰せてしまう
+  const canPoint = view.isSpeaker && typeof connection.point === 'function' && view.spoke === true;
+  const mine = view.myCall ?? null;
+
+  for (const h of said) {
+    const row = el('div', `floor-row${h.advisorId === view.myId ? ' is-mine' : ''}`);
+    const name = el('span', 'floor-name');
+    name.textContent = h.advisorName;
+    const text = el('span', 'floor-text');
+    text.textContent = h.text;
+    row.append(name, text);
+
+    // 自分の一言には撃つ手を出さない（自分は撃てない）
+    if (canPoint && h.advisorId !== view.myId) {
+      const acts = el('span', 'floor-acts');
+      for (const doubt of [true, false]) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = `floor-act${doubt ? ' is-doubt' : ''}${mine?.targetId === h.advisorId && mine.doubt === doubt ? ' is-on' : ''}`;
+        b.textContent = doubt ? T.advisor.doubtButton : T.advisor.backButton;
+        b.addEventListener('click', () => {
+          connection.point?.(view.roundId, h.advisorId, doubt);
+          for (const other of host.querySelectorAll('.floor-act')) other.classList.remove('is-on');
+          b.classList.add('is-on');
+          const note = host.querySelector('.floor-note');
+          if (note) note.textContent = doubt ? T.advisor.pointed(h.advisorName) : T.advisor.backed(h.advisorName);
+        });
+        acts.append(b);
+      }
+      row.append(acts);
+    }
+    host.append(row);
+  }
+
+  if (view.isSpeaker && !canPoint) {
+    const note = el('p', 'floor-note');
+    note.textContent = T.advisor.pointNeedsHint;
+    host.append(note);
+  }
+
+  if (canPoint) {
+    const note = el('p', 'floor-note');
+    note.textContent = mine
+      ? mine.doubt
+        ? T.advisor.pointed(said.find((h) => h.advisorId === mine.targetId)?.advisorName ?? '')
+        : T.advisor.backed(said.find((h) => h.advisorId === mine.targetId)?.advisorName ?? '')
+      : T.advisor.pointNote;
+    host.append(note);
+  }
 }
 
 function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorView | null): void {

@@ -132,6 +132,85 @@ body { overflow: auto; }
 /* ───────────────────────── 発言 ───────────────────────── */
 
 /* キーボードが出ても盤面が隠れないよう、入力は通常フローの末尾に置く */
+/*
+ * 場に出ている言葉。
+ *
+ * 助言を書く枠のすぐ上に置く。**自分が書く前に他人の言葉を読む**という
+ * 順に画面が並ぶようにしてある。スマホの縦画面で、
+ * 扉 → 場 → 自分の一言、の順に指が下りていく。
+ */
+.floor {
+  border-top: var(--edge);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.7rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  /* 8人ぶん並ぶと縦に溢れる。ここだけ内側で流す */
+  max-height: 34vh;
+  overflow-y: auto;
+}
+
+.floor-title {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--paper-faint);
+}
+
+.floor-empty,
+.floor-note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--paper-faint);
+}
+
+.floor-row {
+  display: grid;
+  grid-template-columns: minmax(3.5rem, 5rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.floor-name {
+  color: var(--paper-faint);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floor-text { color: var(--paper-bright); }
+
+/* 自分の一言。撃つ手は出さない（自分は撃てない）ので、そのぶん静かに置く */
+.floor-row.is-mine { opacity: 0.62; }
+
+.floor-row {
+  /* 名前の列を詰める。指で押す手が二つ並ぶので本文の幅を残したい */
+  grid-template-columns: minmax(3rem, 4.5rem) minmax(0, 1fr) auto;
+}
+
+.floor-acts { display: flex; gap: 0.3rem; }
+
+.floor-act {
+  /* 指で押せる大きさを保つ。小さくすると隣を押す */
+  min-width: 2.7rem;
+  padding: 0.4rem 0.35rem;
+  background: transparent;
+  border: 1px solid var(--edge-color, rgba(120, 100, 78, 0.5));
+  color: var(--paper-faint);
+  font-size: 0.72rem;
+  border-radius: 2px;
+}
+
+.floor-act.is-doubt { border-color: rgba(150, 52, 38, 0.7); }
+.floor-act.is-on {
+  background: rgba(150, 52, 38, 0.28);
+  border-color: var(--rust);
+  color: var(--paper-bright);
+}
+
 .compose {
   border-top: var(--edge);
   background: var(--soot);

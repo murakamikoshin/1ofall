@@ -5,3 +5,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# partykit dev サーバーのローカル状態（Durable Object の SQLite）。
+# 手元で遊ぶたびに増えるので追いかけない
+.partykit/state/

@@ -171,6 +171,19 @@ export interface ModeConfig {
   liarHonesty: number;
   /** 嘘つきが迷ったふりをする率 */
   liarMimic: number;
+  /**
+   * 人を指す率（指す理由があるときに実際に指す割合）。
+   *
+   * 0 だと助言は全部「扉について」になり、8人が扉の名前しか言えないので
+   * **会話が起きない。** 一周書き出して読んだら、どの部屋でも挑戦者が
+   * やっていたのは「どの名前が何回出たか」の集計だった。
+   *
+   * 0.25 は測って決めた（tools/rubric.mjs を指す率で振った）。
+   *   崖っぷち  読める打ち手 72.0% → 77.2%、腕の差 10.0→11.5pt
+   *   0.35 まで上げると最良の打ち手が一つに固まる（最良差 6.6pt で落ちる）
+   *   通常     +0.5pt 程度。深みはほぼ変わらないが、場が喋るようになる
+   */
+  nameCall: number;
 }
 
 /**
@@ -186,6 +199,7 @@ export const STANDARD: ModeConfig = {
   loneHonest: false,
   liarHonesty: 1 - LIE_RATE,
   liarMimic: 0.25,
+  nameCall: 0.25,
 };
 
 /**
@@ -225,6 +239,7 @@ export const BRINK: ModeConfig = {
   canSilence: true,
   liarHonesty: 0.3,
   liarMimic: 0.2,
+  nameCall: 0.25,
 };
 
 
@@ -272,6 +287,7 @@ export const PARTY: ModeConfig = {
   ownCandidates: 3,
   liarHonesty: 0.25,
   liarMimic: 0.2,
+  nameCall: 0.25,
 };
 
 /**

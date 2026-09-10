@@ -142,8 +142,35 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 | `tools/party-board-check.mjs` | 全員挑戦者の盤面（ローカル） | `npm run preview` |
 | `tools/party-sim.mjs` | 全員挑戦者の均衡（命・部屋数・人数） | 不要 |
 
+| `tools/point-check.mjs` | 人を指す一手の通し（配線・記録） | 不要 |
+| `tools/point-live.mjs` | 場に出ている言葉と、指す手を本物の線で | `npm run party` + `npm run preview` |
+| `tools/name-call.mjs` | 名指しが情報なのか雑音なのか | 不要 |
+
 線を張る試験は `npm run test:live`。
-ビルド時に `VITE_PARTY_HOST` を渡すと実接続になる。渡さなければ素振り。
+助言者ページは繋ぎ先（`VITE_PARTY_HOST`）が無いと**素振りに落ちる**ので、
+`pretest:live` が必ず繋ぎ先を埋めて建て直す。ここを渡し忘れて、
+「本物の線を通した」つもりで素振りを測っていたことがある。
+画面の試験（`npm run test:ui`）は逆に素振りで回す（`pretest:ui`）。
+
+### 一部屋につき、口は二つ
+
+助言者は一部屋で二つ喋る。
+
+| 口 | 中身 | 送り方 |
+|---|---|---|
+| 扉について | 「割れた面か目のない面のどっちか」 | `advisor/hint`（文面。暴言の検査を通す） |
+| 人を指して | 「ノブは嘘だ」 | `advisor/point`（**相手のIDと向きだけ**。文面はサーバーが書く） |
+
+分けてあるのは、同じ口にすると指すたびに扉の情報が減るから
+（実測で読める打ち手が 5pt 落ちた）。`Advice.kind` が `'door'` / `'call'`。
+
+人を指した一言の正誤は、**指した相手の扉についての言が嘘だったか**で決まる
+（`src/core/name-calling.ts` の `resolveTruth`）。配役を覗かないので、
+挑戦者が画面のものだけで検算できる。返すのは一言ごと。
+人ごとにまとめると、撃った当たり外れが扉の当たり外れを上書きして消える。
+
+名前で照合するので、**同じ名前が二人いると別人を指す。**
+`CompositeAdvisorGateway.roster()` の段で重なりをほどいている。
 
 ### 全員挑戦者モードは別の本体で動く
 

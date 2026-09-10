@@ -133,6 +133,7 @@ export interface WriteOptions {
 export function writeHint({
   choices, knowledge, rng, liarHonestyRate = 0.35, liarMimicRate = 0.25, voice = DEFAULT_VOICE,
 }: WriteOptions): string {
+
   if (knowledge.kind === 'liar') {
     const wrong = choices.filter((c) => c.id !== knowledge.correct);
     if (rng() < liarHonestyRate) {

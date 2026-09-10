@@ -1,6 +1,7 @@
 import type { Choice } from './schema';
 import type { Knowledge } from './schema';
 import { strings, localized } from '../i18n';
+import { readCall } from './name-calling';
 
 /**
  * 届いた助言の「読み方」。
@@ -12,6 +13,8 @@ import { strings, localized } from '../i18n';
 
 export interface HintRow {
   advisorId: string;
+  /** 誰を指したかを読むのに要る */
+  advisorName: string;
   text: string;
   /** この区画での当たり外れ。区画が変わると消える */
   record: { hit: number; miss: number };
@@ -50,8 +53,41 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
   if (own?.kind === 'trapper') bump(own.trap, -99);
   if (own?.kind === 'liar') bump(own.correct, 99);
 
+  /**
+   * 人を指した助言を先に集める。
+   *
+   * 「ノブは嘘だ」は扉に触れていないので、そのままでは点にならない。
+   * **指された側の重みを動かす**という形で効かせる。
+   * 疑いは信用の高い者から出たものを重く見る。
+   *
+   * **向きは「撃たれた者を信じる」。** 直感の逆だが実測がそう出ている
+   * （tools/name-call.mjs）。嘘つきは全員が同じ正解を知っているので、
+   * 真実を口にした者に群がるしかない。
+   *
+   *   撃たれていない者が正解を口にしていた割合   28.2%
+   *   一度撃たれた者                          73.2%
+   *   二度撃たれた者                          97.7%   （崖っぷち）
+   *
+   * 逆向き（撃たれた者を疑う）にすると、崖っぷちで 72.0%→45.1% まで落ちる。
+   * 「群れに従うと死ぬ」の裏返しで、**群れが撃つ者は信じられる。**
+   */
+  const people = rows.map((r) => ({ id: r.advisorId, name: r.advisorName }));
+  const called = new Map<string, number>();
   for (const row of rows) {
-    const weight = trustOf(row.record);
+    if (choices.some((c) => row.text.includes(localized(c.label)))) continue;
+    const call = readCall(row.text, people);
+    if (!call || call.targetId === row.advisorId) continue;
+    const w = trustOf(row.record);
+    // 疑った側の信用では重み付けしない。撃った事実そのものが手掛かりなので、
+    // 信用の無い者に撃たれたほうがむしろ強い
+    void w;
+    called.set(call.targetId, (called.get(call.targetId) ?? 0) + (call.doubt ? 1 : -0.5));
+  }
+
+  for (const row of rows) {
+    const net = called.get(row.advisorId) ?? 0;
+    // 撃たれた者の声を大きく、庇われた者の声を小さく。振り切らせない
+    const weight = trustOf(row.record) * Math.max(0.2, Math.min(2.6, 1 + net * 0.9));
     const touched = choices.filter((c) => row.text.includes(localized(c.label)));
     if (touched.length === 0) continue;
 

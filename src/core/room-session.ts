@@ -77,6 +77,7 @@ export class RoomSession {
       this.challengerId = connectionId;
       return;
     }
+    this.humans.setTakenNames(this.aiNames());
     this.humans.join(connectionId, undefined, this.defaultName(connectionId));
     this.pushState();
     this.pushRoundTo(connectionId);
@@ -132,6 +133,7 @@ export class RoomSession {
           this.pushState();
           return;
         }
+        this.humans.setTakenNames(this.aiNames());
         this.humans.join(connectionId, msg.name, this.defaultName(connectionId));
         this.pushState();
         this.pushRoundTo(connectionId);
@@ -147,6 +149,12 @@ export class RoomSession {
         return;
       case 'advisor/volunteer':
         this.humans.volunteer(connectionId, msg.roundId);
+        return;
+      case 'advisor/point':
+        // 全員挑戦者モードは本体が仲間を直接持つので、そちらへ渡す。
+        // それ以外はゲートウェイ経由で GameEngine.point へ流れる
+        if (this.party) this.party.point(connectionId, msg.targetId, msg.doubt);
+        else this.humans.point(connectionId, msg.roundId, msg.targetId, msg.doubt);
         return;
       case 'advisor/vote':
         this.humans.vote(connectionId, msg.roundId, msg.choiceId);
@@ -336,10 +344,16 @@ export class RoomSession {
       at += 900 + Math.random() * 1100;
       this.laterParty(() => party.hint(hint.memberId, hint.text), at);
     }
+    // 助言が出そろってから、誰を指すかを決めて撃つ。
+    // 文面を読んでから撃つので、扉の話が出そろったあとに置く
+    this.laterParty(() => {
+      for (const call of party.aiCalls()) party.point(call.memberId, call.targetId, call.doubt);
+    }, at + 700);
+
     // 助言が出そろってから決める
     this.laterParty(() => {
       for (const [id, choice] of party.aiPicks()) party.pick(id, choice);
-    }, at + 1500);
+    }, at + 1800);
 
     // 締切はサーバーが持つ。決めなかった人は決めなかったものとして扱う
     this.laterParty(() => {
@@ -514,6 +528,7 @@ export class RoomSession {
                 text: a.text,
                 sentAt: a.sentAt,
                 record: { ...a.record },
+                kind: a.kind ?? 'door',
               })),
               silenceUsed: round.silenceUsed,
               freshCast: round.freshCast,
@@ -590,12 +605,23 @@ export class RoomSession {
       ...base,
       ...(knowledge ? { knowledge } : {}),
       isSpeaker: briefing.casting.speakerIds.includes(connectionId),
+      // 場に並ぶ言葉のどれが自分のものかを見分けるため
+      you: connectionId,
       ...(this.humans.voteOf(connectionId) ? { myVote: this.humans.voteOf(connectionId) as string } : {}),
     });
   }
 
   private fail(connectionId: string, code: string): void {
     this.sink.send(connectionId, { t: 'error', code, message: code });
+  }
+
+  /**
+   * AI の仲間の名前。人間が同じ名前を名乗らないようにするために渡す。
+   * 同じ名前が二人いると「あいつは嘘だ」が別人を指してしまう
+   */
+  private aiNames(): readonly string[] {
+    const roster = this.engine?.snapshot().advisors ?? this.party?.snapshot().members ?? [];
+    return roster.filter((a) => a.kind === 'ai').map((a) => a.name);
   }
 
   private defaultName(connectionId: string): string {

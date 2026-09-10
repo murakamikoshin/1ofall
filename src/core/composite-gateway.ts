@@ -1,7 +1,37 @@
 import type { AdvisorInfo, Hint } from './schema';
-import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
+import type { AdvisorCall, AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { AiAdvisorGateway } from './ai-advisors';
-import type { ModeConfig } from './limits';
+import { ADVISOR_NAME_MAX, type ModeConfig } from './limits';
+
+/**
+ * 名前の重なりをほどく。
+ *
+ * 人を指す一手（「あいつは嘘だ」）は**名前で照合する**ので、
+ * 同じ名前が二人いると撃った相手と記録が付く相手がずれる。
+ * 人間が仲間の名前をそのまま名乗ると起こる（実際に起きた）。
+ *
+ * 直すのは後から出てきた側。人間が先に並んでいるので、
+ * 名乗り直しを強いられるのは AI のほうになる。
+ */
+function dedupeNames(roster: readonly AdvisorInfo[]): AdvisorInfo[] {
+  const used = new Set<string>();
+  return roster.map((a) => {
+    if (!used.has(a.name)) {
+      used.add(a.name);
+      return a;
+    }
+    for (let n = 2; n <= 99; n++) {
+      // 上限を超えると通信の検証（AdvisorNameSchema）で弾かれるので詰める
+      const room = Math.max(1, ADVISOR_NAME_MAX - String(n).length);
+      const mark = `${a.name.slice(0, room)}${n}`;
+      if (!used.has(mark)) {
+        used.add(mark);
+        return { ...a, name: mark };
+      }
+    }
+    return a;
+  });
+}
 
 /**
  * 人間の助言者と AI の助言者を混ぜる。
@@ -84,7 +114,7 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     const filled = humans.length + taken.length;
     const need = Math.max(0, Math.min(this.maxFill, this.minAdvisors - filled));
     const fill = this.ai.roster().filter((a) => !taken.some((t) => t.id === a.id)).slice(0, need);
-    return [...humans, ...taken, ...fill];
+    return dedupeNames([...humans, ...taken, ...fill]);
   }
 
   /** いま何人が人間か。表に出す用ではなく、運用の記録用 */
@@ -111,6 +141,12 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
   closeRound(roundId: string): void {
     this.human?.closeRound(roundId);
     this.ai.closeRound();
+  }
+
+  onCall(listener: (call: AdvisorCall) => void): Unsubscribe {
+    const a = this.human?.onCall?.(listener);
+    const b = this.ai.onCall?.(listener);
+    return () => { a?.(); b?.(); };
   }
 
   onHint(listener: (hint: Hint) => void): Unsubscribe {

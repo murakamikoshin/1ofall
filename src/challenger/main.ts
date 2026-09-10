@@ -917,11 +917,14 @@ function renderHints(state: EngineState, s: Shell): void {
 
   const head = el('div', 'hints-head');
   const count = el('span', 'hints-count');
-  // 何人が発言済みかを出す。出そろったかどうかが分からないと待てない
+  // 何人が発言済みかを出す。出そろったかどうかが分からないと待てない。
+  // **数えるのは扉について言った人だけ。** 一人が二つ喋る（扉について一つ、
+  // 人を指して一つ）ので、行の数を数えると「4人中5人が発言」になる
+  const spoke = new Set(
+    round.advice.filter((a) => (a.kind ?? 'door') === 'door').map((a) => a.advisorId),
+  ).size;
   count.textContent =
-    round.advice.length === 0
-      ? T.challenger.hintsEmpty
-      : T.challenger.speakers(round.advice.length, round.speakers.length);
+    spoke === 0 ? T.challenger.hintsEmpty : T.challenger.speakers(spoke, round.speakers.length);
   const note = el('span', 'hints-note');
   // 顔ぶれが入れ替わった部屋では、それを先に言う。
   // 記録が黙って白紙に戻ると不具合に見えるし、
@@ -971,7 +974,10 @@ function renderHints(state: EngineState, s: Shell): void {
 
 function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boolean): HTMLElement {
   const T = strings();
-  const row = el('div', 'hint-row');
+  // 人を指した一言は、扉についての助言と見た目を分ける。
+  // 同じ形で並べると、扉の名前を探して読み飛ばされる
+  const isCall = (advice.kind ?? 'door') === 'call';
+  const row = el('div', `hint-row${isCall ? ' is-call' : ''}`);
 
   const name = el('span', 'hint-name');
   name.textContent = advice.advisorName;
@@ -1014,6 +1020,13 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
     report.disabled = true;
     announce(T.challenger.reported);
   });
+
+  // 人を指した一言には手を出さない。
+  // 同じ人の扉についての行に同じ手が並ぶので、二つ出すと押し間違える
+  if (isCall) {
+    row.append(name, text);
+    return row;
+  }
 
   // 黙らせるは崖っぷちだけの道具。通常モードでは効かないうえに
   // 外すと時間が減るので、押すほど損をする罠になっていた

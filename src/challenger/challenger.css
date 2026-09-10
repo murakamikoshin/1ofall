@@ -322,6 +322,20 @@
 .hint-row.is-dead { opacity: 0.5; }
 .hint-row.is-dead .hint-text { color: var(--blood-lit); }
 
+/*
+ * 人を指した一言。扉についての助言と見た目を分ける。
+ *
+ * 扉の話は「どの名前が何回出たか」を数えるために並んで見えたほうがよく、
+ * 人を指した一言は**列から浮いて見えたほうがよい**。
+ * 誰が誰を撃ったかは数えるものではなく、その場の出来事なので。
+ */
+.hint-row.is-call {
+  background: rgba(120, 42, 30, 0.14);
+  border-left: 2px solid var(--rust);
+  padding-left: calc(clamp(0.75rem, 3vw, 1.75rem) - 2px);
+}
+.hint-row.is-call .hint-text { color: var(--blood-lit); font-style: italic; }
+
 /* 全員挑戦者モードで、自分が知っている範囲の印 */
 .choice.is-known { border-color: var(--paper-faint); }
 

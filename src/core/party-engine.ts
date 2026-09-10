@@ -1,6 +1,6 @@
 import type { AdvisorInfo, Knowledge, PublicRoom, Room, RoomPack } from './schema';
 import { PARTY, knowledgeForSection, type ModeConfig } from './limits';
-import { localized } from '../i18n';
+import { localized, strings } from '../i18n';
 import {
   checkHint, createHintGuard, createReportBook, fileReport, resetGuard, wasTruthful,
   type HintGuardState, type ReportBook,
@@ -10,6 +10,7 @@ import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
 import { liarBias } from './casting';
 import { scoreChoices, bestChoice, type HintRow } from './read-hints';
+import { chooseCall, resolveTruth, type Said } from './name-calling';
 
 /**
  * 全員挑戦者モードの本体。
@@ -45,6 +46,8 @@ export interface PartyAdvice {
   sentAt: number;
   /** この区画での当たり外れ。区画が変わると消える */
   record: { hit: number; miss: number };
+  /** 扉について言ったのか、人を指したのか。既定は扉 */
+  kind?: 'door' | 'call' | undefined;
 }
 
 export interface PartyRoundState {
@@ -315,12 +318,50 @@ export class PartyEngine {
       text: checked.text,
       sentAt: this.now(),
       record: this.records.get(memberId) ?? { hit: 0, miss: 0 },
+      kind: 'door',
     };
-    // 1部屋につき一人1通。書き直しは最新で上書きする
-    this.advice = [...this.advice.filter((a) => a.memberId !== memberId), entry];
-    this.round = { ...round, advice: this.advice };
-    this.emit();
+    this.addAdvice(entry);
     return { ok: true };
+  }
+
+  /** 1部屋につき、口ごとに1通。書き直しは最新で上書きする */
+  private addAdvice(entry: PartyAdvice): void {
+    const kind = entry.kind ?? 'door';
+    this.advice = [
+      ...this.advice.filter((a) => !(a.memberId === entry.memberId && (a.kind ?? 'door') === kind)),
+      entry,
+    ];
+    if (this.round) this.round = { ...this.round, advice: this.advice };
+    this.emit();
+  }
+
+  /**
+   * 人を指す。「あいつは嘘だ」。
+   * 扉について言う口とは別なので、指しても扉の情報は減らない。
+   * 文面はここで組む（送らせない）ので暴言の検査が要らない
+   */
+  point(memberId: string, targetId: string, doubt: boolean): void {
+    const round = this.round;
+    if (!round || this.phase !== 'choosing') return;
+    if (memberId === targetId) return;
+    if (this.muted.has(memberId)) return;
+    const target = this.advice.find((a) => a.memberId === targetId && (a.kind ?? 'door') === 'door');
+    if (!target) return;
+    // 自分も先に扉について言っていること（撃つ側も同じだけ裁かれる場に立つ）
+    if (!this.advice.some((a) => a.memberId === memberId && (a.kind ?? 'door') === 'door')) return;
+    const me = this.members.find((m) => m.id === memberId);
+    if (!me) return;
+    const shapes = doubt ? strings().hints.doubt : strings().hints.back;
+    const shape = shapes[Math.floor(this.rng() * shapes.length)] ?? shapes[0];
+    if (!shape) return;
+    this.addAdvice({
+      memberId,
+      memberName: me.name,
+      text: shape(target.memberName),
+      sentAt: this.now(),
+      record: this.records.get(memberId) ?? { hit: 0, miss: 0 },
+      kind: 'call',
+    });
   }
 
   /** 自分が通る扉を決める。生きている全員が決めたら開く */
@@ -355,6 +396,7 @@ export class PartyEngine {
     // 一番名の挙がった扉。同点で一番なら群れとは言えないので単独一番だけ
     const mention = new Map(round.room.choices.map((c) => [c.id, 0]));
     for (const advice of this.advice) {
+      if ((advice.kind ?? 'door') !== 'door') continue;
       for (const c of round.room.choices) {
         if (advice.text.includes(localized(c.label))) mention.set(c.id, (mention.get(c.id) ?? 0) + 1);
       }
@@ -387,11 +429,19 @@ export class PartyEngine {
     // 記録は「言ったことが本当だったか」で付ける。配役は覗かない
     const labels = round.room.choices.map((c) => localized(c.label));
     const correctLabel = localized(round.room.choices.find((c) => c.id === correctId)?.label ?? { ja: '', en: '' });
-    for (const a of this.advice) {
-      const rec = this.records.get(a.memberId) ?? { hit: 0, miss: 0 };
-      const truthful = wasTruthful(a.text, correctLabel, labels);
-      if (truthful === null) continue;
-      this.records.set(a.memberId, {
+    const truth = resolveTruth(
+      this.advice.map((a) => ({
+        id: a.memberId,
+        name: this.members.find((m) => m.id === a.memberId)?.name ?? '',
+        text: a.text,
+        kind: a.kind ?? 'door',
+      })),
+      (text) => wasTruthful(text, correctLabel, labels),
+      round.room.choices,
+    );
+    for (const { id: memberId, truthful } of truth) {
+      const rec = this.records.get(memberId) ?? { hit: 0, miss: 0 };
+      this.records.set(memberId, {
         hit: rec.hit + (truthful ? 1 : 0),
         miss: rec.miss + (truthful ? 0 : 1),
       });
@@ -452,6 +502,13 @@ export class PartyEngine {
   aiHints(): { memberId: string; text: string }[] {
     const round = this.round;
     if (!round) return [];
+    // 先に喋った者しか指せない。人間の仲間がもう言ったぶんも含める
+    const said: Said[] = this.advice.map((a) => ({
+      id: a.memberId,
+      name: this.members.find((m) => m.id === a.memberId)?.name ?? '',
+      text: a.text,
+    }));
+    const seen = new Map<string, Said[]>();
     const write = (id: string, nudge = 0): string => {
       const knowledge = this.knowledge.get(id);
       if (!knowledge) return '';
@@ -470,10 +527,38 @@ export class PartyEngine {
     for (const member of this.members) {
       if (member.kind !== 'ai') continue;
       if (!this.knowledge.has(member.id)) continue;
-      written.push({ id: member.id, text: write(member.id) });
+      seen.set(member.id, [...said]);
+      const text = write(member.id);
+      said.push({ id: member.id, name: member.name, text });
+      written.push({ id: member.id, text });
     }
     // 同じ文面が並ぶと人ではなく機械に見える
     return unique(written, write).map((h) => ({ memberId: h.id, text: h.text }));
+  }
+
+  /**
+   * AI の仲間が誰を指すか。扉について言う口とは別なので、
+   * 指しても扉の情報は減らない。届いた文面を読んでから決める
+   */
+  aiCalls(): { memberId: string; targetId: string; doubt: boolean }[] {
+    const round = this.round;
+    if (!round) return [];
+    const said: Said[] = this.advice.map((a) => ({
+      id: a.memberId,
+      name: this.members.find((m) => m.id === a.memberId)?.name ?? '',
+      text: a.text,
+    }));
+    const out: { memberId: string; targetId: string; doubt: boolean }[] = [];
+    for (const member of this.members) {
+      if (member.kind !== 'ai') continue;
+      // 死んだ者も喋り続ける（このモードの要点）ので、命では外さない
+      const knowledge = this.knowledge.get(member.id);
+      if (!knowledge) continue;
+      if (this.rng() >= this.mode.nameCall) continue;
+      const call = chooseCall(knowledge, round.room.choices, said.filter((s) => s.id !== member.id && s.text), this.rng);
+      if (call) out.push({ memberId: member.id, targetId: call.id, doubt: call.doubt });
+    }
+    return out;
   }
 
   /**
@@ -489,7 +574,12 @@ export class PartyEngine {
       if ((this.lives.get(member.id) ?? 0) <= 0) continue;
       const rows: HintRow[] = this.advice
         .filter((a) => a.memberId !== member.id)
-        .map((a) => ({ advisorId: a.memberId, text: a.text, record: a.record }));
+        .map((a) => ({
+          advisorId: a.memberId,
+          advisorName: this.members.find((m) => m.id === a.memberId)?.name ?? '',
+          text: a.text,
+          record: a.record,
+        }));
       const score = scoreChoices({
         choices: round.room.choices,
         rows,

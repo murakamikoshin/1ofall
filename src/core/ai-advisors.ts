@@ -1,7 +1,8 @@
 import type { AdvisorInfo, Hint } from './schema';
-import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
+import type { AdvisorCall, AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
+import { chooseCall, type Said } from './name-calling';
 import type { Choice } from './schema';
 import { liarBias } from './casting';
 import type { Knowledge } from './schema';
@@ -33,6 +34,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
   private readonly maxDelay: number;
   private readonly mode: ModeConfig;
   private hintListeners = new Set<(hint: Hint) => void>();
+  private callListeners = new Set<(call: AdvisorCall) => void>();
   private timers: ReturnType<typeof setTimeout>[] = [];
   private openRoundId: string | null = null;
   /** 全員挑戦者モードで、この部屋の仲間の手 */
@@ -78,6 +80,10 @@ export class AiAdvisorGateway implements AdvisorGateway {
     return this.adopted;
   }
 
+  private nameOf(id: string): string {
+    return this.advisors.find((a) => a.id === id)?.name ?? '';
+  }
+
   openRound(briefing: RoundBriefing): void {
     this.clearTimers();
     this.openRoundId = briefing.roundId;
@@ -87,6 +93,9 @@ export class AiAdvisorGateway implements AdvisorGateway {
     // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る。
     // 平均すると LIE_RATE の割合で嘘をつく。
     // 話し方の癖は人ごとに固定（区画のあいだ同じ顔ぶれなので読みが積める）
+    // 先に喋った者しか指せない。書いた順にここへ積む
+    const said: Said[] = [];
+    const seen = new Map<string, Said[]>();
     const write = (id: string, nudge = 0): string => {
       const knowledge = briefing.knowledge.get(id);
       if (!knowledge) return '';
@@ -100,17 +109,55 @@ export class AiAdvisorGateway implements AdvisorGateway {
         voice: { ...voice, seat: voice.seat + nudge },
       });
     };
-    const drafted = briefing.casting.speakerIds
-      .filter((id) => briefing.knowledge.has(id))
-      .map((id) => ({ id, text: write(id) }));
+    const order = briefing.casting.speakerIds.filter((id) => briefing.knowledge.has(id));
+    const drafted = order.map((id) => {
+      seen.set(id, [...said]);
+      const text = write(id);
+      said.push({ id, name: this.nameOf(id), text });
+      return { id, text };
+    });
     // 8人が同じ扉を押すと型の数を超えてぶつかる。同じ文面は並べない
     const texts = new Map(unique(drafted, write).map((h) => [h.id, h.text]));
 
-    for (const id of briefing.casting.speakerIds) {
+    // 出る順を書いた順に揃える。
+    // 遅れをばらばらに振ると「ノブは嘘だ」がノブより先に出てしまい、
+    // 会話に読めない。間はばらつかせたまま、順だけ固定する
+    const delays = order
+      .map(() => this.minDelay + this.rng() * (this.maxDelay - this.minDelay))
+      .sort((a, b) => a - b);
+
+    // 誰を指すか。**扉について言った文面を読んでから**決める。
+    // 自分の持ち情報と、届いた文面だけで決める（他人の配役は覗かない）
+    const finalSaid: Said[] = order.map((id) => ({ id, name: this.nameOf(id), text: texts.get(id) ?? '' }));
+    const calls = new Map<string, { targetId: string; doubt: boolean }>();
+    for (const id of order) {
+      if (this.rng() >= this.mode.nameCall) continue;
+      const knowledge = briefing.knowledge.get(id);
+      if (!knowledge) continue;
+      const call = chooseCall(knowledge, briefing.room.choices, finalSaid.filter((s) => s.id !== id && s.text), this.rng);
+      if (call) calls.set(id, { targetId: call.id, doubt: call.doubt });
+    }
+
+    for (const [i, id] of order.entries()) {
       const advisor = this.advisors.find((a) => a.id === id);
       const text = texts.get(id);
       if (!advisor || !text) continue;
-      const delay = this.minDelay + this.rng() * (this.maxDelay - this.minDelay);
+      const delay = delays[i] ?? this.minDelay;
+      const call = calls.get(id);
+      if (call) {
+        // 指すのは、相手が喋ったあと。全員の文面が出そろってから撃つ。
+        // 間は助言の間に比例させる（?fast=1 で助言だけ速くなると噛み合わない）
+        const gap = Math.max(150, this.maxDelay * 0.25);
+        const after = (delays[delays.length - 1] ?? this.minDelay) + gap * (0.6 + this.rng() * 0.8);
+        this.timers.push(
+          setTimeout(() => {
+            if (this.openRoundId !== briefing.roundId) return;
+            for (const l of this.callListeners) {
+              l({ advisorId: id, targetId: call.targetId, doubt: call.doubt, roundId: briefing.roundId });
+            }
+          }, after),
+        );
+      }
 
       this.timers.push(
         setTimeout(() => {
@@ -136,6 +183,11 @@ export class AiAdvisorGateway implements AdvisorGateway {
   onHint(listener: (hint: Hint) => void): Unsubscribe {
     this.hintListeners.add(listener);
     return () => this.hintListeners.delete(listener);
+  }
+
+  onCall(listener: (call: AdvisorCall) => void): Unsubscribe {
+    this.callListeners.add(listener);
+    return () => this.callListeners.delete(listener);
   }
 
   onRosterChange(): Unsubscribe {

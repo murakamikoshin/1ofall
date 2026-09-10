@@ -167,6 +167,14 @@ export const en: Strings = {
     betMiss: 'You missed',
     betRecord: (hit: number, miss: number) => `${hit} right, ${miss} wrong`,
     votePrompt: 'You cannot speak, but you can vote',
+    floorTitle: 'What the others said',
+    floorEmpty: 'Nobody has spoken yet',
+    pointNote: 'Call out one person. Your own line stays.',
+    pointNeedsHint: 'Say your own line first',
+    doubtButton: 'Lying',
+    backButton: 'Straight',
+    pointed: (name: string) => `Called out ${name}`,
+    backed: (name: string) => `Backed ${name}`,
     voted: (label: string) => `You voted ${label}`,
     notSpeakingButVote: 'Your words will not reach. Your vote will',
     pickPrompt: 'You walk through one too. Your own life',
@@ -205,6 +213,7 @@ export const en: Strings = {
     pointing: 'Numbers and positions cannot be used',
     tooManyChoices: 'Name at most two',
     tooLong: 'Too long',
+    speakFirst: 'Say your own line first',
   },
 
   language: {
@@ -246,6 +255,22 @@ export const en: Strings = {
       (a: string, b: string) => `Down to ${a}, ${b}`,
       (a: string, b: string) => `${a} or ${b}. Can't tell`,
     ],
+    doubt: [
+      (n: string) => `${n} is lying`,
+      (n: string) => `Don't trust ${n}`,
+      (n: string) => `${n}'s the liar`,
+      (n: string) => `${n} is wrong`,
+      (n: string) => `Ignore ${n}`,
+    ],
+    back: [
+      (n: string) => `${n} is straight`,
+      (n: string) => `Trust ${n}`,
+      (n: string) => `${n} is right`,
+      (n: string) => `Go with ${n}`,
+    ],
+    // テンプレートと必ず揃えること
+    doubtPattern: /is lying|don't trust|the liar|is wrong|^ignore |　ignore /i,
+    backPattern: /is straight|^trust |　trust |is right|go with/i,
     // テンプレートと必ず揃えること（冠詞を外したとき合わせ忘れて英語の記録が壊れた）
     avoidPattern: /\bnot\b|kills|stay off|is a trap|anything but|avoid|don't touch|leave .* alone/i,
     hedgePattern: /maybe|looks like|i think|feels like|either|down to|can't tell|or |perhaps|i'd guess/i,
