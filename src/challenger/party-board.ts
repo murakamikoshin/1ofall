@@ -219,7 +219,7 @@ export class PartyBoard {
       const key = el('span', 'choice-key');
       key.textContent = KEYCAPS[i] ?? '';
       const img = document.createElement('img');
-      img.src = choiceArt(round.room.theme, round.room.id, choice.id, choice.image);
+      img.src = choiceArt(round.room.theme, round.room.id, choice.id, choice.image, i);
       img.alt = '';
       img.loading = 'lazy';
       const label = el('span', 'choice-label');

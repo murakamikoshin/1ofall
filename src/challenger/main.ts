@@ -882,7 +882,7 @@ function renderChoices(
     const key = el('span', 'choice-key');
     key.textContent = KEYCAPS[i] ?? '';
     const img = document.createElement('img');
-    img.src = choiceArt(theme, roomId, choice.id, choice.image);
+    img.src = choiceArt(theme, roomId, choice.id, choice.image, i);
     img.alt = '';
     img.loading = 'lazy';
     img.decoding = 'async';

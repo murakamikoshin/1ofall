@@ -337,10 +337,10 @@ function renderBoard(): void {
       roleNote.textContent = T.advisor.nothingDealt;
       prompt.textContent = view.prompt;
       grid.innerHTML = '';
-      for (const choice of view.choices) {
+      for (const [i, choice] of view.choices.entries()) {
         const cell = el('div', 'cell');
         const img = el('img');
-        img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
+        img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image, i);
         img.alt = '';
         const label = el('span');
         label.textContent = localized(choice.label);
@@ -382,7 +382,7 @@ function renderBoard(): void {
     // 枠外の人は一票入れられる。1000人の視聴者に渡せる唯一の手
     const canVote = !canPick && !view.isSpeaker && typeof connection.vote === 'function';
     let picked: string | null = null;
-    for (const choice of view.choices) {
+    for (const [cellIndex, choice] of view.choices.entries()) {
       const lit = marked.includes(choice.id);
       const dead = doomed.includes(choice.id);
       const isTrap = trap.includes(choice.id);
@@ -412,7 +412,7 @@ function renderBoard(): void {
         });
       }
       const img = el('img');
-      img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image);
+      img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image, cellIndex);
       img.alt = '';
       img.decoding = 'async';
       const label = el('span');
