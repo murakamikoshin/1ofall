@@ -67,6 +67,9 @@ function runOnce(reader, seed) {
   };
   const engine = new C.PartyEngine({ pack: C.corePackage(), members, seed, mode });
   let rooms = 0, ties = 0, myDeaths = 0, myRooms = 0;
+  // 裏切り者は罠を知っている＝一つ外せる。それが生き残りに効きすぎていないか
+  const traitorRooms = { picks: 0, deaths: 0 };
+  const honestRooms = { picks: 0, deaths: 0 };
   engine.start();
 
   for (let guard = 0; guard < 400; guard++) {
@@ -100,6 +103,14 @@ function runOnce(reader, seed) {
       rooms++;
       const mine = v.results.find((r) => r.id === 'me');
       if (mine && !mine.survived && mine.chosenId !== null) myDeaths++;
+      // その部屋で裏切り者だった者と、そうでない者の生死を分けて数える
+      for (const r of v.results) {
+        if (r.chosenId === null) continue;
+        const k = engine.knowledgeFor(r.id);
+        const bucket = k?.kind === 'trapper' || k?.kind === 'liar' ? traitorRooms : honestRooms;
+        bucket.picks++;
+        if (!r.survived) bucket.deaths++;
+      }
     }
     for (let i = 0; i < 3; i++) engine.advancePresentation();
   }
@@ -112,6 +123,8 @@ function runOnce(reader, seed) {
     myRooms,
     ties,
     myDeaths,
+    traitorRooms,
+    honestRooms,
     survived: me ? !me.out : false,
     livesLeft: me?.lives ?? 0,
     cleared: final.phase === 'cleared',
@@ -122,13 +135,22 @@ function runOnce(reader, seed) {
 
 console.log(`全員挑戦者モード（対等）　${RUNS}周 × ${SEATS}人\n`);
 const table = [];
+let edge = null;
 for (const [name, reader] of Object.entries(READERS)) {
   let rooms = 0, myRooms = 0, ties = 0, deaths = 0, survived = 0, cleared = 0, lives = 0, others = 0;
+  const tr = { picks: 0, deaths: 0 }, ho = { picks: 0, deaths: 0 };
   for (let i = 0; i < RUNS; i++) {
     const r = runOnce(reader, 1000 + i);
     rooms += r.rooms; myRooms += r.myRooms; ties += r.ties; deaths += r.myDeaths;
     survived += r.survived ? 1 : 0; cleared += r.cleared ? 1 : 0;
     lives += r.livesLeft; others += r.othersAlive;
+    tr.picks += r.traitorRooms.picks; tr.deaths += r.traitorRooms.deaths;
+    ho.picks += r.honestRooms.picks; ho.deaths += r.honestRooms.deaths;
+  }
+  if (name === '設計どおり') {
+    const tSurv = 1 - tr.deaths / Math.max(1, tr.picks);
+    const hSurv = 1 - ho.deaths / Math.max(1, ho.picks);
+    edge = { tSurv, hSurv };
   }
   // 自分が実際に選んだ部屋だけを母数にする（死んだあとの部屋を混ぜない）
   const perRoom = 1 - deaths / Math.max(1, myRooms);
@@ -146,3 +168,9 @@ console.log(`\n  腕の差（1部屋あたり）  ${((good.perRoom - naive.perRo
 console.log(`  腕の差（最後まで）     ${((good.survived - naive.survived) * 100).toFixed(1)}pt`);
 console.log(`  運任せの部屋           ${(table.find((t) => t.name === '設計どおり').ties * 100).toFixed(1)}%`);
 console.log(`  1周の部屋数            ${good.rooms.toFixed(1)}（1部屋40秒として ${(good.rooms * 40 / 60).toFixed(1)}分）`);
+if (edge) {
+  // 裏切り者は罠を知っている＝一つ外せる。効きすぎると「裏切ったほうが得」になる
+  console.log(`\n  裏切り者の生存         ${(edge.tSurv * 100).toFixed(1)}%`);
+  console.log(`  そうでない者の生存     ${(edge.hSurv * 100).toFixed(1)}%`);
+  console.log(`  裏切りの得             ${((edge.tSurv - edge.hSurv) * 100).toFixed(1)}pt`);
+}

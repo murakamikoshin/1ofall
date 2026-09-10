@@ -7,6 +7,7 @@ import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type Verdict } from '@/core/engine';
 import { RemoteGame, type GameHandle } from './remote-game';
 import { PartyBoard } from './party-board';
+import { aiHintDelays } from '@/ui/test-speed';
 import { LocalPartySource } from './local-party';
 import { RemotePartySource } from './remote-party';
 import { openRoomSocket } from './room-socket';
@@ -450,7 +451,10 @@ function startGame(modeId: ModeId): void {
   // ソロは全員 AI。野良になっても本体はこの境界の先を知らない
   //（CompositeAdvisorGateway が人間と AI を混ぜて同じ顔で渡す）
   const mode = MODES[modeId];
-  const local = new GameEngine({ pack, mode, gateway: new AiAdvisorGateway({ count: 12, mode }) });
+  const local = new GameEngine({
+    pack, mode,
+    gateway: new AiAdvisorGateway({ count: 12, mode, ...aiHintDelays() }),
+  });
   engine = local;
   unsubscribe = local.subscribe((state) => render(state));
   local.start();

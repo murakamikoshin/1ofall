@@ -59,6 +59,10 @@ check('全員挑戦者: 1周 14〜24部屋', inBand(rooms, 14, 24), `${rooms}部
 // ここが要。部屋数を1つ増やしただけで 50%→33% に落ちたことがある
 check('全員挑戦者: 最後まで残る 40〜65%', inBand(survivedToEnd, 40, 65), `${survivedToEnd}%`);
 check('全員挑戦者: 誰かが踏破 60〜88%', inBand(groupCleared, 60, 88), `${groupCleared}%`);
+// 裏切り者は罠を知っている＝一つ外せる。得になりすぎると
+// 「裏切ったほうが安全」になって、裏切りに命が懸かるという前提が壊れる
+const edge = num(party, /裏切りの得\s+(-?[\d.]+)pt/);
+check('全員挑戦者: 裏切りが得にならない（+4pt未満）', Number.isFinite(edge) && edge < 4, `${edge}pt`);
 
 /* ── 崖っぷち：道具を使ったときの数字 ───────────────────────────── */
 

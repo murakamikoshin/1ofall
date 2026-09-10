@@ -14,13 +14,14 @@
     "validate:rooms": "node scripts/validate-rooms.mjs",
     "images:manifest": "node scripts/image-manifest.mjs",
     "shots": "node tools/shot.mjs",
-    "test": "node tools/test-moderation.mjs && node tools/test-composite.mjs && node tools/test-locale.mjs && node tools/test-wire.mjs && node tools/test-party.mjs && node tools/test-balance.mjs",
+    "test": "node tools/test-moderation.mjs && node tools/test-composite.mjs && node tools/test-locale.mjs && node tools/test-wire.mjs && node tools/test-party.mjs && node tools/test-balance.mjs && PASSES=40 SEEDS=6 STRICT=1 node tools/room-audit.mjs",
     "sim": "node tools/sim10.mjs 38",
     "party": "partykit dev --port 1999",
     "test:live": "node tools/party-live.mjs && node tools/advisor-live.mjs /tmp && node tools/host-live.mjs /tmp && node tools/party-net-live.mjs /tmp && node tools/match-live.mjs /tmp",
     "test:ui": "node tools/brief-check.mjs /tmp && node tools/a11y-check.mjs /tmp && node tools/a11y-advisor.mjs /tmp && node tools/party-board-check.mjs /tmp && node tools/fresh-cast-check.mjs && node tools/report-check.mjs && node tools/silence-check.mjs && node tools/end-screen-check.mjs /tmp && node tools/title-fit.mjs /tmp",
     "sim:party": "node tools/party-sim.mjs",
-    "sim:brink": "node tools/brink-probe.mjs"
+    "sim:brink": "node tools/brink-probe.mjs",
+    "audit:rooms": "node tools/room-audit.mjs"
   },
   "dependencies": {
     "howler": "^2.2.4",

@@ -5,6 +5,7 @@ import { corePackage } from '@/core/pack';
 import { companionNames } from '@/core/companion-names';
 import { strings } from '@/i18n';
 import type { PartySource } from './party-board';
+import { paced } from '@/ui/test-speed';
 
 /**
  * ブラウザの中だけで動く全員挑戦者モード。
@@ -63,7 +64,7 @@ export class LocalPartySource implements PartySource {
     this.engine.pick(this.meId, choiceId);
     // 自分が決めたら仲間もすぐ決める。待たせても何も起きない
     this.clearTimers();
-    this.timers.push(setTimeout(() => this.aiPick(), 700));
+    this.timers.push(setTimeout(() => this.aiPick(), paced(700)));
   }
 
   timeUp(): void {
@@ -88,13 +89,13 @@ export class LocalPartySource implements PartySource {
     this.clearTimers();
 
     const hints = this.engine.aiHints();
-    let at = 900;
+    let at = paced(900);
     for (const hint of hints) {
-      at += 700 + Math.random() * 900;
+      at += paced(700 + Math.random() * 900);
       this.timers.push(setTimeout(() => this.engine.hint(hint.memberId, hint.text), at));
     }
     // 助言が出そろってから決める。先に決められると読む意味が無くなる
-    this.timers.push(setTimeout(() => this.aiPick(), at + 1200));
+    this.timers.push(setTimeout(() => this.aiPick(), at + paced(1200)));
   }
 
   private aiPick(): void {

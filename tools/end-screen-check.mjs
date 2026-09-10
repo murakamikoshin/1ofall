@@ -11,22 +11,31 @@ const check = (n, ok, d = '') => { ok ? pass++ : fail++; console.log(`${ok ? '�
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['崖っぷち', 'brink'], ['全員挑戦者', 'party']]) {
-  const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+  const p = await b.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await p.addInitScript(() => { for (const m of ['standard','brink','party']) localStorage.setItem(`briefed:${m}`, '1'); });
-  await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:4173/?lang=ja&fast=1', { waitUntil: 'networkidle' });
   await p.getByRole('button', { name: new RegExp('^' + label) }).click();
   await p.waitForSelector('.choice', { timeout: 10000 });
 
-  // 当てずっぽうで押し続ける。命が尽きれば終わりの画面が出る
-  for (let i = 0; i < 60; i++) {
+  // 当てずっぽうで押し続ける。命が尽きれば終わりの画面が出る。
+  // 決め打ちで待たず、部屋が変わるまで見る
+  for (let i = 0; i < 80; i++) {
     if (await p.locator('.end-screen').count()) break;
     const n = await p.locator('.choice:not([disabled])').count();
-    if (!n) { await wait(600); continue; }
+    if (!n) { await wait(150); continue; }
+    const room = (await p.locator('.room-count').textContent().catch(() => '')) ?? '';
     await p.locator('.choice:not([disabled])').nth(Math.floor(Math.random() * n)).click();
-    await wait(mode === 'party' ? 7200 : 6200);
+    for (let t = 0; t < 120; t++) {
+      const moved = await p.evaluate((prev) => {
+        const now = (document.querySelector('.room-count')?.textContent ?? '').trim();
+        return document.querySelectorAll('.end-screen').length > 0 || (now !== '' && now !== prev.trim());
+      }, room);
+      if (moved) break;
+      await wait(120);
+    }
   }
 
   const end = await p.evaluate(() => {

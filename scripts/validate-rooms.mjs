@@ -53,6 +53,29 @@ for (const file of files) {
   for (const room of pack.rooms) {
     if (ids.has(room.id)) warnings.push(`${room.id}: room.id が重複`);
     ids.add(room.id);
+    /*
+     * **選択肢の名前が互いに含まれてはいけない。**
+     *
+     * 「梯子」と「縄の梯子」が同じ部屋にあると、
+     * 「縄の梯子だ」という助言が両方に触れたと数えられる。
+     * 読み手（人も AI も）が名前で照合するので、
+     * 包含があるとその部屋だけ読みが壊れる。
+     *
+     * 実測：room_017（梯子 ⊂ 縄の梯子）は読めば当たる率が45%しかなく、
+     * 全部屋の平均62%から17ポイント低かった。運任せも16%（平均9%）。
+     * 一度に触れてよい選択肢は2つまで、という検閲も誤爆する。
+     */
+    for (const locale of Object.keys(room.choices[0]?.label ?? {})) {
+      const labels = room.choices.map((c) => c.label[locale]);
+      for (const [i, a] of labels.entries()) {
+        for (const [j, bb] of labels.entries()) {
+          if (i !== j && bb.includes(a)) {
+            errors.push(`${room.id}: 選択肢の名前が含まれている（${locale}）「${a}」⊂「${bb}」`);
+          }
+        }
+      }
+    }
+
     // 3択は勘で当たる。原則5択以上
     if (room.choices.length < 5) warnings.push(`${room.id}: ${room.choices.length}択（5択以上が原則）`);
 

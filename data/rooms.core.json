@@ -848,8 +848,8 @@
         {
           "id": "b",
           "label": {
-            "ja": "梯子",
-            "en": "Ladder"
+            "ja": "木の梯子",
+            "en": "A wooden ladder"
           }
         },
         {
@@ -4281,7 +4281,7 @@
         {
           "id": "c3",
           "label": {
-            "ja": "面",
+            "ja": "仮面",
             "en": "The mask"
           }
         },

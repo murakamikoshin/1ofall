@@ -22,6 +22,7 @@ if (!LABEL || !Number.isFinite(RUNS) || RUNS < 1) {
 }
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const started = Date.now();
 const lines = [];
 // 長い通しなので、書きながら流す（終わるまで何も見えないと進みが分からない）
 const say = (s = '') => { lines.push(s); console.log(s); };
@@ -59,14 +60,16 @@ async function readBoard(p, isParty) {
 }
 
 for (let run = 1; run <= RUNS; run++) {
-  const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+  // 演出の「間」を短い側にする（仕様として残っている道。飛ばしてはいない）
+  const p = await b.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await p.addInitScript(() => {
     for (const m of ['standard', 'brink', 'party']) localStorage.setItem(`briefed:${m}`, '1');
   });
-  await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
+  // ?fast=1 は AI が何秒後に喋るかだけを縮める。遊びの中身は変わらない
+  await p.goto('http://127.0.0.1:4173/?lang=ja&fast=1', { waitUntil: 'networkidle' });
   await p.getByRole('button', { name: new RegExp('^' + LABEL) }).click();
   await p.waitForSelector('.choice', { timeout: 10000 });
 
@@ -77,12 +80,19 @@ for (let run = 1; run <= RUNS; run++) {
   let lastRoom = '';
   for (let guard = 0; guard < 60; guard++) {
     if (await p.locator('.end-screen').count()) break;
-    if (!(await p.locator('.choice').count())) { await wait(500); continue; }
+    if (!(await p.locator('.choice').count())) { await wait(120); continue; }
 
-    // 助言が出そろうのを待つ（人間もそうする）
-    await wait(6500);
+    // 助言が出そろうのを待つ（人間もそうする）。
+    // 決め打ちの秒数ではなく、増えなくなるまで見る
+    let seen = -1;
+    for (let t = 0; t < 40; t++) {
+      const n = await p.locator('.hint-row').count();
+      if (n > 0 && n === seen) break;
+      seen = n;
+      await wait(150);
+    }
     const board = await readBoard(p, isParty);
-    if (board.room === lastRoom) { await wait(800); continue; }
+    if (board.room === lastRoom) { await wait(200); continue; }
     lastRoom = board.room;
     room++;
 
@@ -139,7 +149,15 @@ for (let run = 1; run <= RUNS; run++) {
     say(`     点: ${pickIndex.scores.join('  ')}`);
 
     await p.locator(`.choice[data-choice-id="${pickIndex.id}"]`).click();
-    await wait(9000);
+    // 演出が終わって次の部屋か終わりの画面が出るまで待つ
+    for (let t = 0; t < 120; t++) {
+      const done = await p.evaluate((room) => {
+        const now = (document.querySelector('.room-count')?.textContent ?? '').trim();
+        return document.querySelectorAll('.end-screen').length > 0 || (now !== '' && now !== room);
+      }, board.room);
+      if (done) break;
+      await wait(120);
+    }
 
     const outcome = await p.evaluate(() => {
       const txt = (el) => (el?.textContent ?? '').trim();
@@ -163,5 +181,5 @@ for (let run = 1; run <= RUNS; run++) {
 
 const path = `${OUT}/playtest-${MODE}-${Date.now()}.txt`;
 writeFileSync(path, lines.join('\n'), 'utf8');
-console.log(`\n書き出し: ${path}`);
+console.log(`\n書き出し: ${path}　（${((Date.now() - started) / 1000).toFixed(0)}秒）`);
 await b.close();
