@@ -156,10 +156,19 @@ export const en: Strings = {
     doomedIs: 'This one kills',
     trapIs: 'Lead them here',
     noteSeparator: '. ',
-    youNarrowedTo: (n: number) => `The safe one is among the ${n} lit here. No further than that`,
+    youNarrowedTo: (n: number) =>
+      n === 1
+        ? 'The lit door is the answer. Only you know it'
+        : `The safe one is among the ${n} lit here. No further than that`,
     youOnlyKnowTrap: 'You only know the trap. You do not know the safe one',
     youKnowDoomed: 'You only know what kills. Not what lives',
     nothingDealt: 'Nothing was dealt to you this room',
+    betHit: 'You called it',
+    betMiss: 'You missed',
+    betRecord: (hit: number, miss: number) => `${hit} right, ${miss} wrong`,
+    votePrompt: 'You cannot speak, but you can vote',
+    voted: (label: string) => `You voted ${label}`,
+    notSpeakingButVote: 'Your words will not reach. Your vote will',
     pickPrompt: 'You walk through one too. Your own life',
     picked: (label: string) => `You take ${label}`,
     speaking: 'You can speak',

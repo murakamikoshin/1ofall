@@ -131,6 +131,17 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     return this.human?.volunteers() ?? [];
   }
 
+  /** 枠外の票。人間ぶんと AI ぶんを足す */
+  crowdVotes(roundId: string): ReadonlyMap<string, number> {
+    const tally = new Map<string, number>();
+    for (const source of [this.human, this.ai]) {
+      const votes = source?.crowdVotes?.(roundId);
+      if (!votes) continue;
+      for (const [choiceId, n] of votes) tally.set(choiceId, (tally.get(choiceId) ?? 0) + n);
+    }
+    return tally;
+  }
+
   dispose(): void {
     for (const u of this.unsubs) u();
     this.unsubs = [];

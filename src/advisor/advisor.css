@@ -209,3 +209,9 @@ body { overflow: auto; }
 
 .board-notice.is-fatal { color: var(--blood-lit); }
 .board-notice.is-good { color: var(--paper-bright); }
+
+/* 枠外から入れた一票 */
+.cell.is-voted {
+  border-color: var(--rust);
+  box-shadow: inset 0 0 0 1px var(--rust);
+}

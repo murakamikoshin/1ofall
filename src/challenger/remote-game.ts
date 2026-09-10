@@ -162,6 +162,7 @@ export class RemoteGame implements GameHandle {
             ...view.round,
             index: view.totalCleared,
             freshCast: view.round.freshCast,
+            crowd: view.round.crowd,
             deadlineAt: view.round.deadlineAt - this.skewMs,
           }
         : null,

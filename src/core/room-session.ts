@@ -46,6 +46,7 @@ export class RoomSession {
   private partyTimers: ReturnType<typeof setTimeout>[] = [];
   private partyRoundPlanned: string | null = null;
   private partyRushRound: string | null = null;
+  private votedRound: string | null = null;
   private humans = new SocketAdvisorGateway();
   private locale: Locale = 'ja';
   private modeId: ModeId = 'standard';
@@ -146,6 +147,11 @@ export class RoomSession {
         return;
       case 'advisor/volunteer':
         this.humans.volunteer(connectionId, msg.roundId);
+        return;
+      case 'advisor/vote':
+        this.humans.vote(connectionId, msg.roundId, msg.choiceId);
+        // 集計が変わったので挑戦者の画面を描き直す
+        this.pushViewNow();
         return;
       case 'party/pick':
         if (this.party) {
@@ -434,6 +440,22 @@ export class RoomSession {
       this.lastPhase = state.phase;
       const v = state.verdict;
       if ((state.phase === 'verdict' || state.phase === 'gameover' || state.phase === 'cleared') && v) {
+        // 枠外から賭けた人へ、当たり外れと通算を返す。
+        // 盤面には何も影響しないが、毎部屋「自分は当てられたか」が残る
+        if (this.votedRound !== v.roundId) {
+          this.votedRound = v.roundId;
+          for (const [id, choiceId] of this.humans.votesByPerson()) {
+            const hit = choiceId === v.correctId;
+            const record = this.humans.countVote(id, hit);
+            this.sink.send(id, {
+              t: 'advisor/voteResult',
+              roundId: v.roundId,
+              hit,
+              correct: v.correctId,
+              record,
+            });
+          }
+        }
         this.sink.broadcast({
           t: 'round/result',
           roundId: v.roundId,
@@ -495,6 +517,7 @@ export class RoomSession {
               })),
               silenceUsed: round.silenceUsed,
               freshCast: round.freshCast,
+              crowd: round.crowd.map((c) => ({ ...c })),
               ownCandidates: [...round.ownCandidates],
               restingIds: [...round.restingIds],
             }
@@ -509,6 +532,12 @@ export class RoomSession {
         serverNow: this.now(),
       },
     });
+  }
+
+  /** 票が動いたときなど、状態の変化を待たずに送り直す */
+  private pushViewNow(): void {
+    const state = this.engine?.snapshot();
+    if (state) this.pushView(state);
   }
 
   private pushState(state?: EngineState): void {
@@ -561,6 +590,7 @@ export class RoomSession {
       ...base,
       ...(knowledge ? { knowledge } : {}),
       isSpeaker: briefing.casting.speakerIds.includes(connectionId),
+      ...(this.humans.voteOf(connectionId) ? { myVote: this.humans.voteOf(connectionId) as string } : {}),
     });
   }
 

@@ -4,6 +4,7 @@ import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
 import type { Choice } from './schema';
 import { liarBias } from './casting';
+import type { Knowledge } from './schema';
 import { STANDARD, type ModeConfig } from './limits';
 import { companionNames } from './companion-names';
 
@@ -36,6 +37,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
   private openRoundId: string | null = null;
   /** 全員挑戦者モードで、この部屋の仲間の手 */
   private roundPicks = new Map<string, string>();
+  private roundCrowd = new Map<string, number>();
   private lastRoundId = '';
 
   constructor(options: AiAdvisorOptions = {}) {
@@ -80,6 +82,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
     this.clearTimers();
     this.openRoundId = briefing.roundId;
     this.decidePicks(briefing);
+    this.tallyCrowd(briefing);
 
     // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る。
     // 平均すると LIE_RATE の割合で嘘をつく。
@@ -189,6 +192,41 @@ export class AiAdvisorGateway implements AdvisorGateway {
 
   volunteers(): readonly string[] {
     return [];
+  }
+
+  /**
+   * 発言枠の外にいる者の投票。
+   *
+   * 枠外にも知識は配られている（見えていて言えない、が手触りの芯）。
+   * 嘘つきは全員が同じ罠に投じ、協力者は候補のどれかに散る。
+   * だから票は罠に集まりやすい——それがこのゲームの言いたいことでもある。
+   */
+  crowdVotes(roundId: string): ReadonlyMap<string, number> {
+    return roundId === this.lastRoundId ? this.roundCrowd : new Map();
+  }
+
+  private tallyCrowd(briefing: RoundBriefing): void {
+    this.roundCrowd = new Map();
+    const speakers = new Set(briefing.casting.speakerIds);
+    for (const advisor of [...this.advisors, ...this.adopted]) {
+      if (speakers.has(advisor.id)) continue;
+      const own = briefing.knowledge.get(advisor.id);
+      if (!own) continue;
+      const pick = this.voteFor(own, briefing.room.choices);
+      if (pick) this.roundCrowd.set(pick, (this.roundCrowd.get(pick) ?? 0) + 1);
+    }
+  }
+
+  private voteFor(own: Knowledge, choices: readonly Choice[]): string | null {
+    if (own.kind === 'liar' || own.kind === 'trapper') return own.trap;
+    if (own.kind === 'honest' && own.candidates.length > 0) {
+      return own.candidates[Math.floor(this.rng() * own.candidates.length)] ?? null;
+    }
+    if (own.kind === 'doomed') {
+      const rest = choices.filter((c) => c.id !== own.doomed);
+      return rest[Math.floor(this.rng() * rest.length)]?.id ?? null;
+    }
+    return null;
   }
 
   dispose(): void {

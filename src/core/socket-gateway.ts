@@ -24,6 +24,9 @@ export class SocketAdvisorGateway implements AdvisorGateway {
   private currentRoundId: string | null = null;
   private volunteerIds = new Set<string>();
   private partyPicks = new Map<string, string>();
+  private votes = new Map<string, string>();
+  /** 枠外の賭けの通算。1周のあいだ積む */
+  private voteRecords = new Map<string, { hit: number; miss: number }>();
   private now: () => number;
 
   constructor(options: { now?: () => number } = {}) {
@@ -40,6 +43,7 @@ export class SocketAdvisorGateway implements AdvisorGateway {
     this.currentRoundId = briefing.roundId;
     this.volunteerIds.clear();
     this.partyPicks.clear();
+    this.votes.clear();
     for (const l of this.roundListeners) l(briefing);
   }
 
@@ -60,6 +64,45 @@ export class SocketAdvisorGateway implements AdvisorGateway {
 
   volunteers(): readonly string[] {
     return [...this.volunteerIds];
+  }
+
+  /** 枠外の票。誰が何に入れたかは持つが、外へ出すのは集計だけ */
+  crowdVotes(roundId: string): ReadonlyMap<string, number> {
+    if (roundId !== this.currentRoundId) return new Map();
+    const tally = new Map<string, number>();
+    for (const choiceId of this.votes.values()) {
+      tally.set(choiceId, (tally.get(choiceId) ?? 0) + 1);
+    }
+    return tally;
+  }
+
+  /** 発言枠の外の人が一票入れる。入れ直しは上書き */
+  vote(id: string, roundId: string, choiceId: string): void {
+    if (roundId !== this.currentRoundId) return;
+    if (!this.advisors.has(id)) return;
+    this.votes.set(id, choiceId);
+  }
+
+  /** 自分が何に入れたか（画面に残すため） */
+  voteOf(id: string): string | null {
+    return this.votes.get(id) ?? null;
+  }
+
+  /** この部屋の票を、入れた人ごとに返す。当たり外れを本人へ返すため */
+  votesByPerson(): ReadonlyMap<string, string> {
+    return new Map(this.votes);
+  }
+
+  /** 通算の当たり外れ。部屋をまたいで積む */
+  voteRecord(id: string): { hit: number; miss: number } {
+    return this.voteRecords.get(id) ?? { hit: 0, miss: 0 };
+  }
+
+  countVote(id: string, hit: boolean): { hit: number; miss: number } {
+    const rec = this.voteRecord(id);
+    const next = { hit: rec.hit + (hit ? 1 : 0), miss: rec.miss + (hit ? 0 : 1) };
+    this.voteRecords.set(id, next);
+    return next;
   }
 
   picks(roundId: string): ReadonlyMap<string, string> {
@@ -114,6 +157,7 @@ export class SocketAdvisorGateway implements AdvisorGateway {
     if (!this.advisors.delete(id)) return;
     this.volunteerIds.delete(id);
     this.partyPicks.delete(id);
+    this.votes.delete(id);
     this.emitRoster();
   }
 

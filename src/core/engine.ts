@@ -67,6 +67,18 @@ export interface RoundState {
   ownCandidates: readonly string[];
   /** 死んで今回休んでいる仲間 */
   restingIds: readonly string[];
+  /**
+   * 発言枠の外にいる人たちの投票。選択肢ID → 票数。多い順。
+   *
+   * 配信で視聴者が1000人いると発言できるのは8人で、
+   * 残りの99%は見ているだけだった。**一番面白い役に誰も当たらない。**
+   * 枠外にも一票ずつ渡す。
+   *
+   * 挑戦者に見えるが**当てにならない**。枠外にも嘘つきが混ざっていて、
+   * 嘘つきは全員が同じ罠に投じるので票は罠に集まりやすい。
+   * 「群れに従うと死ぬ」がそのまま形になる。
+   */
+  crowd: readonly { choiceId: string; votes: number }[];
 }
 
 export interface Verdict {
@@ -254,11 +266,12 @@ export class GameEngine {
   }
 
   snapshot(): EngineState {
+    const round = this.round ? { ...this.round, crowd: this.crowdOf(this.round.roundId) } : null;
     return {
       phase: this.phase,
       lives: this.lives,
       maxLives: this.cfg.lives,
-      round: this.round,
+      round,
       verdict: this.verdict,
       sectionIndex: this.sectionIndex,
       sectionCount: this.cfg.sections,
@@ -273,6 +286,15 @@ export class GameEngine {
       confirmedLiars: [...this.silencedThisSection],
       liarLog: this.liarLog,
     };
+  }
+
+  /** 枠外の票を並べる。多い順 */
+  private crowdOf(roundId: string): { choiceId: string; votes: number }[] {
+    const votes = this.gateway.crowdVotes?.(roundId);
+    if (!votes || votes.size === 0) return [];
+    return [...votes.entries()]
+      .map(([choiceId, n]) => ({ choiceId, votes: n }))
+      .sort((a, b) => b.votes - a.votes);
   }
 
   private emit(): void {
@@ -592,6 +614,7 @@ export class GameEngine {
       speakers,
       advice: [],
       silenceUsed: false,
+      crowd: [],
       freshCast: this.castJustChanged,
       ownCandidates: this.ownCandidates,
       restingIds: [...this.resting],

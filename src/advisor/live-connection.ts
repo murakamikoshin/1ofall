@@ -14,6 +14,9 @@ import { localized } from '@/i18n';
 interface Incoming {
   t: string;
   mode?: string;
+  myVote?: string;
+  hit?: boolean;
+  record?: { hit: number; miss: number };
   correct?: string;
   picks?: { advisorId: string; choiceId: string }[];
   roundId?: string;
@@ -34,6 +37,8 @@ export class LiveConnection implements AdvisorConnection {
   private roomCode = '';
   private isParty = false;
   private myPick: { roundId: string; choiceId: string } | null = null;
+  private myVote: string | null = null;
+  private voteRecord: { hit: number; miss: number } = { hit: 0, miss: 0 };
   private name = '';
   private attempt = 0;
   private closed = false;
@@ -53,6 +58,11 @@ export class LiveConnection implements AdvisorConnection {
     return () => this.viewListeners.delete(listener);
   }
 
+  /** 枠外の賭けの通算。画面に出すため */
+  betRecord(): { hit: number; miss: number } {
+    return this.voteRecord;
+  }
+
   onNotice(listener: (code: string) => void): () => void {
     this.noticeListeners.add(listener);
     return () => this.noticeListeners.delete(listener);
@@ -64,6 +74,11 @@ export class LiveConnection implements AdvisorConnection {
 
   volunteer(roundId: string): void {
     this.send({ t: 'advisor/volunteer', roundId });
+  }
+
+  vote(roundId: string, choiceId: string): void {
+    this.myVote = choiceId;
+    this.send({ t: 'advisor/vote', roundId, choiceId });
   }
 
   pick(roundId: string, choiceId: string): void {
@@ -145,6 +160,7 @@ export class LiveConnection implements AdvisorConnection {
       case 'round/open': {
         const room = msg.room;
         if (!room || !msg.roundId) return;
+        if (msg.roundId !== this.latest?.roundId) this.myVote = null;
         this.push({
           roundId: msg.roundId,
           roomId: room.id,
@@ -155,12 +171,18 @@ export class LiveConnection implements AdvisorConnection {
           knowledge: msg.knowledge ?? null,
           isSpeaker: msg.isSpeaker === true,
           isParty: this.isParty,
+          myVote: msg.myVote ?? this.myVote,
         });
         return;
       }
       case 'game/over':
         this.push(null);
         return;
+      case 'advisor/voteResult': {
+        this.voteRecord = msg.record ?? this.voteRecord;
+        this.notify(msg.hit ? 'voteHit' : 'voteMiss');
+        return;
+      }
       case 'advisor/silenced':
         this.notify('silenced');
         return;

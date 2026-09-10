@@ -38,6 +38,8 @@ export interface AdvisorView {
   isSpeaker: boolean;
   /** 全員挑戦者モードでは、助言者も自分の扉を選ぶ */
   isParty?: boolean;
+  /** 枠外の票を自分がどこへ入れたか */
+  myVote?: string | null;
 }
 
 export interface AdvisorConnection {
@@ -47,6 +49,13 @@ export interface AdvisorConnection {
   volunteer(roundId: string): void;
   /** 全員挑戦者モード。自分の扉を決める */
   pick?(roundId: string, choiceId: string): void;
+  /**
+   * 発言枠の外から一票入れる。
+   * 配信で1000人いると発言できるのは8人。残りに渡せる唯一の手。
+   */
+  vote?(roundId: string, choiceId: string): void;
+  /** 枠外の賭けの通算。当てられているかが自分の手柄になる */
+  betRecord?(): { hit: number; miss: number };
   /**
    * サーバーから返る知らせ（弾かれた・黙らされた・切れた）。
    * 送る前の検査は画面側でもやっているが、最後に決めるのはサーバーなので、
@@ -132,6 +141,13 @@ class RehearsalConnection implements AdvisorConnection {
 
   sendHint(): void {}
   volunteer(): void {}
+
+  /** 素振りでも枠外の一票を試せるようにする */
+  vote(_roundId: string, choiceId: string): void {
+    if (!this.latest) return;
+    this.latest = { ...this.latest, myVote: choiceId };
+    for (const l of this.listeners) l(this.latest);
+  }
 }
 
 /* ───────────────────────────── 画面 ───────────────────────────── */
@@ -229,6 +245,15 @@ function renderBoard(): void {
       survived: T.verdict.survived,
       died: T.verdict.died,
     };
+    // 枠外の賭けは当たり外れを通算で出す。手柄がここに積む
+    if (code === 'voteHit' || code === 'voteMiss') {
+      const rec = connection.betRecord?.() ?? { hit: 0, miss: 0 };
+      notice.textContent = `${code === 'voteHit' ? T.advisor.betHit : T.advisor.betMiss}　${T.advisor.betRecord(rec.hit, rec.miss)}`;
+      notice.hidden = false;
+      notice.classList.toggle('is-good', code === 'voteHit');
+      notice.classList.toggle('is-fatal', code === 'voteMiss');
+      return;
+    }
     const message = known[code];
     if (!message) return;
     notice.textContent = message;
@@ -299,15 +324,28 @@ function renderBoard(): void {
     grid.innerHTML = '';
     // 全員挑戦者モードでは、助言者も自分の命を賭けて一つ選ぶ
     const canPick = view.isParty === true && view.isSpeaker && typeof connection.pick === 'function';
+    // 枠外の人は一票入れられる。1000人の視聴者に渡せる唯一の手
+    const canVote = !canPick && !view.isSpeaker && typeof connection.vote === 'function';
     let picked: string | null = null;
     for (const choice of view.choices) {
       const lit = marked.includes(choice.id);
       const dead = doomed.includes(choice.id);
       const isTrap = trap.includes(choice.id);
+      const voted = view.myVote === choice.id;
       const cell = el(
-        canPick ? 'button' : 'div',
-        `cell${lit ? ' is-correct' : ''}${dead || isTrap ? ' is-doomed' : ''}${canPick ? ' is-pickable' : ''}`,
+        canPick || canVote ? 'button' : 'div',
+        `cell${lit ? ' is-correct' : ''}${dead || isTrap ? ' is-doomed' : ''}` +
+          `${canPick || canVote ? ' is-pickable' : ''}${voted ? ' is-voted' : ''}`,
       );
+      if (canVote) {
+        (cell as HTMLButtonElement).type = 'button';
+        cell.addEventListener('click', () => {
+          connection.vote?.(view.roundId, choice.id);
+          for (const other of grid.querySelectorAll('.cell')) other.classList.remove('is-voted');
+          cell.classList.add('is-voted');
+          pickNote.textContent = strings().advisor.voted(localized(choice.label));
+        });
+      }
       if (canPick) {
         (cell as HTMLButtonElement).type = 'button';
         cell.addEventListener('click', () => {
@@ -341,8 +379,14 @@ function renderBoard(): void {
       grid.append(cell);
     }
 
-    pickNote.textContent = canPick ? T.advisor.pickPrompt : '';
-    pickNote.hidden = !canPick;
+    pickNote.textContent = canPick
+      ? T.advisor.pickPrompt
+      : canVote
+        ? view.myVote
+          ? T.advisor.voted(localized(view.choices.find((c) => c.id === view.myVote)?.label ?? { ja: '', en: '' }))
+          : T.advisor.votePrompt
+        : '';
+    pickNote.hidden = !canPick && !canVote;
     notice.hidden = true;
     void picked;
 
@@ -359,7 +403,10 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
     const lockedTitle = el('span', 'locked-title');
     lockedTitle.textContent = strings().advisor.notSpeaking;
     const lockedNote = el('span', 'locked-note');
-    lockedNote.textContent = strings().advisor.notSpeakingNote;
+    // 「見えていても言えない」だけだと手が無い。票は入れられると伝える
+    lockedNote.textContent = typeof connection.vote === 'function'
+      ? strings().advisor.notSpeakingButVote
+      : strings().advisor.notSpeakingNote;
     locked.append(lockedTitle, lockedNote);
     const volunteer = el('button', 'primary');
     volunteer.textContent = strings().advisor.volunteer;

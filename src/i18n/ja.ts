@@ -156,10 +156,21 @@ export const ja = {
     trapIs: 'ここへ誘え',
     noteSeparator: '。',
     /** 目利きは候補までは絞れている。「何も分からない」と読ませない */
-    youNarrowedTo: (n: number) => `生きる方は光った${n}つのどれか。それ以上は分からない`,
+    youNarrowedTo: (n: number) =>
+      // 崖っぷちの唯一の正直者は候補が1つ＝正解を正確に知っている。
+      // 「1つのどれか」と書くと、知っていることを本人が過小に見る
+      n === 1
+        ? '光った扉が正解だ。あなただけが知っている'
+        : `生きる方は光った${n}つのどれか。それ以上は分からない`,
     youOnlyKnowTrap: '知っているのは罠だけ。生きる方は分からない',
     youKnowDoomed: '分かるのは死ぬ方だけ。生きる方は知らない',
     nothingDealt: '今回は何も配られていない',
+    betHit: '当てた',
+    betMiss: '外した',
+    betRecord: (hit: number, miss: number) => `通算 当${hit} 外${miss}`,
+    votePrompt: '喋れないが、一票は入れられる',
+    voted: (label: string) => `${label}に入れた`,
+    notSpeakingButVote: '言葉は届かない。だが票は届く',
     pickPrompt: 'あなたも一つ通る。命は自分持ちだ',
     picked: (label: string) => `${label}を通る`,
     speaking: '発言できる',

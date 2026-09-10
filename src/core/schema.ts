@@ -118,6 +118,8 @@ export const ClientMessageSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('advisor/join'), name: AdvisorNameSchema.optional(), roomCode: z.string().length(ROOM_CODE_LENGTH) }),
   z.object({ t: z.literal('advisor/hint'), text: z.string().max(HINT_MAX_LENGTH), roundId: z.string() }),
   z.object({ t: z.literal('advisor/volunteer'), roundId: z.string() }),
+  /** 発言枠の外の人が一票入れる。1000人の視聴者に渡す唯一の手 */
+  z.object({ t: z.literal('advisor/vote'), roundId: z.string(), choiceId: z.string().min(1) }),
   /** 助言者どうしの通報。暴言を見た者がその場で挙げる */
   z.object({ t: z.literal('advisor/report'), targetId: AdvisorIdSchema, roundId: z.string(), text: z.string().max(HINT_MAX_LENGTH) }),
   /** 全員挑戦者モード。助言者席の人間も自分の扉を選ぶ */
@@ -178,6 +180,8 @@ export const ChallengerViewSchema = z.object({
       advice: z.array(AdviceSchema),
       silenceUsed: z.boolean(),
       freshCast: z.boolean(),
+      /** 枠外の票。挑戦者に見えるが当てにならない */
+      crowd: z.array(z.object({ choiceId: z.string(), votes: z.number().int().nonnegative() })),
       ownCandidates: z.array(z.string()),
       restingIds: z.array(AdvisorIdSchema),
     })
@@ -302,6 +306,8 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
      */
     knowledge: KnowledgeSchema.optional(),
     isSpeaker: z.boolean().optional(),
+    /** 自分が枠外の票をどこへ入れたか（画面に残すため） */
+    myVote: z.string().optional(),
     /** 全員挑戦者モードで、その人自身に配られた候補 */
     ownCandidates: z.array(z.string().min(1)).optional(),
     /** この部屋を休んでいる者。発言枠の抽選から外れる */
@@ -316,6 +322,20 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
     survived: z.boolean(),
     /** 全員挑戦者モード。誰がどれを選んだか */
     picks: z.array(z.object({ advisorId: AdvisorIdSchema, choiceId: z.string() })).optional(),
+  }),
+  /**
+   * 枠外から一票入れた本人にだけ、当たり外れと通算を返す。
+   *
+   * 配信で1000人いても発言できるのは8人。残りに渡せるのは自分の賭けだけ。
+   * 盤面を動かさないので情報の汚染にはならないが、
+   * 毎部屋「自分は当てられたか」が残る。
+   */
+  z.object({
+    t: z.literal('advisor/voteResult'),
+    roundId: z.string(),
+    hit: z.boolean(),
+    correct: z.string(),
+    record: z.object({ hit: z.number().int(), miss: z.number().int() }),
   }),
   /** 黙らされた本人にだけ送る。以降その部屋の助言は届かない */
   z.object({ t: z.literal('advisor/silenced'), roundId: z.string() }),
