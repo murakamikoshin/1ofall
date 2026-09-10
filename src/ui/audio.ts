@@ -13,7 +13,11 @@ export type Sfx =
   | 'survive'
   | 'death'
   | 'tick'
-  | 'gameover';
+  | 'gameover'
+  /** 区画の答え合わせが開く。一番大きい拍なのに無音だった */
+  | 'answer'
+  /** 人を指した一言が届く。助言そのものは無音のまま（毎部屋7件鳴ると意味が消える） */
+  | 'accuse';
 
 const VOLUMES: Record<Sfx, number> = {
   'room-open': 0.55,
@@ -24,6 +28,8 @@ const VOLUMES: Record<Sfx, number> = {
   death: 1,
   tick: 0.35,
   gameover: 0.7,
+  answer: 0.6,
+  accuse: 0.45,
 };
 
 class AudioBus {

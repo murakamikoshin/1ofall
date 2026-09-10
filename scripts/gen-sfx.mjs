@@ -104,4 +104,28 @@ build('gameover.wav', 3.2, (t, i, n) => {
   return (drone + noise() * 0.04) * env(i, n, 0.4, 0.5) * 0.6;
 });
 
+/*
+ * 区画の答え合わせが開く。
+ *
+ * 一番大きい拍なのに無音だった。紙が卓に置かれる音——低い木の一撃と、
+ * 長く引く余韻。死（death）より軽く、部屋が開く音（room-open）より重い。
+ */
+build('answer.wav', 1.5, (t, i, n) => {
+  const knock = (noise() * 0.5 + Math.sin(2 * Math.PI * 132 * t)) * Math.exp(-t * 22) * 0.5;
+  const bell = Math.sin(2 * Math.PI * 196 * t) * 0.18 * Math.exp(-t * 1.6)
+    + Math.sin(2 * Math.PI * 294 * t) * 0.09 * Math.exp(-t * 2.4);
+  return (knock + bell) * env(i, n, 0.003, 0.45) * 0.62;
+});
+
+/*
+ * 人を指した一言が場に届く（「あいつは嘘だ」）。
+ * 投げられた石。短く硬い。助言そのものは無音のままにする
+ * ——毎部屋7件鳴ると音が意味を失う
+ */
+build('accuse.wav', 0.34, (t, i, n) => {
+  const snap = noise() * Math.exp(-t * 90) * 0.55;
+  const body = Math.sin(2 * Math.PI * 240 * t) * Math.exp(-t * 16) * 0.3;
+  return (snap + body) * env(i, n, 0.001, 0.4) * 0.5;
+});
+
 console.log('done');

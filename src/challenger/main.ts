@@ -853,6 +853,7 @@ function render(state: EngineState): void {
   }
   shell.roundId = round.roundId;
   reportedThisRoom.clear();
+  heardCalls.clear();
   // 顔ぶれごと引き直されたら、札は別人のものになる
   if (round.freshCast) doubted.clear();
 
@@ -928,11 +929,27 @@ function renderChoices(
   s.refs.answer = null;
 }
 
+/**
+ * 場に届いた名指しの覚え。部屋が変わると捨てる。
+ *
+ * 助言そのものは無音のままにする（毎部屋7件鳴ると音が意味を失う）。
+ * 鳴らすのは人を指した一言だけ——**投げられた石は音がする。**
+ */
+const heardCalls = new Set<string>();
+
 function renderHints(state: EngineState, s: Shell): void {
   const T = strings();
   s.hints.innerHTML = '';
   const round = state.round;
   if (!round) return;
+
+  for (const a of round.advice) {
+    if ((a.kind ?? 'door') !== 'call') continue;
+    const key = `${round.roundId}:${a.advisorId}`;
+    if (heardCalls.has(key)) continue;
+    heardCalls.add(key);
+    audio.play('accuse');
+  }
 
   if (round.speakers.length === 0) {
     const empty = el('p', 'hints-empty');
@@ -1069,6 +1086,8 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
   doubt.addEventListener('click', () => {
     if (doubted.has(advice.advisorId)) doubted.delete(advice.advisorId);
     else doubted.add(advice.advisorId);
+    // 札を置いた手応え。専用の音は作らない（扉に触れる音を借りる）
+    audio.play('hover');
     paint();
     // 同じ人の行が複数あることがある（扉の一言と名指し）。まとめて塗り直す
     for (const other of document.querySelectorAll<HTMLElement>('.hint-row')) {
@@ -1132,6 +1151,7 @@ function timeOut(): void {
 function showSectionAnswer(answer: SectionAnswer): Promise<void> {
   return new Promise((resolve) => {
     const T = strings().answer;
+    audio.play('answer');
     const veil = el('div', 'answer-veil');
     veil.setAttribute('role', 'dialog');
     veil.setAttribute('aria-modal', 'true');

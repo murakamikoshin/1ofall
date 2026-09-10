@@ -103,6 +103,8 @@ export class PartyBoard {
    * 区画の答え合わせで、置いた札と本当の役を突き合わせる。
    */
   private doubted = new Set<string>();
+  /** 場に届いた名指しの覚え。部屋が変わると捨てる */
+  private heardCalls = new Set<string>();
   /** 一周ぶんの読み。区画の答え合わせのたびに積んで、終わりの画面で出す */
   private runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
   private ended = false;
@@ -211,6 +213,7 @@ export class PartyBoard {
       this.roundId = round.roundId;
       // 裏切り者ごと引き直されたら、札は別人のものになる
       if (round.freshCast) this.doubted.clear();
+      this.heardCalls.clear();
       this.myPick = null;
       this.resolving = false;
       this.reported.clear();
@@ -373,6 +376,18 @@ export class PartyBoard {
       empty.textContent = T.challenger.hintsEmpty;
       this.hintsHost.append(empty);
       return;
+    }
+
+    /*
+     * 人を指した一言が届いたら鳴らす。助言そのものは無音のまま
+     * （全員挑戦者は6〜8人が毎部屋喋るので、全部鳴らすと意味が消える）。
+     */
+    for (const a of round.advice) {
+      if ((a.kind ?? 'door') !== 'call') continue;
+      const key = `${round.roundId}:${a.memberId}`;
+      if (this.heardCalls.has(key)) continue;
+      this.heardCalls.add(key);
+      audio.play('accuse');
     }
 
     const list = el('div', 'hints-list');
@@ -634,6 +649,7 @@ export class PartyBoard {
     this.dropAnswer();
     this.answerSection = answer.sectionIndex;
     this.stopTimer();
+    audio.play('answer');
     const T = strings().answer;
 
     const veil = el('div', 'answer-veil');
