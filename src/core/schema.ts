@@ -381,7 +381,21 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('advisor/silenced'), roundId: z.string() }),
   /** 通報が積もって自動的に黙らされた。本人には理由を伝えない */
   z.object({ t: z.literal('advisor/muted') }),
-  z.object({ t: z.literal('game/over'), cleared: z.boolean(), liars: z.array(AdvisorInfoSchema) }),
+  /**
+   * 一周の終わり。**ここで初めて嘘つきを開く。**
+   *
+   * 区画ごとに分けて運ぶ。まとめて一行に並べると、4区画ぶんで
+   * ほぼ全員の名前が並んで読めなくなる（知りたいのは
+   * 「最後に自分が読んでいた卓は誰が嘘をついていたか」）。
+   */
+  z.object({
+    t: z.literal('game/over'),
+    cleared: z.boolean(),
+    liars: z.array(AdvisorInfoSchema),
+    liarsBySection: z
+      .array(z.object({ sectionIndex: z.number().int(), ids: z.array(AdvisorIdSchema) }))
+      .optional(),
+  }),
   z.object({ t: z.literal('error'), code: z.string(), message: z.string() }),
 ]);
 

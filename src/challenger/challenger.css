@@ -502,6 +502,19 @@
 
 .end-action:hover { background: rgba(184, 90, 30, 0.16); }
 
+/*
+ * 賭場では口が二つ並ぶ（同じ賭場でもう一度／賭場を閉じる）。
+ * 押してほしいのは前者なので、後者は静かに置く。
+ * 見ている側にとって「閉じる」は場の解散なので、間違って押されると重い。
+ */
+.end-action.is-quiet {
+  border-color: rgba(120, 100, 78, 0.5);
+  color: var(--paper-faint);
+  padding: 0.6rem 1.8rem;
+  letter-spacing: 0.12em;
+}
+.end-action.is-quiet:hover { background: rgba(120, 100, 78, 0.12); }
+
 /* ───────────────────────────── 画面幅 ───────────────────────────── */
 
 /* 選択肢は正方形に近いほど大きく映る。16:9 に5枚を横一列に並べると

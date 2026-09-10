@@ -78,6 +78,16 @@ export interface AdvisorConnection {
    */
   point?(roundId: string, targetId: string, doubt: boolean): void;
   /**
+   * いま何を待っているか。
+   *
+   * 一周終わって次の周を待っているあいだ、盤面は無い。
+   * そこで「まだ部屋は開いていない」と出すのは嘘で、
+   * **部屋は開いていて、次の周を待っている。**
+   * 賭場は同じ部屋のまま何周も回るので、ここを間違えると
+   * 見ている側は「終わった、閉じられた」と思って離れる。
+   */
+  waitingFor?(): 'notOpen' | 'betweenRuns';
+  /**
    * サーバーから返る知らせ（弾かれた・黙らされた・切れた）。
    * 送る前の検査は画面側でもやっているが、最後に決めるのはサーバーなので、
    * 断られた理由を本人へ出す口が要る。
@@ -300,7 +310,9 @@ function renderBoard(): void {
   connection.onView((view) => {
     current = view;
     if (!view) {
-      prompt.textContent = strings().advisor.waiting;
+      prompt.textContent = connection.waitingFor?.() === 'betweenRuns'
+        ? strings().advisor.waitingNextRun
+        : strings().advisor.waiting;
       grid.innerHTML = '';
       floor.innerHTML = '';
       compose.innerHTML = '';

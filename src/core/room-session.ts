@@ -67,7 +67,14 @@ export class RoomSession {
     this.now = options.now ?? (() => Date.now());
     this.seed = options.seed;
     this.humans = new SocketAdvisorGateway({ now: this.now });
+    // AI の顔ぶれは**部屋のあいだ固定する。**
+    // 周ごとに引き直すと、名前と裏切り癖の対応が毎周変わるので、
+    // 「とんびは裏切りがち」を場が覚えられない。連戦の手応えがここに出る
+    this.rosterSeed = options.seed ?? Math.floor(Math.random() * 0xffffffff);
   }
+
+  /** AI の顔ぶれを決める種。部屋が立っているあいだ変えない */
+  private readonly rosterSeed: number;
 
   /* ───────────────────────────── 接続 ───────────────────────────── */
 
@@ -224,6 +231,9 @@ export class RoomSession {
       human: this.humans,
       minAdvisors: this.aiCount,
       mode,
+      // 顔ぶれは周をまたいで同じ。裏切り癖は id から決まるので、
+      // 名前と癖の対応が固定される
+      aiSeed: this.rosterSeed,
     });
     const engine = new GameEngine({
       pack: this.pack,
@@ -485,10 +495,24 @@ export class RoomSession {
       }
       if (state.phase === 'gameover' || state.phase === 'cleared') {
         const liarIds = new Set(state.liarLog.flatMap((r) => [...r.liarIds]));
+        /*
+         * 区画ごとに分けて運ぶ。挑戦者の画面はこれを liarLog に戻して描く。
+         * 遊んでいるあいだは view に載せない（今の部屋の嘘つきが分かると
+         * 助言の意味が消える）ので、開けるのはここだけ。
+         *
+         * **その区画の最後の顔ぶれだけを渡す。** 死ぬたびに引き直すので、
+         * 区画ぶんを足し合わせると9人並ぶ（＝ほぼ全員）。
+         * 知りたいのは「最後に自分が読んでいた卓は誰が嘘をついていたか」。
+         */
+        const bySection = new Map<number, string[]>();
+        for (const r of state.liarLog) bySection.set(r.sectionIndex, [...r.liarIds]);
         this.sink.broadcast({
           t: 'game/over',
           cleared: state.phase === 'cleared',
           liars: state.advisors.filter((a) => liarIds.has(a.id)),
+          liarsBySection: [...bySection.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([sectionIndex, ids]) => ({ sectionIndex, ids })),
         });
       }
     }

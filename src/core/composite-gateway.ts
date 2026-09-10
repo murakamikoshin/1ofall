@@ -183,11 +183,19 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     return tally;
   }
 
+  /**
+   * **人間側は畳まない。** 受け取っただけで、持ち主ではない。
+   *
+   * ここで human.dispose() を呼んでいたので、一周終わって本体を作り直すと
+   * **部屋が助言者を忘れていた**（線は繋がったままなのに名簿から消えるので、
+   * 二周目は誰も発言枠に入れず、枠外の賭けの通算も白紙に戻る）。
+   * 一周ごとに合言葉が変わっていたあいだは、誰も作り直さなかったので出なかった。
+   * 人間側を畳むのは部屋そのものが閉じるとき（RoomSession.dispose）。
+   */
   dispose(): void {
     for (const u of this.unsubs) u();
     this.unsubs = [];
     this.rosterListeners.clear();
-    this.human?.dispose();
     this.ai.dispose();
   }
 }

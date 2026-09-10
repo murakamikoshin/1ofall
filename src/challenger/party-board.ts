@@ -46,6 +46,13 @@ export interface PartyBoardOptions {
   root: HTMLElement;
   source: PartySource;
   onExit(): void;
+  /**
+   * 同じ部屋のまま次の周へ。渡されたときだけ終わりの画面に口が出る。
+   *
+   * 賭場と同じ理屈で、ここが無いと一周ごとに全員が合言葉を入れ直す。
+   * 6〜8人で遊ぶモードなので、入れ直しの手間は人数ぶんかかる。
+   */
+  onAgainHere?(): void;
   /** HUD の「?」から手引きを開く */
   onGuide?(): void;
 }
@@ -60,6 +67,7 @@ export class PartyBoard {
   private readonly source: PartySource;
   private readonly root: HTMLElement;
   private readonly onExit: () => void;
+  private readonly onAgainHere: (() => void) | null;
 
   private roster = el('div', 'party-roster');
   private stage = el('main', 'stage grain vignette');
@@ -85,6 +93,7 @@ export class PartyBoard {
   constructor(options: PartyBoardOptions) {
     this.root = options.root;
     this.onExit = options.onExit;
+    this.onAgainHere = options.onAgainHere ?? null;
     this.source = options.source;
 
     const lamp = el('div', 'lamp');
@@ -499,17 +508,35 @@ export class PartyBoard {
       }
     }
 
+    const buttons: HTMLElement[] = [];
+    if (this.onAgainHere) {
+      const stay = document.createElement('button');
+      stay.className = 'end-action';
+      stay.textContent = T.verdict.retryHere;
+      stay.addEventListener('click', () => {
+        /*
+         * 盤面は作り直さず、終わりの画面を**上に重ねて**いる。
+         * 下ろさないまま次の周が来ると、盤面が画面の裏に隠れたままになる。
+         */
+        screen.remove();
+        this.ended = false;
+        this.onAgainHere?.();
+      });
+      buttons.push(stay);
+    }
+
     const again = document.createElement('button');
-    again.className = 'end-action';
-    again.textContent = T.verdict.retry;
+    again.className = `end-action${this.onAgainHere ? ' is-quiet' : ''}`;
+    again.textContent = this.onAgainHere ? T.verdict.leaveRoom : T.verdict.retry;
     again.addEventListener('click', () => {
       this.dispose();
       this.onExit();
     });
+    buttons.push(again);
 
-    screen.append(mark, stat, survivors, traitors, again);
+    screen.append(mark, stat, survivors, traitors, ...buttons);
     this.root.append(screen);
-    again.focus();
+    buttons[0]?.focus();
   }
 
   /* ───────────────────────────── 時計と AI ───────────────────────────── */

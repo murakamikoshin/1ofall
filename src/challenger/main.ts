@@ -569,6 +569,8 @@ function renderLobby(code: string, remote: RemoteGame, socket: WebSocket): void 
         root: app!,
         source: new RemotePartySource(socket),
         onGuide: () => openPartyBriefing(),
+        // 同じ部屋のまま次の周へ。合言葉を入れ直させない
+        onAgainHere: () => socket.send(JSON.stringify({ t: 'challenger/start', mode: 'party', locale: currentLocale })),
         onExit: () => {
           partyBoard?.dispose();
           partyBoard = null;
@@ -758,6 +760,8 @@ function waitForParty(socket: WebSocket, status: HTMLElement): void {
       root: app!,
       source: new RemotePartySource(socket),
       onGuide: () => openPartyBriefing(),
+      // 同じ部屋のまま次の周へ。合言葉を入れ直させない
+      onAgainHere: () => socket.send(JSON.stringify({ t: 'challenger/start', mode: 'party', locale: currentLocale })),
       onExit: () => {
         partyBoard?.dispose();
         partyBoard = null;
@@ -1171,10 +1175,24 @@ function stopTimerLoop(): void {
 
 /* ───────────────────────────── 終了 ───────────────────────────── */
 
+/** 直前の終わりの画面で最高記録を更新したか。描き直しのあいだ持つ */
+let endRenewed = false;
+
 function renderEnd(state: EngineState): void {
   stopTimerLoop();
   const dead = state.phase === 'gameover';
-  audio.play(dead ? 'gameover' : 'survive');
+
+  /**
+   * 賭場では終わりの画面が二度描かれる。
+   *
+   * 先に「終わった」という画面ぶんが届き、そのあと別の便で
+   * 嘘つきの開示（game/over）が届くので、二度目で開示が入る。
+   * **前の画面を下ろさないと二枚重なる**（「尽きた」が縦に並ぶ）。
+   */
+  const already = app!.querySelector('.end-screen');
+  const redraw = already !== null;
+  if (already) already.remove();
+  else audio.play(dead ? 'gameover' : 'survive');
 
   const screen = el('div', 'end-screen grain vignette');
   const mark = el('h1', `end-mark${dead ? ' is-death' : ''}`);
@@ -1183,9 +1201,16 @@ function renderEnd(state: EngineState): void {
   const stat = el('p', 'end-stat');
   stat.textContent = strings().verdict.reached(state.totalCleared);
 
-  // 記録は「更新したか」を先に見てから書き換える
+  /*
+   * 記録は「更新したか」を先に見てから書き換える。
+   *
+   * 二度目の描き直し（開示が届いたとき）では書き換えてはいけない。
+   * 一度目でもう最高記録になっているので、二度目は「更新した」が消えて
+   * **せっかくの更新が無かったことになる。**
+   */
   const wasBest = bestFor(currentMode);
-  const renewed = recordBest(currentMode, state.totalCleared);
+  const renewed = redraw ? endRenewed : recordBest(currentMode, state.totalCleared);
+  endRenewed = renewed;
   const best = el('p', renewed ? 'end-stat is-best' : 'end-stat');
   best.textContent = renewed
     ? strings().verdict.newBest
@@ -1221,9 +1246,36 @@ function renderEnd(state: EngineState): void {
     }
   }
 
+  /**
+   * 賭場では**同じ部屋のまま次の周へ**入れるようにする。
+   *
+   * ここまでは題名へ戻すだけだったので、賭場を開き直すと
+   * 合言葉が新しく振られ、**見ていた全員が6文字を入れ直す**ことになっていた。
+   * 1周12分の遊びで毎周それをやらせると、周が進むほど場が減る。
+   */
+  const here = engine?.restartHere?.bind(engine);
+  const buttons: HTMLElement[] = [];
+
+  if (here) {
+    const stay = document.createElement('button');
+    stay.className = 'end-action';
+    stay.textContent = strings().verdict.retryHere;
+    stay.addEventListener('click', () => {
+      /*
+       * 盤面は残したまま、終わりの画面を**上に重ねて**いる。
+       * 下ろさないと次の周の盤面が裏に隠れる。
+       * 「扉が DOM にあるか」だけを見る検査では気づけない場所。
+       */
+      screen.remove();
+      resolving = false;
+      here(currentMode);
+    });
+    buttons.push(stay);
+  }
+
   const again = document.createElement('button');
-  again.className = 'end-action';
-  again.textContent = strings().verdict.retry;
+  again.className = `end-action${here ? ' is-quiet' : ''}`;
+  again.textContent = here ? strings().verdict.leaveRoom : strings().verdict.retry;
   again.addEventListener('click', () => {
     resolving = false;
     unsubscribe?.();
@@ -1231,10 +1283,11 @@ function renderEnd(state: EngineState): void {
     engine = null;
     renderTitle();
   });
+  buttons.push(again);
 
-  screen.append(mark, stat, best, reveal, again);
+  screen.append(mark, stat, best, reveal, ...buttons);
   app!.append(screen);
-  again.focus();
+  buttons[0]?.focus();
 }
 
 /* ───────────────────────────── 補助 ───────────────────────────── */
