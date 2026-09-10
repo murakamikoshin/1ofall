@@ -71,7 +71,9 @@ check('崖っぷち: 道具を使うと踏破 5%以上', bClear >= 5, `${bClear}
 
 /* ── 通常：終わりに辿り着けるか ─────────────────────────────────── */
 
-const std = run('brink-probe.mjs', { RUNS: '200', MODE: 'standard' });
+// 踏破は珍しい出来事なので、周回数を絞ると揺れが大きい（200周だと±2%）。
+// 実測8%に対して band を 4% に置くには、これくらい回す必要がある
+const std = run('brink-probe.mjs', { RUNS: '500', MODE: 'standard' });
 const sClear = num(std.split('黙らせるを使わない')[1] ?? '', /踏破 ([\d.]+)%/);
 check('通常: 踏破 4%以上（終わりの画面に辿り着ける）', sClear >= 4, `${sClear}%`);
 
