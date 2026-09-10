@@ -6,8 +6,8 @@
       "id": "room_001",
       "theme": "door",
       "prompt": {
-        "ja": "開けていいのはどれ？",
-        "en": "Which one is safe to open?"
+        "ja": "四つは開けた者が戻らなかった。どれを開ける",
+        "en": "Four took whoever opened them. Which one?"
       },
       "choices": [
         {
@@ -56,8 +56,8 @@
       "id": "room_002",
       "theme": "food",
       "prompt": {
-        "ja": "食べていいのはどれ？",
-        "en": "Which one is safe to eat?"
+        "ja": "腹は減っている。どれに手を出す",
+        "en": "You're starving. Which do you touch?"
       },
       "choices": [
         {
@@ -106,8 +106,8 @@
       "id": "room_003",
       "theme": "lever",
       "prompt": {
-        "ja": "引いていいのはどれ？",
-        "en": "Which one is safe to pull?"
+        "ja": "引けば何かが起きる。どれを引く",
+        "en": "Pull one and something happens. Which?"
       },
       "choices": [
         {
@@ -163,8 +163,8 @@
       "id": "room_004",
       "theme": "path",
       "prompt": {
-        "ja": "進んでいいのはどれ？",
-        "en": "Which way is safe to walk?"
+        "ja": "道は五つに割れている。どこへ行く",
+        "en": "The path splits five ways. Which do you take?"
       },
       "choices": [
         {
@@ -213,8 +213,8 @@
       "id": "room_005",
       "theme": "person",
       "prompt": {
-        "ja": "話しかけていいのは誰？",
-        "en": "Who is safe to speak to?"
+        "ja": "口をきいて無事なのは一人だけだ",
+        "en": "Only one of them is safe to speak to"
       },
       "choices": [
         {
@@ -263,8 +263,8 @@
       "id": "room_006",
       "theme": "vehicle",
       "prompt": {
-        "ja": "乗っていいのはどれ？",
-        "en": "Which one is safe to ride?"
+        "ja": "どれに乗る。歩いては着かない",
+        "en": "Which do you ride? Walking won't get you there"
       },
       "choices": [
         {
@@ -313,8 +313,8 @@
       "id": "room_007",
       "theme": "cup",
       "prompt": {
-        "ja": "飲んでいいのはどれ？",
-        "en": "Which one is safe to drink?"
+        "ja": "喉が渇いた。どれを空ける",
+        "en": "Your throat is dry. Which do you empty?"
       },
       "choices": [
         {
@@ -363,8 +363,8 @@
       "id": "room_008",
       "theme": "floor",
       "prompt": {
-        "ja": "踏んでいいのはどれ？",
-        "en": "Which one is safe to step on?"
+        "ja": "床を踏み抜けば下は無い。どこに足を置く",
+        "en": "Nothing under the floor. Where do you step?"
       },
       "choices": [
         {
@@ -420,8 +420,8 @@
       "id": "room_009",
       "theme": "key",
       "prompt": {
-        "ja": "錠に挿していいのはどれ？",
-        "en": "Which one goes in the lock?"
+        "ja": "挿し違えれば二度と開かない",
+        "en": "The wrong one never opens again"
       },
       "choices": [
         {
@@ -470,8 +470,8 @@
       "id": "room_010",
       "theme": "box",
       "prompt": {
-        "ja": "蓋を取っていいのはどれ？",
-        "en": "Which lid is safe to lift?"
+        "ja": "中身が要る。どの蓋を取る",
+        "en": "You need what is inside. Which lid?"
       },
       "choices": [
         {
@@ -520,8 +520,8 @@
       "id": "room_011",
       "theme": "well",
       "prompt": {
-        "ja": "覗いていいのはどれ？",
-        "en": "Which one is safe to look into?"
+        "ja": "覗き込んで戻れるのは一つだけだ",
+        "en": "Only one can be looked into and left"
       },
       "choices": [
         {
@@ -570,8 +570,8 @@
       "id": "room_012",
       "theme": "mask",
       "prompt": {
-        "ja": "被っていいのはどれ？",
-        "en": "Which one is safe to wear?"
+        "ja": "顔を借りる。どれを被る",
+        "en": "You need a face. Which do you wear?"
       },
       "choices": [
         {
@@ -627,8 +627,8 @@
       "id": "room_013",
       "theme": "bridge",
       "prompt": {
-        "ja": "渡っていいのはどれ？",
-        "en": "Which one is safe to cross?"
+        "ja": "落ちれば終わりだ。どれを渡る",
+        "en": "A fall ends it. Which do you cross?"
       },
       "choices": [
         {
@@ -677,8 +677,8 @@
       "id": "room_014",
       "theme": "lamp",
       "prompt": {
-        "ja": "手に取っていいのはどれ？",
-        "en": "Which one is safe to pick up?"
+        "ja": "灯りが要る。どれを取る",
+        "en": "You need a light. Which do you take?"
       },
       "choices": [
         {
@@ -727,8 +727,8 @@
       "id": "room_015",
       "theme": "animal",
       "prompt": {
-        "ja": "近づいていいのはどれ？",
-        "en": "Which one is safe to approach?"
+        "ja": "通り道を塞いでいる。どれに近づく",
+        "en": "They block the way. Which do you approach?"
       },
       "choices": [
         {
@@ -777,8 +777,8 @@
       "id": "room_016",
       "theme": "medicine",
       "prompt": {
-        "ja": "口に入れていいのはどれ？",
-        "en": "Which one is safe to swallow?"
+        "ja": "飲めば効く。五つは効きすぎる",
+        "en": "One will work. Five work too well"
       },
       "choices": [
         {
@@ -834,8 +834,8 @@
       "id": "room_017",
       "theme": "stair",
       "prompt": {
-        "ja": "上っていいのはどれ？",
-        "en": "Which one is safe to climb?"
+        "ja": "上に灯りが見える。どれを上る",
+        "en": "There is a light above. Which do you climb?"
       },
       "choices": [
         {
@@ -884,8 +884,8 @@
       "id": "room_018",
       "theme": "seat",
       "prompt": {
-        "ja": "座っていいのはどれ？",
-        "en": "Which one is safe to sit on?"
+        "ja": "足が動かない。どこに座る",
+        "en": "Your legs are done. Where do you sit?"
       },
       "choices": [
         {
@@ -934,8 +934,8 @@
       "id": "room_019",
       "theme": "water",
       "prompt": {
-        "ja": "手を入れていいのはどれ？",
-        "en": "Which one is safe to reach into?"
+        "ja": "底に何かある。どこに手を入れる",
+        "en": "Something's at the bottom. Where do you reach?"
       },
       "choices": [
         {
@@ -984,8 +984,8 @@
       "id": "room_020",
       "theme": "cloth",
       "prompt": {
-        "ja": "めくっていいのはどれ？",
-        "en": "Which one is safe to lift aside?"
+        "ja": "裏を見たい。どれをめくる",
+        "en": "You want to see behind. Which do you lift?"
       },
       "choices": [
         {
@@ -1041,8 +1041,8 @@
       "id": "room_021",
       "theme": "sound",
       "prompt": {
-        "ja": "向かっていいのはどれ？",
-        "en": "Which one is safe to head toward?"
+        "ja": "音のするほうへ行く。どれだ",
+        "en": "You go toward a sound. Which?"
       },
       "choices": [
         {
@@ -1091,8 +1091,8 @@
       "id": "room_022",
       "theme": "shelf",
       "prompt": {
-        "ja": "取っていいのはどれ？",
-        "en": "Which one is safe to take?"
+        "ja": "一つだけ持ち出せる。どれを取る",
+        "en": "You can take one out. Which?"
       },
       "choices": [
         {
@@ -1141,8 +1141,8 @@
       "id": "room_023",
       "theme": "gate",
       "prompt": {
-        "ja": "潜っていいのはどれ？",
-        "en": "Which one is safe to pass under?"
+        "ja": "潜れば向こう側だ。どれをくぐる",
+        "en": "Through and you are on the other side. Which?"
       },
       "choices": [
         {
@@ -1198,8 +1198,8 @@
       "id": "room_024",
       "theme": "glove",
       "prompt": {
-        "ja": "着けていいのはどれ？",
-        "en": "Which one is safe to put on?"
+        "ja": "素手では触れない。どれを着ける",
+        "en": "Bare hands won't do. Which do you put on?"
       },
       "choices": [
         {
@@ -1248,8 +1248,8 @@
       "id": "room_025",
       "theme": "coin",
       "prompt": {
-        "ja": "拾っていいのはどれ？",
-        "en": "Which one is safe to pick up?"
+        "ja": "拾えば足しになる。四つは呪いだ",
+        "en": "One helps. Four are cursed"
       },
       "choices": [
         {
@@ -1298,8 +1298,8 @@
       "id": "room_026",
       "theme": "window",
       "prompt": {
-        "ja": "外を見ていいのはどれ？",
-        "en": "Which one is safe to look out of?"
+        "ja": "外を確かめたい。どれから覗く",
+        "en": "You want to see out. Through which?"
       },
       "choices": [
         {
@@ -1355,8 +1355,8 @@
       "id": "room_027",
       "theme": "rope",
       "prompt": {
-        "ja": "掴んでいいのはどれ？",
-        "en": "Which one is safe to grab?"
+        "ja": "降りるのに要る。どれを掴む",
+        "en": "You need it to climb down. Which do you grab?"
       },
       "choices": [
         {
@@ -1405,8 +1405,8 @@
       "id": "room_028",
       "theme": "smell",
       "prompt": {
-        "ja": "嗅いでいいのはどれ？",
-        "en": "Which one is safe to breathe in?"
+        "ja": "鼻で分かることがある。どれを嗅ぐ",
+        "en": "The nose knows sometimes. Which do you smell?"
       },
       "choices": [
         {
@@ -1455,8 +1455,8 @@
       "id": "room_029",
       "theme": "mirror",
       "prompt": {
-        "ja": "映していいのはどれ？",
-        "en": "Which one is safe to look into?"
+        "ja": "自分の顔を確かめる。どれに映す",
+        "en": "You check your own face. In which?"
       },
       "choices": [
         {
@@ -1505,8 +1505,8 @@
       "id": "room_030",
       "theme": "exit",
       "prompt": {
-        "ja": "出ていいのはどれ？",
-        "en": "Which one is safe to leave by?"
+        "ja": "ここから出る。どの口を抜ける",
+        "en": "You're leaving. Through which mouth?"
       },
       "choices": [
         {
@@ -1562,8 +1562,8 @@
       "id": "room_031",
       "theme": "tool",
       "prompt": {
-        "ja": "握っていいのはどれ？",
-        "en": "Which one is safe to grip?"
+        "ja": "武器が要る。どれを握る",
+        "en": "You need a weapon. Which do you grip?"
       },
       "choices": [
         {
@@ -1619,8 +1619,8 @@
       "id": "room_032",
       "theme": "bird",
       "prompt": {
-        "ja": "放していいのはどれ？",
-        "en": "Which one is safe to release?"
+        "ja": "放してやる。どれを開ける",
+        "en": "You set one free. Which do you open?"
       },
       "choices": [
         {
@@ -1669,8 +1669,8 @@
       "id": "room_033",
       "theme": "letter",
       "prompt": {
-        "ja": "読んでいいのはどれ？",
-        "en": "Which one is safe to read?"
+        "ja": "読めば知れる。五つは知りすぎる",
+        "en": "One tells you enough. Five tell too much"
       },
       "choices": [
         {
@@ -1726,8 +1726,8 @@
       "id": "room_034",
       "theme": "fire",
       "prompt": {
-        "ja": "手をかざしていいのはどれ？",
-        "en": "Which one is safe to warm your hands at?"
+        "ja": "手が冷えきった。どれにかざす",
+        "en": "Your hands are dead cold. Over which?"
       },
       "choices": [
         {
@@ -1776,8 +1776,8 @@
       "id": "room_035",
       "theme": "stone",
       "prompt": {
-        "ja": "どけていいのはどれ？",
-        "en": "Which one is safe to move?"
+        "ja": "下に隙間がある。どれをどける",
+        "en": "There's a gap beneath. Which do you move?"
       },
       "choices": [
         {
@@ -1826,8 +1826,8 @@
       "id": "room_036",
       "theme": "thread",
       "prompt": {
-        "ja": "手繰っていいのはどれ？",
-        "en": "Which one is safe to reel in?"
+        "ja": "先に何か繋がっている。どれを手繰る",
+        "en": "Something is tied to the far end. Which?"
       },
       "choices": [
         {
@@ -1876,8 +1876,8 @@
       "id": "room_037",
       "theme": "shoe",
       "prompt": {
-        "ja": "履いていいのはどれ？",
-        "en": "Which one is safe to put on?"
+        "ja": "裸足では歩けない。どれを履く",
+        "en": "Barefoot won't do. Which do you wear?"
       },
       "choices": [
         {
@@ -1926,8 +1926,8 @@
       "id": "room_038",
       "theme": "bowl",
       "prompt": {
-        "ja": "口をつけていいのはどれ？",
-        "en": "Which one is safe to drink from?"
+        "ja": "注がれている。どれに口をつける",
+        "en": "They've been poured. Which do you drink from?"
       },
       "choices": [
         {
@@ -1983,8 +1983,8 @@
       "id": "room_039",
       "theme": "name",
       "prompt": {
-        "ja": "呼んでいいのはどれ？",
-        "en": "Which one is safe to call out?"
+        "ja": "名を呼べば返る。どれを呼ぶ",
+        "en": "Call a name and it answers. Which?"
       },
       "choices": [
         {
@@ -2033,8 +2033,8 @@
       "id": "room_040",
       "theme": "tunnel",
       "prompt": {
-        "ja": "入っていいのはどれ？",
-        "en": "Which one is safe to enter?"
+        "ja": "穴の先は分からない。どれに入る",
+        "en": "No telling where they lead. Which do you enter?"
       },
       "choices": [
         {
@@ -2090,8 +2090,8 @@
       "id": "room_041",
       "theme": "market",
       "prompt": {
-        "ja": "買っていいのはどれ？",
-        "en": "Which one is safe to buy?"
+        "ja": "銭は一度しか使えない。どれを買う",
+        "en": "The coin spends once. Which do you buy?"
       },
       "choices": [
         {
@@ -2140,8 +2140,8 @@
       "id": "room_042",
       "theme": "clock",
       "prompt": {
-        "ja": "止めていいのはどれ？",
-        "en": "Which one is safe to stop?"
+        "ja": "一つ止めれば進める。どれだ",
+        "en": "Stop one and you move on. Which?"
       },
       "choices": [
         {
@@ -2190,8 +2190,8 @@
       "id": "room_043",
       "theme": "ice",
       "prompt": {
-        "ja": "足を乗せていいのはどれ？",
-        "en": "Which one is safe to set foot on?"
+        "ja": "氷は薄い。どこに足を乗せる",
+        "en": "The ice is thin. Where do you put your foot?"
       },
       "choices": [
         {
@@ -2247,8 +2247,8 @@
       "id": "room_044",
       "theme": "shadow",
       "prompt": {
-        "ja": "またいでいいのはどれ？",
-        "en": "Which one is safe to step over?"
+        "ja": "影は踏むと絡む。どれをまたぐ",
+        "en": "Shadows catch the foot. Which do you step over?"
       },
       "choices": [
         {
@@ -2297,8 +2297,8 @@
       "id": "room_045",
       "theme": "song",
       "prompt": {
-        "ja": "口ずさんでいいのはどれ？",
-        "en": "Which one is safe to hum?"
+        "ja": "口ずさめば道が開く。どれを歌う",
+        "en": "Hum the right one and the way opens. Which?"
       },
       "choices": [
         {
@@ -2347,8 +2347,8 @@
       "id": "room_046",
       "theme": "bone",
       "prompt": {
-        "ja": "触っていいのはどれ？",
-        "en": "Which one is safe to touch?"
+        "ja": "骨は覚えている。どれに触る",
+        "en": "Bone remembers. Which do you touch?"
       },
       "choices": [
         {
@@ -2404,8 +2404,8 @@
       "id": "room_047",
       "theme": "guard",
       "prompt": {
-        "ja": "通してもらえるのは誰？",
-        "en": "Who will let you through?"
+        "ja": "通すのは一人だけだ。誰に頼む",
+        "en": "Only one will let you by. Who do you ask?"
       },
       "choices": [
         {
@@ -2454,8 +2454,8 @@
       "id": "room_048",
       "theme": "last",
       "prompt": {
-        "ja": "賭けていいのはどれ？",
-        "en": "What is safe to wager?"
+        "ja": "賭けなければ出られない。何を出す",
+        "en": "No bet, no exit. What do you put up?"
       },
       "choices": [
         {
@@ -2504,8 +2504,8 @@
       "id": "room_049",
       "theme": "ladder",
       "prompt": {
-        "ja": "登っていいのはどれ？",
-        "en": "Which one is safe to climb?"
+        "ja": "体重を預ける。どれに足をかける",
+        "en": "You put your weight on it. Which?"
       },
       "choices": [
         {
@@ -2554,8 +2554,8 @@
       "id": "room_050",
       "theme": "drum",
       "prompt": {
-        "ja": "叩いていいのはどれ？",
-        "en": "Which one is safe to strike?"
+        "ja": "鳴らせば合図になる。どれを叩く",
+        "en": "A sound is the signal. Which do you strike?"
       },
       "choices": [
         {
@@ -2611,8 +2611,8 @@
       "id": "room_052",
       "theme": "net",
       "prompt": {
-        "ja": "くぐっていいのはどれ？",
-        "en": "Which one is safe to pass through?"
+        "ja": "抜けるには潜る。どれをくぐる",
+        "en": "You get through by going under. Which?"
       },
       "choices": [
         {
@@ -2661,8 +2661,8 @@
       "id": "room_054",
       "theme": "statue",
       "prompt": {
-        "ja": "触れていいのはどれ？",
-        "en": "Which one is safe to touch?"
+        "ja": "像は返事をする。どれに触れる",
+        "en": "The statues answer back. Which do you touch?"
       },
       "choices": [
         {
@@ -2711,8 +2711,8 @@
       "id": "room_056",
       "theme": "stairwell",
       "prompt": {
-        "ja": "降りていいのはどれ？",
-        "en": "Which one is safe to descend?"
+        "ja": "下から風が来る。どの段を降りる",
+        "en": "Wind comes from below. Which flight do you take?"
       },
       "choices": [
         {
@@ -2761,8 +2761,8 @@
       "id": "room_057",
       "theme": "fruit",
       "prompt": {
-        "ja": "齧っていいのはどれ？",
-        "en": "Which one is safe to bite?"
+        "ja": "もう二日食っていない。どれを齧る",
+        "en": "Two days without food. Which do you bite?"
       },
       "choices": [
         {
@@ -2811,8 +2811,8 @@
       "id": "room_058",
       "theme": "cart",
       "prompt": {
-        "ja": "押していいのはどれ？",
-        "en": "Which one is safe to push?"
+        "ja": "道を空ける。どれを押す",
+        "en": "You clear the way. Which do you push?"
       },
       "choices": [
         {
@@ -2861,8 +2861,8 @@
       "id": "room_061",
       "theme": "chain",
       "prompt": {
-        "ja": "外していいのはどれ？",
-        "en": "Which one is safe to unhook?"
+        "ja": "外せば通れる。どれを外す",
+        "en": "Undo one and you pass. Which?"
       },
       "choices": [
         {
@@ -2918,8 +2918,8 @@
       "id": "room_062",
       "theme": "doll",
       "prompt": {
-        "ja": "持っていいのはどれ？",
-        "en": "Which one is safe to carry?"
+        "ja": "連れて行けるのは一つだけだ",
+        "en": "You can take exactly one with you"
       },
       "choices": [
         {
@@ -2968,8 +2968,8 @@
       "id": "room_063",
       "theme": "bell",
       "prompt": {
-        "ja": "鳴らしていいのはどれ？",
-        "en": "Which one is safe to ring?"
+        "ja": "鳴らせば誰か来る。どれを鳴らす",
+        "en": "Ring it and someone comes. Which?"
       },
       "choices": [
         {
@@ -3018,8 +3018,8 @@
       "id": "room_066",
       "theme": "banner",
       "prompt": {
-        "ja": "降ろしていいのはどれ？",
-        "en": "Which one is safe to lower?"
+        "ja": "降ろせば見える。どれを引く",
+        "en": "Lower one and you see. Which do you pull?"
       },
       "choices": [
         {
@@ -3075,8 +3075,8 @@
       "id": "room_067",
       "theme": "boat",
       "prompt": {
-        "ja": "綱を解いていいのはどれ？",
-        "en": "Which one is safe to cast off?"
+        "ja": "川を渡る。どれの綱を解く",
+        "en": "You're crossing the river. Which do you untie?"
       },
       "choices": [
         {
@@ -3125,8 +3125,8 @@
       "id": "room_069",
       "theme": "seal",
       "prompt": {
-        "ja": "破っていいのはどれ？",
-        "en": "Which one is safe to break?"
+        "ja": "封を破れば読める。どれを破る",
+        "en": "Break a seal and you can read it. Which?"
       },
       "choices": [
         {
@@ -3182,8 +3182,8 @@
       "id": "room_070",
       "theme": "garden",
       "prompt": {
-        "ja": "踏み入っていいのはどれ？",
-        "en": "Which one is safe to step into?"
+        "ja": "庭は一つしか抜けられない",
+        "en": "Only one garden lets you through"
       },
       "choices": [
         {
@@ -3232,8 +3232,8 @@
       "id": "room_071",
       "theme": "cloak",
       "prompt": {
-        "ja": "羽織っていいのはどれ？",
-        "en": "Which one is safe to wear?"
+        "ja": "外は冷える。どれを羽織る",
+        "en": "It's cold out. Which do you take?"
       },
       "choices": [
         {
@@ -3282,8 +3282,8 @@
       "id": "room_074",
       "theme": "knot",
       "prompt": {
-        "ja": "解いていいのはどれ？",
-        "en": "Which one is safe to untie?"
+        "ja": "解けば縄が落ちる。どれを解く",
+        "en": "Undo it and the rope drops. Which?"
       },
       "choices": [
         {
@@ -3332,8 +3332,8 @@
       "id": "room_076",
       "theme": "shrine",
       "prompt": {
-        "ja": "手を合わせていいのはどれ？",
-        "en": "Which one is safe to pray at?"
+        "ja": "手を合わせて無事なのは一つだ",
+        "en": "Only one is safe to pray at"
       },
       "choices": [
         {
@@ -3382,8 +3382,8 @@
       "id": "room_077",
       "theme": "tooth",
       "prompt": {
-        "ja": "抜いていいのはどれ？",
-        "en": "Which one is safe to pull?"
+        "ja": "痛みの元は一本だけだ。どれを抜く",
+        "en": "Only one is the pain. Which do you pull?"
       },
       "choices": [
         {
@@ -3432,8 +3432,8 @@
       "id": "room_078",
       "theme": "smoke",
       "prompt": {
-        "ja": "抜けていいのはどれ？",
-        "en": "Which one is safe to walk through?"
+        "ja": "煙の中を抜ける。どれに入る",
+        "en": "You go through the smoke. Into which?"
       },
       "choices": [
         {
@@ -3482,8 +3482,8 @@
       "id": "room_079",
       "theme": "ring",
       "prompt": {
-        "ja": "嵌めていいのはどれ？",
-        "en": "Which one is safe to put on?"
+        "ja": "嵌めれば外れない。どれを選ぶ",
+        "en": "Once on, it stays. Which do you choose?"
       },
       "choices": [
         {
@@ -3539,8 +3539,8 @@
       "id": "room_080",
       "theme": "bucket",
       "prompt": {
-        "ja": "汲んでいいのはどれ？",
-        "en": "Which one is safe to draw with?"
+        "ja": "水が要る。どれで汲む",
+        "en": "You need water. With which?"
       },
       "choices": [
         {
@@ -3589,8 +3589,8 @@
       "id": "room_082",
       "theme": "insect",
       "prompt": {
-        "ja": "払っていいのはどれ？",
-        "en": "Which one is safe to brush away?"
+        "ja": "払わないと進めない。どれを払う",
+        "en": "No passing without brushing them aside. Which?"
       },
       "choices": [
         {
@@ -3639,8 +3639,8 @@
       "id": "room_083",
       "theme": "sack",
       "prompt": {
-        "ja": "担いでいいのはどれ？",
-        "en": "Which one is safe to shoulder?"
+        "ja": "一つだけ担げる。どれを背負う",
+        "en": "You can carry one. Which do you shoulder?"
       },
       "choices": [
         {
@@ -3696,8 +3696,8 @@
       "id": "room_084",
       "theme": "candle",
       "prompt": {
-        "ja": "消していいのはどれ？",
-        "en": "Which one is safe to snuff?"
+        "ja": "一本消せば影が動く。どれを消す",
+        "en": "Snuff one and the shadows move. Which?"
       },
       "choices": [
         {
@@ -3746,8 +3746,8 @@
       "id": "room_085",
       "theme": "step",
       "prompt": {
-        "ja": "跨いでいいのはどれ？",
-        "en": "Which one is safe to step over?"
+        "ja": "敷居を越える。どれを跨ぐ",
+        "en": "You cross the threshold. Which one?"
       },
       "choices": [
         {
@@ -3796,8 +3796,8 @@
       "id": "room_086",
       "theme": "voice",
       "prompt": {
-        "ja": "答えていいのはどれ？",
-        "en": "Which one is safe to answer?"
+        "ja": "声が呼んでいる。どれに答える",
+        "en": "A voice is calling. Which do you answer?"
       },
       "choices": [
         {
@@ -3846,8 +3846,8 @@
       "id": "room_087",
       "theme": "plank",
       "prompt": {
-        "ja": "渡していいのはどれ？",
-        "en": "Which plank is safe to lay down?"
+        "ja": "穴に橋を架ける。どれを渡す",
+        "en": "You bridge the gap. With which?"
       },
       "choices": [
         {
@@ -3896,8 +3896,8 @@
       "id": "room_088",
       "theme": "ash",
       "prompt": {
-        "ja": "掘っていいのはどれ？",
-        "en": "Which one is safe to dig?"
+        "ja": "灰の下に何かある。どれを掘る",
+        "en": "Something is under the ash. Which do you dig?"
       },
       "choices": [
         {
@@ -3953,8 +3953,8 @@
       "id": "room_090",
       "theme": "mask_shop",
       "prompt": {
-        "ja": "選んでいいのはどれ？",
-        "en": "Which one is safe to choose?"
+        "ja": "顔を買う。どれを選ぶ",
+        "en": "You're buying a face. Which?"
       },
       "choices": [
         {
@@ -4010,8 +4010,8 @@
       "id": "room_095",
       "theme": "ledger",
       "prompt": {
-        "ja": "名を書いていいのはどれ？",
-        "en": "Which one is safe to sign?"
+        "ja": "名を書けば入れる。どれに書く",
+        "en": "Sign and you're in. In which?"
       },
       "choices": [
         {
@@ -4060,8 +4060,8 @@
       "id": "room_096",
       "theme": "weight",
       "prompt": {
-        "ja": "持ち上げていいのはどれ？",
-        "en": "Which one is safe to lift?"
+        "ja": "持ち上げれば下が見える。どれを持つ",
+        "en": "Lift it and you see beneath. Which?"
       },
       "choices": [
         {

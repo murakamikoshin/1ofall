@@ -81,6 +81,34 @@ export function voiceOf(advisorId: string): Voice {
   return { assertive: 0.15 + a * 0.7, narrows: 0.25 + b * 0.55, seat: (h >>> 20) % 997 };
 }
 
+/**
+ * 同じ文面が並ばないように書き直す。
+ *
+ * 言い回しの癖を人ごとに固定しても、8人が同じ扉を押せば型の数を超えてぶつかる。
+ * 実際に「何も賭けないで間違いない」が二人から同じ文面で出た。
+ * 一度に全員ぶんを書く側（AI）で、ぶつかったぶんだけ席をずらして書き直す。
+ */
+export function unique(
+  written: readonly { id: string; text: string }[],
+  rewrite: (id: string, nudge: number) => string,
+): { id: string; text: string }[] {
+  const seen = new Set<string>();
+  const out: { id: string; text: string }[] = [];
+  for (const item of written) {
+    let text = item.text;
+    for (let nudge = 1; nudge <= 6 && seen.has(text); nudge++) {
+      const next = rewrite(item.id, nudge);
+      if (!seen.has(next)) {
+        text = next;
+        break;
+      }
+    }
+    seen.add(text);
+    out.push({ id: item.id, text });
+  }
+  return out;
+}
+
 export interface WriteOptions {
   choices: readonly Choice[];
   knowledge: Knowledge;

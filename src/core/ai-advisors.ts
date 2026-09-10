@@ -1,7 +1,7 @@
 import type { AdvisorInfo, Hint } from './schema';
 import type { AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { createRng, shuffled, type Rng } from './rng';
-import { writeHint, voiceOf } from './hint-writer';
+import { writeHint, voiceOf, unique } from './hint-writer';
 import type { Choice } from './schema';
 import { liarBias } from './casting';
 import { STANDARD, type ModeConfig } from './limits';
@@ -81,23 +81,32 @@ export class AiAdvisorGateway implements AdvisorGateway {
     this.openRoundId = briefing.roundId;
     this.decidePicks(briefing);
 
-    for (const id of briefing.casting.speakerIds) {
-      const advisor = this.advisors.find((a) => a.id === id);
+    // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る。
+    // 平均すると LIE_RATE の割合で嘘をつく。
+    // 話し方の癖は人ごとに固定（区画のあいだ同じ顔ぶれなので読みが積める）
+    const write = (id: string, nudge = 0): string => {
       const knowledge = briefing.knowledge.get(id);
-      if (!advisor || !knowledge) continue;
-
-      // 嘘つきの癖が強い者ほど、信用を作らずすぐ裏切る。
-      // 平均すると LIE_RATE の割合で嘘をつく
-      const honesty = Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(id)));
-      const text = writeHint({
+      if (!knowledge) return '';
+      const voice = voiceOf(id);
+      return writeHint({
         choices: briefing.room.choices,
         knowledge,
         rng: this.rng,
-        liarHonestyRate: honesty,
-        // 話し方の癖は人ごとに固定。区画のあいだ同じ顔ぶれなので読みが積める
+        liarHonestyRate: Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(id))),
         liarMimicRate: this.mode.liarMimic,
-        voice: voiceOf(id),
+        voice: { ...voice, seat: voice.seat + nudge },
       });
+    };
+    const drafted = briefing.casting.speakerIds
+      .filter((id) => briefing.knowledge.has(id))
+      .map((id) => ({ id, text: write(id) }));
+    // 8人が同じ扉を押すと型の数を超えてぶつかる。同じ文面は並べない
+    const texts = new Map(unique(drafted, write).map((h) => [h.id, h.text]));
+
+    for (const id of briefing.casting.speakerIds) {
+      const advisor = this.advisors.find((a) => a.id === id);
+      const text = texts.get(id);
+      if (!advisor || !text) continue;
       const delay = this.minDelay + this.rng() * (this.maxDelay - this.minDelay);
 
       this.timers.push(

@@ -7,7 +7,7 @@ import {
 } from './moderation';
 import { castLiars, dealKnowledge } from './casting';
 import { createRng, shuffled, type Rng } from './rng';
-import { writeHint, voiceOf } from './hint-writer';
+import { writeHint, voiceOf, unique } from './hint-writer';
 import { liarBias } from './casting';
 import { scoreChoices, bestChoice, type HintRow } from './read-hints';
 
@@ -419,25 +419,28 @@ export class PartyEngine {
   aiHints(): { memberId: string; text: string }[] {
     const round = this.round;
     if (!round) return [];
-    const out: { memberId: string; text: string }[] = [];
+    const write = (id: string, nudge = 0): string => {
+      const knowledge = this.knowledge.get(id);
+      if (!knowledge) return '';
+      const voice = voiceOf(id);
+      return writeHint({
+        choices: round.room.choices,
+        knowledge,
+        rng: this.rng,
+        liarHonestyRate: Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(id))),
+        liarMimicRate: this.mode.liarMimic,
+        voice: { ...voice, seat: voice.seat + nudge },
+      });
+    };
+
+    const written: { id: string; text: string }[] = [];
     for (const member of this.members) {
       if (member.kind !== 'ai') continue;
-      const knowledge = this.knowledge.get(member.id);
-      if (!knowledge) continue;
-      const honesty = Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(member.id)));
-      out.push({
-        memberId: member.id,
-        text: writeHint({
-          choices: round.room.choices,
-          knowledge,
-          rng: this.rng,
-          liarHonestyRate: honesty,
-          liarMimicRate: this.mode.liarMimic,
-          voice: voiceOf(member.id),
-        }),
-      });
+      if (!this.knowledge.has(member.id)) continue;
+      written.push({ id: member.id, text: write(member.id) });
     }
-    return out;
+    // 同じ文面が並ぶと人ではなく機械に見える
+    return unique(written, write).map((h) => ({ memberId: h.id, text: h.text }));
   }
 
   /**
