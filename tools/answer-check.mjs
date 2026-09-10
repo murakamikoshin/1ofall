@@ -40,16 +40,16 @@ const check = (name, ok, detail = '') => {
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** 場に出ている扉の一言から、一番名の挙がった扉を選ぶ（そこそこ生き延びる打ち手） */
+/*
+ * 検査は正解を部屋データから引く。
+ *
+ * 「一番名の挙がった扉を選ぶ」で区画を抜けさせていたが、これは運任せで、
+ * 助言の言い回しを足しただけで（20回目）区画の境目まで届かなくなった。
+ * 見たいのは境目の振る舞いなので、そこへ確実に着く手を使う。
+ */
+const correctOf = (roomId) => pack.rooms.find((r) => r.id === roomId)?.correct ?? null;
 function bestNamed(round) {
-  const tally = new Map(round.room.choices.map((c) => [c.id, 0]));
-  for (const a of round.advice) {
-    if ((a.kind ?? 'door') !== 'door') continue;
-    for (const c of round.room.choices) {
-      if (a.text.includes(C.localized(c.label))) tally.set(c.id, (tally.get(c.id) ?? 0) + 1);
-    }
-  }
-  return [...tally.entries()].sort((x, y) => y[1] - x[1])[0][0];
+  return correctOf(round.room.id) ?? round.room.choices[0].id;
 }
 
 /* ── 区画の頭で落ちたときは出ない ── */
@@ -68,9 +68,10 @@ function bestNamed(round) {
       if (!round) break;
       const before = engine.snapshot();
       // わざと外す（誰も名を挙げていない扉）
-      const said = round.advice.map((a) => a.text).join(' ');
-      const blind = round.room.choices.find((c) => !said.includes(C.localized(c.label))) ?? round.room.choices[0];
-      engine.choose(blind.id);
+      // わざと外す。正解が分かっているので確実に外せる
+      const wrong = round.room.choices.find((c) => c.id !== correctOf(round.room.id))
+        ?? round.room.choices[0];
+      engine.choose(wrong.id);
       for (let i = 0; i < 3; i++) { engine.advancePresentation(); await wait(6); }
       const s = engine.snapshot();
       if (s.phase === 'answer') {
@@ -106,7 +107,16 @@ for (const modeId of ['standard', 'brink']) {
       const round = engine.snapshot().round;
       if (!round) break;
       const before = engine.snapshot();
-      engine.choose(bestNamed(round));
+      /*
+       * 抜けた側と、深く行って落ちた側の両方を見たい。
+       * 二部屋抜けたところで一度だけわざと外す（区画の頭で落ちると
+       * 紙は出ない決まりなので、二部屋進んでから落ちる必要がある）。
+       */
+      const dieHere = deepLost === 0 && before.clearedInSection >= 2;
+      const pick = dieHere
+        ? (round.room.choices.find((c) => c.id !== correctOf(round.room.id)) ?? round.room.choices[0]).id
+        : bestNamed(round);
+      engine.choose(pick);
       for (let i = 0; i < 3; i++) { engine.advancePresentation(); await wait(6); }
       const s = engine.snapshot();
       if (s.phase === 'answer') {

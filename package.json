@@ -14,7 +14,7 @@
     "validate:rooms": "node scripts/validate-rooms.mjs",
     "images:manifest": "node scripts/image-manifest.mjs",
     "shots": "node tools/shot.mjs",
-    "test": "node tools/test-moderation.mjs && node tools/test-composite.mjs && node tools/test-locale.mjs && node tools/test-wire.mjs && node tools/test-party.mjs && node tools/point-check.mjs && node tools/slot-check.mjs && node tools/art-check.mjs && node tools/answer-check.mjs && node tools/rank-check.mjs && node tools/quiet-seat-check.mjs && node tools/test-balance.mjs && PASSES=40 SEEDS=6 STRICT=1 node tools/room-audit.mjs",
+    "test": "node tools/test-moderation.mjs && node tools/test-composite.mjs && node tools/test-locale.mjs && node tools/test-wire.mjs && node tools/test-party.mjs && node tools/point-check.mjs && node tools/slot-check.mjs && node tools/art-check.mjs && node tools/answer-check.mjs && node tools/rank-check.mjs && node tools/quiet-seat-check.mjs && node tools/voice-check.mjs && node tools/test-balance.mjs && PASSES=40 SEEDS=6 STRICT=1 node tools/room-audit.mjs",
     "sim": "node tools/sim10.mjs 38",
     "party": "partykit dev --port 1999",
     "test:live": "node tools/party-live.mjs && node tools/advisor-live.mjs /tmp && node tools/host-live.mjs /tmp && node tools/party-net-live.mjs /tmp && node tools/match-live.mjs /tmp && node tools/vote-check.mjs && node tools/point-live.mjs && node tools/soak-live.mjs /tmp && node tools/again-live.mjs /tmp && node tools/party-again-live.mjs /tmp",
