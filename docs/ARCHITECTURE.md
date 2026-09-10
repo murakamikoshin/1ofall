@@ -145,6 +145,9 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 | `tools/point-check.mjs` | 人を指す一手の通し（配線・記録） | 不要 |
 | `tools/point-live.mjs` | 場に出ている言葉と、指す手を本物の線で | `npm run party` + `npm run preview` |
 | `tools/name-call.mjs` | 名指しが情報なのか雑音なのか | 不要 |
+| `tools/slot-check.mjs` | 発言枠へ上がる道（立候補・賭けの重み） | 不要 |
+| `tools/arc-probe.mjs` | 区画の中で、部屋番号ごとの読みしろ | 不要 |
+| `tools/soak-live.mjs` | **繋ぎ目**（区画の変わり目・死んだ直後）を二つのブラウザで | `npm run party` + `npm run preview` |
 
 線を張る試験は `npm run test:live`。
 助言者ページは繋ぎ先（`VITE_PARTY_HOST`）が無いと**素振りに落ちる**ので、

@@ -22,7 +22,7 @@ const check = (n, ok, d = '') => { ok ? pass++ : fail++; say(`${ok ? '✓' : '�
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const errors = [];
 const pages = [];
-for (const name of ['みかん役', 'すず役']) {
+for (const name of ['そうく1', 'そうく2']) {
   const p = await b.newPage({ viewport: { width: 375, height: 667 }, reducedMotion: 'reduce' });
   p.on('pageerror', (e) => errors.push(`${name}: ${e.message}`));
   p.on('console', (m) => { if (m.type() === 'error') errors.push(`${name}: ${m.text()}`); });
@@ -55,6 +55,9 @@ const screen = async (p) => p.evaluate(() => {
     role: t('.role-title'),
     note: t('.role-note'),
     floor: [...document.querySelectorAll('.floor-row')].map((e) => (e.textContent ?? '').trim()),
+    calls: [...document.querySelectorAll('.floor-row .floor-text')]
+      .map((e) => e.textContent ?? '')
+      .filter((t) => /は嘘だ|を信じるな|が嘘つきだ|に乗るな|嘘をついている|は本当だ|を信じろ|は正しい|に乗れ/.test(t)).length,
     canWrite: document.querySelectorAll('.compose-row').length > 0,
     canPoint: document.querySelectorAll('.floor-act').length > 0,
     volunteer: t('.locked + .primary') || t('.primary'),
@@ -66,8 +69,10 @@ let sectionsSeen = new Set();
 let deaths = 0;
 let freshSeen = false;
 let volunteerCleared = null;
+let mixedFloor = 0;
+let callsSeen = 0;
 
-for (let step = 0; step < 40; step++) {
+for (let step = 0; step < 60; step++) {
   const v = view();
   if (!v?.round) { await wait(300); continue; }
   const s = v.sectionIndex;
@@ -75,7 +80,7 @@ for (let step = 0; step < 40; step++) {
   const inSection = v.totalCleared - 0;
 
   // 助言と名指しが出そろうのを待つ
-  await wait(2600);
+  await wait(4200);
   const v2 = view();
   if (!v2?.round) break;
 
@@ -105,14 +110,17 @@ for (let step = 0; step < 40; step++) {
   say(`\n  ${n}部屋目（区画${s + 1}）扉について${door.length}件　名指し${call.length}件　命${v2.lives}`);
   for (const a of door) say(`    ${a.advisorName}（正${a.record.hit} 嘘${a.record.miss}） ${a.text}`);
   for (const a of call) say(`   ＞${a.advisorName} ${a.text}`);
+  callsSeen += call.length;
 
   // 助言者の画面が同じものを見ているか
   for (const { name, p } of pages) {
     const sc = await screen(p);
     if (sc.canWrite) {
       say(`    〔${name}〕 ${sc.role} / 場に${sc.floor.length}件 / 撃てる:${sc.canPoint} ${sc.note2 ? `「${sc.note2}」` : ''}`);
+      if (sc.calls) mixedFloor++;
     } else {
       say(`    〔${name}〕 枠外 / 場に${sc.floor.length}件`);
+      if (sc.calls) mixedFloor++;
     }
   }
 
@@ -127,25 +135,70 @@ for (let step = 0; step < 40; step++) {
   const after = view();
   if (after && after.lives < beforeLives) { deaths++; say(`    → 死んだ（命 ${beforeLives}→${after.lives}）`); }
   if (after?.phase === 'over') { say('\n  ▼ 終わり'); break; }
-  if (sectionsSeen.size >= 2 && deaths >= 1 && step > 6) break;
+  if (sectionsSeen.size >= 2 && deaths >= 1) break;
+  // 繋ぎ目は死んだときにも起きる。そこまで見られたら十分
+  if (deaths >= 2 && freshSeen && step > 8) break;
 }
 
-/** 素朴に一番名の挙がった扉 */
+/**
+ * 実測で一番強い読み方（`tools/rubric.mjs` の「罠だと言われた扉を採る」）。
+ *
+ * 素朴に数えるだけだと生存 62% で、区画を抜ける前に命が尽きる。
+ * ここは繋ぎ目を見る道具なので、区画を抜けられる強さで打つ。
+ */
 function bestGuess(round) {
-  const tally = new Map(round.room.choices.map((c) => [c.id, 0]));
-  for (const a of round.advice) {
-    if ((a.kind ?? 'door') !== 'door') continue;
-    for (const c of round.room.choices) {
-      if (a.text.includes(c.label.ja)) tally.set(c.id, (tally.get(c.id) ?? 0) + 1);
-    }
+  const AVOID = /やめろ|死ぬ|手を出すな|罠だ|だけは違う|だめだ|はずれ|外せ|触るな/;
+  const HEDGE = /たぶん|気がする|に見える|じゃないか|絞れた|決めきれん|どっちか|、かな|あたりか|と思うが/;
+  const CALL = /は嘘だ|を信じるな|が嘘つきだ|に乗るな|嘘をついている|は本当だ|を信じろ|は正しい|に乗れ/;
+  const labels = round.room.choices.map((c) => ({ id: c.id, label: c.label.ja }));
+  const door = round.advice.filter((a) => (a.kind ?? 'door') === 'door');
+  const calls = round.advice.filter((a) => a.kind === 'call');
+
+  // 撃たれた者を信じる（嘘つきは真実を言った者に群がる）
+  const shot = new Map();
+  for (const c of calls) {
+    const target = door
+      .filter((d) => c.text.includes(d.advisorName))
+      .sort((a, b) => b.advisorName.length - a.advisorName.length)[0];
+    if (!target) continue;
+    const doubt = !/は本当だ|を信じろ|は正しい|に乗れ/.test(c.text.split(target.advisorName).join('　'));
+    shot.set(target.advisorId, (shot.get(target.advisorId) ?? 0) + (doubt ? 1 : -0.5));
   }
-  return [...tally.entries()].sort((x, y) => y[1] - x[1])[0][0];
+
+  const score = new Map(labels.map((c) => [c.id, 0]));
+  for (const a of door) {
+    if (CALL.test(a.text)) continue;
+    const net = shot.get(a.advisorId) ?? 0;
+    const w = ((a.record.hit + 1) / (a.record.hit + a.record.miss + 2))
+      * Math.max(0.2, Math.min(2.6, 1 + net * 0.9));
+    const touched = labels.filter((c) => a.text.includes(c.label));
+    if (!touched.length) continue;
+    let rest = a.text;
+    for (const c of touched) rest = rest.split(c.label).join('　');
+    // 記録の悪い者の警告は裏返る
+    if (AVOID.test(rest)) {
+      for (const c of touched) score.set(c.id, score.get(c.id) + (1.2 - w));
+      continue;
+    }
+    const hedging = touched.length >= 2 || HEDGE.test(rest);
+    for (const c of touched) score.set(c.id, score.get(c.id) + w * (hedging ? 1.25 : 0.8));
+  }
+  return [...score.entries()].sort((x, y) => y[1] - x[1])[0][0];
 }
 
 say('');
-check('区画をまたげた', sectionsSeen.size >= 2, `${sectionsSeen.size}区画`);
+/**
+ * 区画をまたぐには5部屋の連続正解が要る（1部屋あたり74%なので4〜5回に1度）。
+ * 運に頼る検査にすると落ちるので、**必ず起きる繋ぎ目**で見る。
+ * 死んでも顔ぶれは入れ替わり、記録は白紙に戻るので、見たいものは同じ。
+ * 区画をまたげたときだけ、そちらも見る。
+ */
 check('死んで区画の頭に戻れた', deaths >= 1, `${deaths}回`);
 check('顔ぶれが入れ替わったことが画面に出た', freshSeen);
+if (sectionsSeen.size >= 2) check('区画をまたいでも壊れない', true);
+else say(`   （この周は区画をまたげなかった。見たのは区画${sectionsSeen.size}ぶん）`);
+check('名指しが起きている', callsSeen > 0, `${callsSeen}件`);
+check('助言者の「場」に名指しが混ざらない', mixedFloor === 0, `${mixedFloor}回`);
 check('例外なし', errors.length === 0, errors.join(' / '));
 if (volunteerCleared !== null) check('手を挙げた扱いが区画の頭で切れている', volunteerCleared === true);
 

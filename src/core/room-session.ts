@@ -446,6 +446,10 @@ export class RoomSession {
           text: a.text,
           roundId: round.roundId,
           sentAt: a.sentAt,
+          // 扉についての一言と、人を指した一言を区別できるようにする。
+          // 落としていたので、助言者の「場」に名指しが扉の助言として並び、
+          // それを撃とうとしても黙って弾かれていた
+          kind: a.kind ?? 'door',
         })),
       });
     }

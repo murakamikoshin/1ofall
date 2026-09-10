@@ -58,6 +58,12 @@ for (let attempt = 0; attempt < 6 && !ok; attempt++) {
   }
   const title = await dom('.floor-title');
   check('場の見出しが出る', title.includes('場に出ている'), title);
+  // 人を指した一言は「場」に並べない（扉の助言として数えられてしまう）
+  const callsInFloor = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('.floor-row .floor-text')].map((e) => e.textContent ?? '');
+    return rows.filter((t) => /は嘘だ|を信じるな|が嘘つきだ|に乗るな|嘘をついている|は本当だ|を信じろ|は正しい|に乗れ/.test(t)).length;
+  });
+  check('場に名指しが混ざらない', callsInFloor === 0, `${callsInFloor}件`);
 
   // 自分の一言を出す前は撃てない
   check('言う前は撃つ手が無い', (await count('.floor-act')) === 0, `${await count('.floor-act')}個`);
