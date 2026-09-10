@@ -72,8 +72,11 @@ async function play(mode, useProbe, seed) {
 
     const after = engine.snapshot().round;
     if (!after) break;
-    // 確定した嘘つきの言葉は信用しない（実際には黙っているが、区画をまたぐ前の発言も含めて割り引く）
-    const rows = rowsOf().map((r) => (known.has(r.advisorId) ? { ...r, record: { hit: 0, miss: 9 } } : r));
+    // 確定した嘘つきの言葉は聞かない。
+    // 裏返して読む（押した扉を罠とみなす）打ち手も試したが、
+    // 嘘つきは3割は本当のことを言うので、裏返すと逆に落ちた
+    //（通常 81%→71%、崖っぷち 72%→57%）
+    const rows = rowsOf().filter((r) => !known.has(r.advisorId));
     const score = C.scoreChoices({ choices: after.room.choices, rows, own: null });
     engine.choose(C.bestChoice(score, after.room.choices, rng));
     rooms++;
@@ -85,8 +88,10 @@ async function play(mode, useProbe, seed) {
   return { rooms, deaths, probes, hits, cleared: final.phase === 'cleared' };
 }
 
+const MODE_ID = process.env.MODE ?? 'brink';
+
 function brinkMode() {
-  const b = C.MODES.brink;
+  const b = C.MODES[MODE_ID];
   const slots = Number(process.env.SLOTS ?? b.slotsBySection[0]);
   return {
     ...b,
@@ -97,7 +102,8 @@ function brinkMode() {
 }
 
 const m = brinkMode();
-console.log(`崖っぷち　${RUNS}周　命${m.lives} ${m.sections}区画×${m.roomsPerSection} 発言枠${m.slotsBySection[0]}\n`);
+const NAME = { standard: '通常', brink: '崖っぷち', party: '全員挑戦者' }[MODE_ID] ?? MODE_ID;
+console.log(`${NAME}　${RUNS}周　命${m.lives} ${m.sections}区画×${m.roomsPerSection} 発言枠${m.slotsBySection[0]}\n`);
 for (const [name, useProbe] of [['黙らせるを使わない', false], ['黙らせるを使う', true]]) {
   let rooms = 0, deaths = 0, probes = 0, hits = 0, cleared = 0;
   for (let i = 0; i < RUNS; i++) {

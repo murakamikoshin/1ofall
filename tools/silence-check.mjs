@@ -29,6 +29,8 @@ for (let i = 0; i < 6 && !hit; i++) {
   if (!(await p.locator('.hint-silence:not([disabled])').count())) break;
   await p.locator('.hint-silence:not([disabled])').first().click();
   await wait(500);
+  const notice = (await p.locator('.hud-notice.is-visible').textContent().catch(() => '')) ?? '';
+  if (i === 0) check('当たり外れが目に見える', notice.length > 0, `「${notice}」`);
   hit = (await p.locator('.hint-row.is-confirmed').count()) > 0;
   if (!hit) {
     // 外したら次の部屋へ進めてやり直す

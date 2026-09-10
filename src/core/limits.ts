@@ -137,6 +137,18 @@ export interface ModeConfig {
    * ほとんどの部屋を信用0.50の当てずっぽうで打つことになる。
    */
   keepCastOnDeath?: boolean;
+  /**
+   * 「黙らせる」が使えるか。
+   *
+   * 崖っぷちだけ。あちらは正直者がただ一人なので、
+   * 一人確定させるだけで読みが大きく動く（実測 51%→70%）。
+   *
+   * 通常モードでは効かない。発言枠8で嘘つき3人だと、
+   * 一人黙らせても集計の読みはほとんど動かない（81.2%→80.9%）。
+   * 当たり率も34%で、当てずっぽう（3/8=38%）と変わらない。
+   * **効かないうえに外すと時間が減る**ので、押すほど損をする罠になっていた。
+   */
+  canSilence?: boolean;
   /** 嘘つきが本当のことを言う率 */
   liarHonesty: number;
   /** 嘘つきが迷ったふりをする率 */
@@ -192,6 +204,7 @@ export const BRINK: ModeConfig = {
   loneHonest: true,
   // 記録が唯一の道具なので、死んでも顔ぶれと記録を残す
   keepCastOnDeath: true,
+  canSilence: true,
   liarHonesty: 0.3,
   liarMimic: 0.2,
 };

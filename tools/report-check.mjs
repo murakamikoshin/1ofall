@@ -28,12 +28,20 @@ for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['全員挑戦者'
   }
 
   if (reports > 0) {
-    const before = await p.locator('.hint-report').first().textContent();
+    const rowsBefore = await p.locator('.hint-row').count();
     await p.locator('.hint-report').first().click();
-    await wait(300);
-    const after = await p.locator('.hint-report').first().textContent();
-    const disabled = await p.locator('.hint-report').first().isDisabled();
-    check(`${mode}: 押したら受け付けたと分かる`, after !== before && disabled, `${before} → ${after} / disabled=${disabled}`);
+    await wait(400);
+    if (mode === 'standard') {
+      // 部屋の主の通報は一件で効く。声が止まるので行が消える
+      const rowsAfter = await p.locator('.hint-row').count();
+      const notice = (await p.locator('.hud-notice.is-visible').textContent().catch(() => '')) ?? '';
+      check(`${mode}: 通報した相手の声が止まる`, rowsAfter < rowsBefore, `${rowsBefore}→${rowsAfter}`);
+      check(`${mode}: 通報したことが目に見える`, notice.includes('通報した'), `「${notice}」`);
+    } else {
+      const after = await p.locator('.hint-report').first().textContent();
+      const disabled = await p.locator('.hint-report').first().isDisabled();
+      check(`${mode}: 押したら受け付けたと分かる`, disabled, `${after} / disabled=${disabled}`);
+    }
   }
 
   // 触れる的の大きさ（押し間違えると痛いボタン）

@@ -889,3 +889,31 @@
 /* 黙らせて当たった相手。声は止まっているが情報として残す */
 .hint-row.is-confirmed { opacity: 0.6; }
 .hint-row.is-confirmed .hint-text { color: var(--rust); }
+
+/* 目に見える知らせ。HUD の下にすっと出て消える */
+.hud-notice {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -0.4rem);
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.9rem;
+  border: var(--edge);
+  background: var(--soot);
+  color: var(--paper-bright);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  max-width: 92vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms, transform 180ms;
+  z-index: 6;
+}
+
+.hud-notice.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.hud-notice.is-good { border-color: var(--rust); }
+.hud-notice.is-bad { border-color: var(--blood); color: var(--blood-lit); }
+
+.hud { position: relative; }

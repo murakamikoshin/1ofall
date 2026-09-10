@@ -946,12 +946,12 @@ function renderHints(state: EngineState, s: Shell): void {
 
   // 届いた順に並べる。早い遅いも読みの材料になる
   for (const advice of [...round.advice].sort((a, b) => a.sentAt - b.sentAt)) {
-    list.append(renderAdviceRow(advice, round.silenceUsed));
+    list.append(renderAdviceRow(advice, round.silenceUsed, state.canSilence));
   }
   s.hints.append(list);
 }
 
-function renderAdviceRow(advice: Advice, silenceUsed: boolean): HTMLElement {
+function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boolean): HTMLElement {
   const T = strings();
   const row = el('div', 'hint-row');
 
@@ -975,7 +975,9 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean): HTMLElement {
   silence.disabled = silenceUsed;
   silence.addEventListener('click', () => {
     const result = engine?.silence(advice.advisorId);
-    if (result) announce(result.hit ? T.challenger.silenceHit : T.challenger.silenceMiss);
+    if (result) {
+      announce(result.hit ? T.challenger.silenceHit : T.challenger.silenceMiss, result.hit ? 'good' : 'bad');
+    }
   });
 
   const report = document.createElement('button');
@@ -989,12 +991,16 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean): HTMLElement {
   report.addEventListener('click', () => {
     reportedThisRoom.add(advice.advisorId);
     engine?.report('challenger', advice.advisorId, advice.text);
+    announce(T.challenger.reportedNotice);
     report.textContent = T.challenger.reported;
     report.disabled = true;
     announce(T.challenger.reported);
   });
 
-  actions.append(silence, report);
+  // 黙らせるは崖っぷちだけの道具。通常モードでは効かないうえに
+  // 外すと時間が減るので、押すほど損をする罠になっていた
+  if (canSilence) actions.append(silence);
+  actions.append(report);
   row.append(name, text, actions);
   return row;
 }
@@ -1187,13 +1193,37 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ''): HTML
   return node;
 }
 
-function announce(message: string): void {
+/**
+ * 知らせを出す。**目にも見せる。**
+ *
+ * 以前は読み上げ用にしか出していなかったので、
+ * 「嘘つきを黙らせた」「外した。次の部屋が短くなる」が
+ * 目で見ている人には何も出ていなかった。
+ * 黙らせるは崖っぷちの中心の道具なのに、当たったかどうかが分からなかった。
+ */
+let noticeTimer = 0;
+
+function announce(message: string, tone: 'plain' | 'good' | 'bad' = 'plain'): void {
   const live = document.createElement('p');
   live.className = 'sr-only';
   live.setAttribute('role', 'status');
   live.textContent = message;
   document.body.append(live);
   setTimeout(() => live.remove(), 2000);
+
+  const host = shell?.hud;
+  if (!host) return;
+  let line = host.querySelector<HTMLElement>('.hud-notice');
+  if (!line) {
+    line = el('div', 'hud-notice');
+    host.append(line);
+  }
+  line.textContent = message;
+  line.className = `hud-notice is-visible${tone === 'good' ? ' is-good' : tone === 'bad' ? ' is-bad' : ''}`;
+  window.clearTimeout(noticeTimer);
+  noticeTimer = window.setTimeout(() => {
+    line?.classList.remove('is-visible');
+  }, 2600);
 }
 
 // 数字キーで選ぶ。配信中にマウスを探させない

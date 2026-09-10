@@ -116,6 +116,8 @@ export interface EngineState {
   selectionMode: SelectionMode;
   advisors: readonly AdvisorInfo[];
   mutedIds: readonly string[];
+  /** このモードで「黙らせる」が使えるか */
+  canSilence: boolean;
   /**
    * 黙らせて当たった相手。この区画のあいだ嘘つきだと確定している。
    * 画面に残さないと、せっかく得た情報を人間の記憶に押しつけることになる。
@@ -253,6 +255,7 @@ export class GameEngine {
       selectionMode: this.selectionMode,
       advisors: this.advisors,
       mutedIds: [...this.muted],
+      canSilence: !!this.mode.canSilence,
       confirmedLiars: [...this.silencedThisSection],
       liarLog: this.liarLog,
     };
@@ -293,6 +296,7 @@ export class GameEngine {
 
   /** 発言者を1人黙らせる。当たれば以降その人の助言は届かない。外したら次の部屋が短くなる */
   silence(advisorId: string): { hit: boolean } | null {
+    if (!this.mode.canSilence) return null;
     const round = this.round;
     if (!round || this.phase !== 'choosing' || round.silenceUsed) return null;
     if (!round.speakers.some((s) => s.id === advisorId)) return null;
@@ -323,6 +327,11 @@ export class GameEngine {
    * 挑戦者の「黙らせる」と違い、当てる／外すの読み合いではなく、
    * 迷惑行為を止めるための仕組み。
    */
+  /**
+   * 通報。
+   * 挑戦者（部屋の主）の通報は一件で効く。自分の部屋だから。
+   * 助言者どうしの通報は積み上がってから効く（結託で人を消せないように）。
+   */
   report(reporterId: string, targetId: string, text: string): { accepted: boolean; count: number } {
     const round = this.round;
     const result = fileReport(this.reports, {
@@ -332,10 +341,12 @@ export class GameEngine {
       text,
       at: this.now(),
     });
-    if (result.autoMuted) {
+    // 部屋の主の通報は一件で効く
+    const byOwner = reporterId === 'challenger';
+    if (result.accepted && (result.autoMuted || byOwner)) {
       this.muted.add(targetId);
       if (round) round.advice = round.advice.filter((a) => a.advisorId !== targetId);
-      this.sectionCasting = null; // 顔ぶれを引き直す
+      // 名簿から外れたので席が空く。空いた席だけ入れ替わる（castingForSection）
       this.emit();
     }
     return { accepted: result.accepted, count: result.count };
