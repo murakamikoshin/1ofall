@@ -4,7 +4,7 @@ import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
 import { chooseCall, type Said } from './name-calling';
 import type { Choice } from './schema';
-import { liarBias } from './casting';
+import { liarBias, liarHonestyAt } from './casting';
 import type { Knowledge } from './schema';
 import { STANDARD, type ModeConfig } from './limits';
 import { companionNames } from './companion-names';
@@ -96,6 +96,21 @@ export class AiAdvisorGateway implements AdvisorGateway {
     // 先に喋った者しか指せない。書いた順にここへ積む
     const said: Said[] = [];
     const seen = new Map<string, Said[]>();
+    /**
+     * その部屋で本当のことを言うか。**一人につき一度だけ引く。**
+     * 文面と名指しで別々に引くと、罠へ誘いながら真実を撃つ、という
+     * 噛み合わない振る舞いになる
+     */
+    const honest = new Map<string, boolean>();
+    const honestNow = (id: string): boolean => {
+      let v = honest.get(id);
+      if (v === undefined) {
+        v = this.rng() < liarHonestyAt(id, briefing.roomInSection, briefing.roomsPerSection);
+        honest.set(id, v);
+      }
+      return v;
+    };
+
     const write = (id: string, nudge = 0): string => {
       const knowledge = briefing.knowledge.get(id);
       if (!knowledge) return '';
@@ -107,6 +122,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
         liarHonestyRate: Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(id))),
         liarMimicRate: this.mode.liarMimic,
         voice: { ...voice, seat: voice.seat + nudge },
+        liarHonest: honestNow(id),
       });
     };
     const order = briefing.casting.speakerIds.filter((id) => briefing.knowledge.has(id));
@@ -134,7 +150,15 @@ export class AiAdvisorGateway implements AdvisorGateway {
       if (this.rng() >= this.mode.nameCall) continue;
       const knowledge = briefing.knowledge.get(id);
       if (!knowledge) continue;
-      const call = chooseCall(knowledge, briefing.room.choices, finalSaid.filter((s) => s.id !== id && s.text), this.rng);
+      // 信用を作っている最中の嘘つきは、協力者と同じ振る舞いをする。
+      // 正解を知っているので、正解を押していない者を撃つ側に回る。
+      // ここを揃えないと、口では味方のふりをしながら真実を撃つ、という
+      // 見分けやすすぎる形になる
+      const acting =
+        knowledge.kind === 'liar' && honestNow(id)
+          ? ({ kind: 'honest' as const, candidates: [knowledge.correct] })
+          : knowledge;
+      const call = chooseCall(acting, briefing.room.choices, finalSaid.filter((s) => s.id !== id && s.text), this.rng);
       if (call) calls.set(id, { targetId: call.id, doubt: call.doubt });
     }
 

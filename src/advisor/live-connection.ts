@@ -24,6 +24,7 @@ interface Incoming {
   knowledge?: Knowledge;
   isSpeaker?: boolean;
   you?: string;
+  roomInSection?: number;
   code?: string;
   hints?: { advisorId: string; advisorName: string; text: string; kind?: string }[];
 }
@@ -47,6 +48,8 @@ export class LiveConnection implements AdvisorConnection {
   private spoke = false;
   /** 自分のID。場に並ぶ言葉のどれが自分のものかを見分けるため */
   private myId = '';
+  /** 手を挙げたか。区画のあいだ続く（サーバー側と同じ規則） */
+  private volunteered = false;
   private voteRecord: { hit: number; miss: number } = { hit: 0, miss: 0 };
   private name = '';
   private attempt = 0;
@@ -85,6 +88,8 @@ export class LiveConnection implements AdvisorConnection {
 
   volunteer(roundId: string): void {
     this.send({ t: 'advisor/volunteer', roundId });
+    this.volunteered = true;
+    this.publish();
   }
 
   point(roundId: string, targetId: string, doubt: boolean): void {
@@ -178,6 +183,8 @@ export class LiveConnection implements AdvisorConnection {
         const room = msg.room;
         if (!room || !msg.roundId) return;
         this.myId = msg.you ?? this.myId;
+        // 手を挙げた扱いは区画の頭で切れる（サーバー側と同じ）
+        if (msg.roomInSection === 0) this.volunteered = false;
         if (msg.roundId !== this.latest?.roundId) {
           this.myVote = null;
           this.said = [];
@@ -194,6 +201,7 @@ export class LiveConnection implements AdvisorConnection {
           knowledge: msg.knowledge ?? null,
           isSpeaker: msg.isSpeaker === true,
           myId: msg.you ?? this.myId,
+          volunteered: this.volunteered,
           isParty: this.isParty,
           myVote: msg.myVote ?? this.myVote,
           said: this.said,
@@ -237,7 +245,11 @@ export class LiveConnection implements AdvisorConnection {
   /** 盤面のうち、こちら側で持っているぶんだけ差し替えて描き直させる */
   private publish(): void {
     if (!this.latest) return;
-    this.push({ ...this.latest, said: this.said, myCall: this.myCall, myVote: this.myVote, spoke: this.spoke, myId: this.myId });
+    this.push({
+      ...this.latest,
+      said: this.said, myCall: this.myCall, myVote: this.myVote,
+      spoke: this.spoke, myId: this.myId, volunteered: this.volunteered,
+    });
   }
 
   private notify(code: string): void {

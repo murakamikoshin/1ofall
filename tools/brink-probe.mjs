@@ -97,13 +97,17 @@ function brinkMode() {
     ...b,
     lives: Number(process.env.LIVES ?? b.lives),
     roomsPerSection: Number(process.env.PER_SECTION ?? b.roomsPerSection),
+    sections: Number(process.env.SECTIONS ?? b.sections),
+    // PER_SECTION で振るときは区画ごとの部屋数を外す（本体はそちらを優先する）
+    roomsBySection: process.env.PER_SECTION ? undefined : b.roomsBySection,
     slotsBySection: [slots, slots, slots, slots],
   };
 }
 
 const m = brinkMode();
 const NAME = { standard: '通常', brink: '崖っぷち', party: '全員挑戦者' }[MODE_ID] ?? MODE_ID;
-console.log(`${NAME}　${RUNS}周　命${m.lives} ${m.sections}区画×${m.roomsPerSection} 発言枠${m.slotsBySection[0]}\n`);
+const shape = m.roomsBySection ? m.roomsBySection.join('+') : `${m.sections}区画×${m.roomsPerSection}`;
+console.log(`${NAME}　${RUNS}周　命${m.lives} ${shape}部屋 発言枠${m.slotsBySection[0]}\n`);
 for (const [name, useProbe] of [['黙らせるを使わない', false], ['黙らせるを使う', true]]) {
   let rooms = 0, deaths = 0, probes = 0, hits = 0, cleared = 0;
   for (let i = 0; i < RUNS; i++) {

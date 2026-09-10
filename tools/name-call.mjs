@@ -48,6 +48,9 @@ for (const [label, mode] of Object.entries(MODES)) {
     // このゲームは「記録を積んで読む」を中心に置いているので、
     // ここが分かれていないと看板だけになる
     trustByRole: { liar: [], honest: [] },
+    // 「これは罠だ」型の助言のうち、本当だったものの割合。
+    // 半分を割ると「警告は裏返して読め」が万能手になる
+    avoid: { n: 0, true: 0, byRole: {} },
   };
 
   for (let seed = 0; seed < SEEDS; seed++) {
@@ -86,6 +89,24 @@ for (const [label, mode] of Object.entries(MODES)) {
         }
         acc.rooms++;
         acc.hints += said.filter((x) => x.kind !== 'call').length;
+
+        // 警告（「これは罠だ」）の中身を数える
+        const correctLabel = labels.find((c) => c.id === room.correct).label;
+        for (const x of said.filter((y) => y.kind !== 'call')) {
+          const touched = labels.filter((c) => x.text.includes(c.label));
+          if (!touched.length) continue;
+          let rest = x.text;
+          for (const c of touched) rest = rest.split(c.label).join('　');
+          if (!AVOID.test(rest)) continue;
+          acc.avoid.n++;
+          // 外れを避けろと言ったなら本当、正解を避けろと言ったなら嘘
+          const ok = !x.text.includes(correctLabel);
+          if (ok) acc.avoid.true++;
+          const role = kn.get(x.id)?.kind ?? '?';
+          acc.avoid.byRole[role] ??= { n: 0, true: 0 };
+          acc.avoid.byRole[role].n++;
+          if (ok) acc.avoid.byRole[role].true++;
+        }
 
         const people = said.filter((s) => s.kind !== 'call').map((s) => ({ id: s.id, name: s.name }));
         const hitsOn = new Map();
@@ -163,6 +184,10 @@ for (const [label, mode] of Object.entries(MODES)) {
   console.log(`  信用のある者の疑いの当たり率      ${pct(acc.hiTrustLiar, acc.hiTrust)}   （${acc.hiTrust}件）`);
   console.log(`  信用の無い者の疑いの当たり率      ${pct(acc.loTrustLiar, acc.loTrust)}   （${acc.loTrust}件）`);
   console.log(`  正解を口にした者が撃たれた部屋     ${pct(acc.doubtRooms, acc.rooms)}`);
+  console.log(`  「これは罠だ」型 ${acc.avoid.n}件　本当だった率 ${pct(acc.avoid.true, acc.avoid.n)}`);
+  for (const [role, v] of Object.entries(acc.avoid.byRole)) {
+    console.log(`    ${role.padEnd(8)} ${String(v.n).padStart(4)}件　本当 ${pct(v.true, v.n)}`);
+  }
   console.log('  撃たれた回数ごとの中身');
   for (const k of [...acc.byHits.keys()].sort((a, b) => a - b)) {
     const b = acc.byHits.get(k);

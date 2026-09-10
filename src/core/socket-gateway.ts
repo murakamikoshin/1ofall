@@ -42,7 +42,9 @@ export class SocketAdvisorGateway implements AdvisorGateway {
 
   openRound(briefing: RoundBriefing): void {
     this.currentRoundId = briefing.roundId;
-    this.volunteerIds.clear();
+    // 手を挙げたことは区画のあいだ持つ。毎部屋消すと、
+    // 直前の部屋で挙げた人しか次の抽選に乗らない
+    if (briefing.roomInSection === 0) this.volunteerIds.clear();
     this.partyPicks.clear();
     this.votes.clear();
     for (const l of this.roundListeners) l(briefing);
@@ -77,6 +79,21 @@ export class SocketAdvisorGateway implements AdvisorGateway {
 
   volunteers(): readonly string[] {
     return [...this.volunteerIds];
+  }
+
+  /**
+   * 発言枠の抽選の重み。
+   *
+   *   手を挙げた             ×4
+   *   枠外の賭けを当てている  当たり1つごとに ×1.15（上限 ×2）
+   *
+   * 確定枠にしないのが要点。手を挙げた人だけで埋めると、
+   * 挙げない人が永久に上がれない場になる。
+   */
+  slotWeight(id: string): number {
+    const rec = this.voteRecord(id);
+    const bet = Math.min(2, 1 + rec.hit * 0.15);
+    return (this.volunteerIds.has(id) ? 4 : 1) * bet;
   }
 
   /** 枠外の票。誰が何に入れたかは持つが、外へ出すのは集計だけ */

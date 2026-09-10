@@ -33,6 +33,13 @@ export interface RoundBriefing {
   /** 助言者ID → その人が知っていること */
   knowledge: ReadonlyMap<string, Knowledge>;
   deadlineAt: number;
+  /**
+   * 区画の何部屋目か（0始まり）と、区画の長さ。
+   * 嘘つきが「どこで裏切るか」を段取りとして持つために要る
+   * （casting.ts の liarIsHonest）。
+   */
+  roomInSection: number;
+  roomsPerSection: number;
 }
 
 export interface AdvisorGateway {
@@ -56,6 +63,14 @@ export interface AdvisorGateway {
   onRosterChange(listener: (roster: readonly AdvisorInfo[]) => void): Unsubscribe;
   /** 指名方式の立候補者 */
   volunteers(): readonly string[];
+  /**
+   * 発言枠の抽選の重み。1 が普通。
+   *
+   * 手を挙げた人と、枠外の賭けを当てている人を厚く引くために使う。
+   * 配信で発言できない99%から枠へ上がる道がこれ。
+   * 実装しない供給源（AI だけの場（NullGateway）など）は返さなくてよい。
+   */
+  slotWeight?(id: string): number;
   /**
    * 発言枠の外にいる人たちの投票。選択肢ID → 票数。
    *

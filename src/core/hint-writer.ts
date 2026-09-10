@@ -116,6 +116,14 @@ export interface WriteOptions {
   /** 嘘つきが本当のことを言って信用を作りにいく確率 */
   liarHonestyRate?: number;
   /**
+   * その部屋で本当のことを言うかどうかを外から決める。
+   *
+   * 渡すと確率を使わない。区画の前半をまとめて正直にするため
+   * （casting.ts の liarIsHonest）。毎部屋のコイン投げだと
+   * 「ずっと当たっていた奴が、ここぞで裏切る」が起こり得ない。
+   */
+  liarHonest?: boolean;
+  /**
    * 嘘つきが「迷ったふり」をする確率。
    * 外れ二つを挙げて「AかBのどっちか」と言う。
    * これが無いと、二つ挙げている人＝正直者、と機械的に決まってしまう。
@@ -132,12 +140,30 @@ export interface WriteOptions {
  */
 export function writeHint({
   choices, knowledge, rng, liarHonestyRate = 0.35, liarMimicRate = 0.25, voice = DEFAULT_VOICE,
+  liarHonest,
 }: WriteOptions): string {
+  const beHonest = (): boolean => (liarHonest === undefined ? rng() < liarHonestyRate : liarHonest);
 
   if (knowledge.kind === 'liar') {
     const wrong = choices.filter((c) => c.id !== knowledge.correct);
-    if (rng() < liarHonestyRate) {
-      // 信用を作る回。正解を含む二択の形に紛れる
+    if (beHonest()) {
+      /**
+       * 信用を作る回。**外れを一つ潰すのも本当のこと。**
+       *
+       * これが無いと、警告（「◯◯は罠だ」）を出すのは裏切る側だけになる。
+       * 崖っぷちは正直者が一人しかいないので、実測で
+       * **警告の 100% が正解を指していた**（＝罠だと言われた扉が必ず正解）。
+       * 「警告は裏返して読め」が万能手になっていた。
+       *
+       * 潰すのは罠以外の外れ。罠を潰すと嘘つき側の狙いが崩れる。
+       */
+      const others = wrong.filter((c) => c.id !== knowledge.trap);
+      if (others.length && rng() < 0.4) {
+        const pick = others[Math.floor(rng() * others.length)] as Choice;
+        const label = localized(pick.label);
+        return trySh(strings().hints.avoid, label, rng, voice.seat) ?? `${label}はだめだ`;
+      }
+      // 正解を含む二択の形に紛れる
       const decoy = wrong[Math.floor(rng() * wrong.length)];
       const a = labelOf(choices, knowledge.correct);
       const b = decoy ? localized(decoy.label) : '';
@@ -167,7 +193,7 @@ export function writeHint({
   if (knowledge.kind === 'trapper') {
     // 罠しか知らない。罠へ誘うか、罠を避けろと言って信用を作るか
     const label = labelOf(choices, knowledge.trap);
-    if (rng() < liarHonestyRate) {
+    if (beHonest()) {
       // 本当のことを言う回。罠を避けろ、は真実なので記録が良くなる
       return trySh(strings().hints.avoid, label, rng, voice.seat) ?? `${label}はだめだ`;
     }

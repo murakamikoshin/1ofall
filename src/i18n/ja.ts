@@ -197,6 +197,7 @@ export const ja = {
     opened: 'ひらかれた',
     volunteer: '立候補する',
     volunteered: '立候補中',
+    volunteerNote: '手を挙げた人は次の区画で選ばれやすい。賭けを当てているとさらに',
     silenced: '黙らされた。もう声は届かない',
   },
 

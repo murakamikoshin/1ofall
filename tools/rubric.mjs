@@ -4,7 +4,9 @@
  * 実際の10人に聞けないので、これまでの検証で「面白くない」と分かった症状を
  * そのまま裏返して基準にした。全部を同時に満たすまで回す。
  *
- *  1. 決断率        一目で決まらない部屋が半分以上あるか
+ *  1. 決断率        一目で決まって、しかもそれが当たる部屋が半分未満か
+ *                  （票が集中していても集中先が罠なら、それは決まっていない。
+ *                   むしろ一番面白い部屋なので、決まった側に数えない）
  *  2. 群れの罠率     票が集まった選択肢が外れであることが1割以上あるか
  *  3. 腕の差        素朴な打ち手と、読める打ち手の差が8pt以上あるか
  *  4. 生存率        読める打ち手で 72〜85%
@@ -33,12 +35,14 @@ const pick = (a) => a[Math.floor(rng() * a.length)];
 const ADV = Array.from({ length: 12 }, (_, i) => ({ id: `ai_${i}`, name: `a${i}`, kind: 'ai' }));
 const HEDGE = C.strings().hints.hedgePattern;
 const AVOID = C.strings().hints.avoidPattern;
-// 人を指す率。0 にすると助言は全部「扉について」に戻る（A/B用）
-const NAMECALL = process.env.NAMECALL === undefined ? null : Number(process.env.NAMECALL);
-const rateFor = (mode) => (NAMECALL === null ? mode.nameCall ?? 0 : NAMECALL);
-// 名指しを「文面の代わり」ではなく別の道で送る場合の率。
-// 扉についての助言は減らないので、情報の総量が落ちない
-const POINT = Number(process.env.POINT ?? 0);
+/**
+ * 人を指す率。**既定はモードの設定そのまま**（src/core/limits.ts の nameCall）。
+ * ここを 0 に固定していたので、実装されている遊びとは別のものを測っていた。
+ * POINT=0 で名指しの無い形と比べられる。
+ */
+const pointFor = (mode) => (process.env.POINT === undefined ? mode.nameCall ?? 0 : Number(process.env.POINT));
+// SCHED=0 で、裏切りの段取りを外した昔の形（毎部屋のコイン投げ）と比べられる
+const SCHED = process.env.SCHED !== '0';
 const SEENSHOTS = { n: 0 };
 // 撃たれた者をどれだけ信じるか。振ってから決める
 const BOOST = Number(process.env.BOOST ?? 0.9);
@@ -46,23 +50,24 @@ const BOOST_MAX = Number(process.env.BOOST_MAX ?? 2.6);
 if (process.env.DEBUG) process.on('exit', () => console.error(`[dbg] 読み手に届いた指し ${SEENSHOTS.n}`));
 
 /** 一部屋ぶん、先に喋った者を積みながら書く */
-function writeRound(ids, room, kn, mode) {
+function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6) {
   const said = [];
   const texts = [];
   for (const id of ids) {
     const text = C.writeHint({
       choices: room.choices, knowledge: kn.get(id), rng,
       liarHonestyRate: mode.honesty(C.liarBias(id)), liarMimicRate: mode.mimic, voice: C.voiceOf(id),
-      said: [...said], nameCallRate: rateFor(mode),
+      liarHonest: SCHED ? rng() < C.liarHonestyAt(id, roomInSection, roomsPer) : undefined,
     });
     said.push({ id, name: nameOf(id), text });
     texts.push(text);
   }
   // 別の道で指す。文面はそのまま扉の話なので、指しても情報は減らない
   const shots = [];
-  if (POINT > 0) {
+  const point = pointFor(mode);
+  if (point > 0) {
     for (const id of ids) {
-      if (rng() >= POINT) continue;
+      if (rng() >= point) continue;
       const call = C.chooseCall(kn.get(id), room.choices, said.filter((s) => s.id !== id), rng);
       if (call) shots.push({ from: id, to: call.id, doubt: call.doubt });
     }
@@ -183,6 +188,33 @@ function shotRead({ labels, rows, own, shots }, sign) {
 }
 
 const REST = {
+  /**
+   * 「これは罠だ」を裏返して読む。
+   *
+   * 崖っぷちは嘘つきが多数なので、「◯◯は罠だ」の大半は嘘、
+   * つまり◯◯が正解、という理屈になる。実際に一周書き出したら、
+   * 記録 正5 嘘0 の一人が押した扉を、二人が「罠だ」と言って潰していた
+   * （そしてその扉が正解だった）。理屈が通るかを測る。
+   */
+  '罠だと言われた扉を採る': ({ labels, rows, own, shots }) => {
+    const called = new Map();
+    for (const sh of shots ?? []) called.set(sh.to, (called.get(sh.to) ?? 0) + (sh.doubt ? 1 : -0.5));
+    const s = new Map(labels.map((c) => [c.id, 0]));
+    for (const id of own ?? []) s.set(id, (s.get(id) ?? 0) + 2.5);
+    for (const r of rows) {
+      const net = called.get(r.id) ?? 0;
+      const w = ((r.rec.hit + 1) / (r.rec.hit + r.rec.miss + 2)) * Math.max(0.2, Math.min(2.6, 1 + net * 0.9));
+      const t = labels.filter((c) => r.text.includes(c.label));
+      if (!t.length) continue;
+      let rest = r.text;
+      for (const c of t) rest = rest.split(c.label).join('　');
+      // 罠だと言われたほうを採る。信用の低い者が言ったほど強く採る
+      if (AVOID.test(rest)) { for (const c of t) s.set(c.id, s.get(c.id) + (1.2 - w)); continue; }
+      const hedging = t.length >= 2 || HEDGE.test(rest);
+      for (const c of t) s.set(c.id, s.get(c.id) + w * (hedging ? 1.25 : 0.8));
+    }
+    return top(s);
+  },
   '撃たれた者を疑う': (a) => coreRead(a, 'down'),
   '撃たれた者を信じる': (a) => coreRead(a, 'up'),
   '票が集まりすぎたものを避ける': ({ labels, rows }) => {
@@ -248,7 +280,7 @@ Object.assign(PLAYERS, REST);
 
 const top = (s) => { const m = Math.max(...s.values()); return pick([...s].filter(([, v]) => v === m).map(([id]) => id)); };
 
-function playSection(slots, mix, mode, players, acc) {
+function playSection(slots, mix, mode, players, acc, per) {
   const speakerIds = C.castSpeakers({ advisors: ADV, slots, mode: 'lottery', rng });
   const liarIds = mode.brink
     ? speakerIds.filter((_, i) => i !== Math.floor(rng() * speakerIds.length))
@@ -258,12 +290,12 @@ function playSection(slots, mix, mode, players, acc) {
   // 区画を通した撃たれ方。顔ぶれは変わらないので積める
   const shotHist = new Map();
 
-  const PER = mode.rooms ?? C.RUN.roomsPerSection;
+  const PER = per ?? mode.rooms ?? C.RUN.roomsPerSection;
   for (let r = 0; r < PER; r++) {
     const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
     const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
     const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
-    const texts = writeRound(speakerIds, room, kn, mode);
+    const texts = writeRound(speakerIds, room, kn, mode, r, PER);
 
     // 統計：票の集まり方
     if (acc) {
@@ -312,9 +344,11 @@ function pickToSilence(ids, rec) {
 function fullRun(mode, player) {
   const LIVES = mode.lives ?? C.RUN.lives;
   const SECS = mode.sections ?? C.RUN.sections;
-  const PER = mode.rooms ?? C.RUN.roomsPerSection;
+  // 区画ごとに部屋数が違う（奥が短い）。本体と同じ形で回す
+  const perOf = (i) => mode.roomsBySection?.[i] ?? mode.rooms ?? C.RUN.roomsPerSection;
   let lives = LIVES, section = 0, attempts = 0;
   while (lives > 0 && section < SECS) {
+    const PER = perOf(section);
     const slots = mode.slots ?? C.RUN.slotsBySection[section];
     const mix = C.RUN.knowledgeBySection[section];
     const speakerIds = C.castSpeakers({ advisors: ADV, slots, mode: 'lottery', rng });
@@ -330,7 +364,7 @@ function fullRun(mode, player) {
       const live = speakerIds.filter((id) => !muted.has(id));
       const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds: live, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
       const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
-      const texts = writeRound(live, room, kn, mode);
+      const texts = writeRound(live, room, kn, mode, done, PER);
       const rows = live.map((id, i) => ({ id, text: texts[i], rec: rec.get(id) ?? { hit: 0, miss: 0 } }));
       const own = mode.ownCandidates
         ? C.dealOwnKnowledge(room.choices, room.correct, mode.ownCandidates, rng)
@@ -362,11 +396,12 @@ export async function evaluate(modeName, mode, quiet) {
   const totals = new Map(players.map((p) => [p, 0]));
   let roomsPer = 0;
   const T = 2500;
-  const PER = mode.rooms ?? C.RUN.roomsPerSection;
+  const perOf = (i) => mode.roomsBySection?.[i] ?? mode.rooms ?? C.RUN.roomsPerSection;
   for (const [i, slots] of (mode.slots ? [mode.slots] : C.RUN.slotsBySection).entries()) {
     const mix = C.RUN.knowledgeBySection[mode.slots ? 0 : i];
+    const PER = perOf(mode.slots ? 0 : i);
     for (let t = 0; t < T; t++) {
-      const a = playSection(slots, mix, mode, players, acc);
+      const a = playSection(slots, mix, mode, players, acc, PER);
       for (const p of players) totals.set(p, totals.get(p) + a.get(p));
     }
     roomsPer += T * PER;
@@ -389,7 +424,9 @@ export async function evaluate(modeName, mode, quiet) {
   const liveRate = (1 - deaths / att) * 100;
 
   const m = {
-    決断率: (1 - acc.runaway / acc.rooms) * 100,
+    // 票が集中していて、かつ集中先が正解だった部屋＝「一目で決まる部屋」。
+    // 集中先が罠なら、従うと死ぬので決まっていない
+    決断率: (1 - (acc.runaway - acc.crowdTrap) / acc.rooms) * 100,
     群れの罠率: acc.runaway ? acc.crowdTrap / acc.runaway * 100 : 0,
     腕の差: liveRate - rate['数えるだけ'],
     生存率: liveRate,
@@ -410,6 +447,8 @@ export async function evaluate(modeName, mode, quiet) {
     for (const k of Object.keys(m)) {
       console.log(`    ${pass[k] ? '○' : '×'} ${k.padEnd(10)} ${m[k].toFixed(1)}${fmt[k]}`);
     }
+    // 参考。合否は付けない（票が集中すること自体は良し悪しではない）
+    console.log(`      参考  票の集中率 ${((acc.runaway / acc.rooms) * 100).toFixed(1)}%`);
     console.log(`    → ${Object.values(pass).filter(Boolean).length} / ${Object.keys(pass).length} 項目`);
   }
   return { m, pass, rate, bestName };
@@ -423,12 +462,13 @@ if ((process.argv[1] ?? '').endsWith('rubric.mjs')) {
   const brk = C.MODES.brink;
   await evaluate('通常', {
     honesty: (b) => Math.max(0.05, Math.min(0.5, std.liarHonesty * b)),
-    mimic: std.liarMimic, nameCall: std.nameCall,
+    mimic: std.liarMimic, nameCall: std.nameCall, baseHonesty: std.liarHonesty,
+    roomsBySection: std.roomsBySection,
   });
   await evaluate('崖っぷち', {
     brink: true, loneKnows: true, slots: brk.slotsBySection[0],
     rooms: brk.roomsPerSection, lives: brk.lives, sections: brk.sections,
     honesty: (b) => Math.max(0.05, Math.min(0.5, brk.liarHonesty * b)),
-    mimic: brk.liarMimic, nameCall: brk.nameCall,
+    mimic: brk.liarMimic, nameCall: brk.nameCall, baseHonesty: brk.liarHonesty,
   });
 }

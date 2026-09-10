@@ -147,7 +147,7 @@ export class RemoteGame implements GameHandle {
       sectionIndex: view.sectionIndex,
       sectionCount: view.sectionCount,
       clearedInSection: view.totalCleared % Math.max(1, view.totalRooms / view.sectionCount),
-      roomsPerSection: Math.round(view.totalRooms / Math.max(1, view.sectionCount)),
+      roomsPerSection: view.roomsPerSection,
       totalCleared: view.totalCleared,
       totalRooms: view.totalRooms,
       selectionMode: 'lottery',

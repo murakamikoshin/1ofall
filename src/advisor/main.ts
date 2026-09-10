@@ -54,6 +54,8 @@ export interface AdvisorView {
   spoke?: boolean;
   /** 自分のID。場に並ぶ言葉のどれが自分のものかを見分けるため */
   myId?: string;
+  /** 手を挙げているか。区画のあいだ続く */
+  volunteered?: boolean;
 }
 
 export interface AdvisorConnection {
@@ -533,13 +535,19 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
       : strings().advisor.notSpeakingNote;
     locked.append(lockedTitle, lockedNote);
     const volunteer = el('button', 'primary');
-    volunteer.textContent = strings().advisor.volunteer;
+    const up = view.volunteered === true;
+    volunteer.textContent = up ? strings().advisor.volunteered : strings().advisor.volunteer;
+    volunteer.disabled = up;
     volunteer.addEventListener('click', () => {
       connection.volunteer(view.roundId);
       volunteer.disabled = true;
       volunteer.textContent = strings().advisor.volunteered;
     });
-    host.append(locked, volunteer);
+    // 何が起きるのかを書く。押しても何も起きないボタンだったので、
+    // 「効く」と分かる形で出す
+    const note = el('p', 'compose-veil');
+    note.textContent = strings().advisor.volunteerNote;
+    host.append(locked, volunteer, note);
     return;
   }
 

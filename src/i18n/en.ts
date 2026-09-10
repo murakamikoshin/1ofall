@@ -190,6 +190,7 @@ export const en: Strings = {
     opened: 'Read',
     volunteer: 'Volunteer',
     volunteered: 'Volunteering',
+    volunteerNote: 'Hands up get picked more often next section. Winning bets help too.',
     silenced: 'You were silenced. Your voice no longer reaches',
   },
 

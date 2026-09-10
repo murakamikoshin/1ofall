@@ -117,6 +117,11 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     return dedupeNames([...humans, ...taken, ...fill]);
   }
 
+  /** 抽選の重み。人間側だけが持つ（AI は普通の重み） */
+  slotWeight(id: string): number {
+    return this.human?.slotWeight?.(id) ?? 1;
+  }
+
   /** いま何人が人間か。表に出す用ではなく、運用の記録用 */
   humanCount(): number {
     return this.human?.roster().length ?? 0;

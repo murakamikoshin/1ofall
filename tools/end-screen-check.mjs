@@ -26,13 +26,20 @@ for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['崖っぷち', '
     if (await p.locator('.end-screen').count()) break;
     const n = await p.locator('.choice:not([disabled])').count();
     if (!n) { await wait(150); continue; }
-    const room = (await p.locator('.room-count').textContent().catch(() => '')) ?? '';
+    // 部屋の番号だけで見分けると、死んで区画の頭へ戻ったときに
+    // 前と同じ文字列になり、次の部屋が来ているのに12秒待ち続ける。
+    // 命が増えたぶん死ぬ回数も増えたので、そのまま検査が遅くなっていた
+    const key = await p.evaluate(() => {
+      const t = (s) => (document.querySelector(s)?.textContent ?? '').trim();
+      return `${t('.room-count')}|${t('.prompt')}`;
+    });
     await p.locator('.choice:not([disabled])').nth(Math.floor(Math.random() * n)).click();
     for (let t = 0; t < 120; t++) {
       const moved = await p.evaluate((prev) => {
-        const now = (document.querySelector('.room-count')?.textContent ?? '').trim();
-        return document.querySelectorAll('.end-screen').length > 0 || (now !== '' && now !== prev.trim());
-      }, room);
+        const t2 = (s) => (document.querySelector(s)?.textContent ?? '').trim();
+        const now = `${t2('.room-count')}|${t2('.prompt')}`;
+        return document.querySelectorAll('.end-screen').length > 0 || (t2('.room-count') !== '' && now !== prev);
+      }, key);
       if (moved) break;
       await wait(120);
     }

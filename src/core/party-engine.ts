@@ -5,7 +5,7 @@ import {
   checkHint, createHintGuard, createReportBook, fileReport, resetGuard, wasTruthful,
   type HintGuardState, type ReportBook,
 } from './moderation';
-import { castLiars, dealKnowledge } from './casting';
+import { castLiars, dealKnowledge, liarHonestyAt } from './casting';
 import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
 import { liarBias } from './casting';
@@ -520,6 +520,7 @@ export class PartyEngine {
         liarHonestyRate: Math.max(0.05, Math.min(0.5, this.mode.liarHonesty * liarBias(id))),
         liarMimicRate: this.mode.liarMimic,
         voice: { ...voice, seat: voice.seat + nudge },
+        liarHonest: this.honestNow(id),
       });
     };
 
@@ -535,6 +536,24 @@ export class PartyEngine {
     // 同じ文面が並ぶと人ではなく機械に見える
     return unique(written, write).map((h) => ({ memberId: h.id, text: h.text }));
   }
+
+  /**
+   * その部屋で、この裏切り者は本当のことを言うか。
+   * 区画の前半をまとめて正直にして、「ここぞで裏切る」を起こす
+   */
+  private honestNow(id: string): boolean {
+    // 一部屋につき一人一度だけ引く。文面と名指しで別々に引くと噛み合わない
+    const key = `${this.roomsDone}|${id}`;
+    let v = this.honestRolls.get(key);
+    if (v === undefined) {
+      const inSection = this.roomsDone % this.mode.roomsPerSection;
+      v = this.rng() < liarHonestyAt(id, inSection, this.mode.roomsPerSection);
+      this.honestRolls.set(key, v);
+    }
+    return v;
+  }
+
+  private honestRolls = new Map<string, boolean>();
 
   /**
    * AI の仲間が誰を指すか。扉について言う口とは別なので、
@@ -555,7 +574,12 @@ export class PartyEngine {
       const knowledge = this.knowledge.get(member.id);
       if (!knowledge) continue;
       if (this.rng() >= this.mode.nameCall) continue;
-      const call = chooseCall(knowledge, round.room.choices, said.filter((s) => s.id !== member.id && s.text), this.rng);
+      // 信用を作っている最中の裏切り者は、仲間と同じ振る舞いをする
+      const acting =
+        knowledge.kind === 'trapper' && this.honestNow(member.id)
+          ? ({ kind: 'doomed' as const, doomed: knowledge.trap })
+          : knowledge;
+      const call = chooseCall(acting, round.room.choices, said.filter((s) => s.id !== member.id && s.text), this.rng);
       if (call) out.push({ memberId: member.id, targetId: call.id, doubt: call.doubt });
     }
     return out;

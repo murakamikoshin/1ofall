@@ -47,6 +47,11 @@ export interface SpeakerInput {
   mode: SelectionMode;
   volunteers?: readonly string[];
   nominated?: readonly string[];
+  /**
+   * 抽選の重み。手を挙げた人・賭けを当てている人を厚く引くために使う。
+   * 無ければ均等に引く
+   */
+  weight?: ((id: string) => number) | undefined;
   rng: Rng;
 }
 
@@ -69,7 +74,49 @@ export function castSpeakers(input: SpeakerInput): readonly string[] {
     }
     return chosen;
   }
-  return pickSome(ids, slots, rng);
+  /**
+   * 抽選。ただし**手を挙げた人を厚く引く。**
+   *
+   * ここまで `立候補する` の押し心地は嘘だった。指名方式のときだけ
+   * volunteers を見ていて、既定の抽選では一切見ていなかったので、
+   * **押しても何も起きないボタン**だった。配信で発言できない99%に
+   * 渡してある手が二つ（賭けと立候補）あって、片方が死んでいた。
+   *
+   * 確定枠にはしない。手を挙げた人だけで埋めると、
+   * 「見ているだけの人」が永久に上がれなくなる（挙げるのは一部）。
+   * 重みで効かせて、挙げていない人にも席が回る。
+   */
+  const weight = input.weight;
+  if (!weight) return pickSome(ids, slots, rng);
+  return drawWeighted(ids, slots, weight, rng);
+}
+
+/**
+ * 重み付きの抽選（重複なし）。
+ * 重みは 0 より大きい値。大きいほど選ばれやすい。
+ */
+function drawWeighted(
+  ids: readonly string[],
+  count: number,
+  weight: (id: string) => number,
+  rng: Rng,
+): string[] {
+  const pool = [...ids];
+  const out: string[] = [];
+  const n = Math.max(0, Math.min(count, pool.length));
+  for (let k = 0; k < n; k++) {
+    let total = 0;
+    for (const id of pool) total += Math.max(0.01, weight(id));
+    let roll = rng() * total;
+    let picked = pool.length - 1;
+    for (let i = 0; i < pool.length; i++) {
+      roll -= Math.max(0.01, weight(pool[i] as string));
+      if (roll <= 0) { picked = i; break; }
+    }
+    out.push(pool[picked] as string);
+    pool.splice(picked, 1);
+  }
+  return out;
 }
 
 /**
@@ -94,6 +141,54 @@ export function castLiars(
     return speakerIds.filter((id) => id !== spared);
   }
   return drawLiars(speakerIds, liarCountFor(speakerIds.length), rng);
+}
+
+/**
+ * 区画のどこで裏切るか。**人ごとに決まっていて、区画のあいだ変わらない。**
+ *
+ * これまで嘘つきの正直さは毎部屋のコイン投げだった。平均すると同じでも、
+ * 投げ続けると記録は「だいたい半分外す」に落ち着き、4部屋目には
+ * 嘘つきと協力者の記録が割れきってしまう。一周書き出して読んだら、
+ * 後半は一番上に乗るだけになっていた（正7 嘘0 と 正1 嘘5 が並ぶ）。
+ * 実測でも、後半は**安全になるだけで深くならなかった**
+ * （1部屋目 生存 71.9% → 6部屋目 84.4%、読みしろはどちらも 6pt 前後で横ばい）。
+ * 死ぬのは霧の中の前半で、読みが積まれた後半は消化試合。順番が逆だった。
+ *
+ * 同じ正直さを**まとめて前に置く。** 裏切る点までは本当のことを言い、
+ * そこから先は罠へ誘う。総量は変えないので均衡は動かないが、
+ * 「ずっと当たっていた奴に、ここぞで殺される」が起こり得るようになる。
+ *
+ * 裏切る点は id から決まる。早い者が多く、遅い者は少ない（t の二乗）。
+ * **長い仕込みは稀であるべき**で、毎回起きたら「後半は誰も信じない」で済む。
+ */
+export function betrayAt(advisorId: string, rooms: number): number {
+  const bias = liarBias(advisorId);
+  // liarBias は 0.35〜2.4 に散る。0〜1 に均す
+  const t = Math.min(1, Math.max(0, (bias - 0.35) / 2.05));
+  // 二乗で前に寄せる。平均すると区画の3分の1が「信用を作る側」になる
+  return Math.round(t * t * rooms);
+}
+
+/**
+ * 裏切る前と後の正直さ。
+ *
+ * **どちらも振り切らせない。** 前を 1.0 にすると区画の頭が
+ * 全員正直な部屋になり、数えるだけで 89.6% 通ってしまった。
+ * 後を 0 にすると後半が総崩れで、崖っぷちの生存が 54% まで落ちた。
+ * 0.70 / 0.06 だと区画を通した平均が、これまでの実効値とほぼ同じになる。
+ */
+const HONEST_BEFORE = 0.7;
+const HONEST_AFTER = 0.12;
+
+/*
+ * 0.70 / 0.06 だと後半が総崩れで、通常の踏破率が 1.0% まで落ちた
+ * （終わりの画面に辿り着けない）。0.12 に緩めて、区画の長さと命で釣り合わせた。
+ * このとき通常の腕の差は 14.9pt → 12.7pt に下がるが、基準（8pt）の1.5倍はある。
+ */
+
+/** その部屋で、この嘘つきが本当のことを言う確率 */
+export function liarHonestyAt(advisorId: string, roomInSection: number, rooms: number): number {
+  return roomInSection < betrayAt(advisorId, rooms) ? HONEST_BEFORE : HONEST_AFTER;
 }
 
 /**

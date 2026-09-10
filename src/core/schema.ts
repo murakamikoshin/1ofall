@@ -186,6 +186,11 @@ export const ChallengerViewSchema = z.object({
   sectionCount: z.number().int(),
   totalCleared: z.number().int(),
   totalRooms: z.number().int(),
+  /**
+   * いまの区画の部屋数。区画ごとに違う（奥だけ短い）ので、
+   * 全体÷区画数では出せない
+   */
+  roomsPerSection: z.number().int(),
   advisors: z.array(AdvisorInfoSchema),
   mutedIds: z.array(AdvisorIdSchema),
   /** 黙らせて当たった相手。挑戦者が自分で得た情報なので送ってよい */
@@ -330,6 +335,11 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
      */
     knowledge: KnowledgeSchema.optional(),
     isSpeaker: z.boolean().optional(),
+    /**
+     * 区画の何部屋目か（0始まり）。
+     * 手を挙げた扱いが区画のあいだ続くので、いつ切れるかを画面が知るために要る
+     */
+    roomInSection: z.number().int().nonnegative().optional(),
     /**
      * 受け取る本人のID。
      * 場に並ぶ言葉のどれが自分のものかを見分けるために要る

@@ -509,6 +509,7 @@ export class RoomSession {
         sectionCount: state.sectionCount,
         totalCleared: state.totalCleared,
         totalRooms: state.totalRooms,
+        roomsPerSection: state.roomsPerSection,
         advisors: [...state.advisors],
         mutedIds: [...state.mutedIds],
         confirmedLiars: [...state.confirmedLiars],
@@ -605,6 +606,8 @@ export class RoomSession {
       ...base,
       ...(knowledge ? { knowledge } : {}),
       isSpeaker: briefing.casting.speakerIds.includes(connectionId),
+      // 手を挙げた扱いが切れるのを画面側でも合わせるため
+      roomInSection: briefing.roomInSection,
       // 場に並ぶ言葉のどれが自分のものかを見分けるため
       you: connectionId,
       ...(this.humans.voteOf(connectionId) ? { myVote: this.humans.voteOf(connectionId) as string } : {}),

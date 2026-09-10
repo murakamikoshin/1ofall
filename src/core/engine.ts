@@ -117,6 +117,8 @@ export interface EngineConfig {
   lives?: number;
   sections?: number;
   roomsPerSection?: number;
+  /** 区画ごとの部屋数。無ければ roomsPerSection を全区画に使う */
+  roomsBySection?: readonly number[] | undefined;
   baseTimeMs?: number;
   penaltyTimeMs?: number;
   seed?: number;
@@ -183,7 +185,7 @@ export class GameEngine {
   private readonly now: () => number;
   private readonly rng: Rng;
   private readonly cfg: Required<
-    Pick<EngineConfig, 'lives' | 'sections' | 'roomsPerSection' | 'baseTimeMs' | 'penaltyTimeMs'>
+    Pick<EngineConfig, 'lives' | 'sections' | 'roomsPerSection' | 'roomsBySection' | 'baseTimeMs' | 'penaltyTimeMs'>
   >;
   private readonly mode: ModeConfig;
 
@@ -241,6 +243,7 @@ export class GameEngine {
       lives: config.lives ?? this.mode.lives,
       sections: config.sections ?? this.mode.sections,
       roomsPerSection: config.roomsPerSection ?? this.mode.roomsPerSection,
+      roomsBySection: config.roomsBySection ?? this.mode.roomsBySection,
       baseTimeMs: config.baseTimeMs ?? RUN.baseTimeMs,
       penaltyTimeMs: config.penaltyTimeMs ?? RUN.penaltyTimeMs,
     };
@@ -280,9 +283,9 @@ export class GameEngine {
       sectionIndex: this.sectionIndex,
       sectionCount: this.cfg.sections,
       clearedInSection: this.clearedInSection,
-      roomsPerSection: this.cfg.roomsPerSection,
+      roomsPerSection: this.roomsFor(this.sectionIndex),
       totalCleared: this.totalCleared,
-      totalRooms: this.cfg.sections * this.cfg.roomsPerSection,
+      totalRooms: this.totalRooms(),
       selectionMode: this.selectionMode,
       advisors: this.advisors,
       mutedIds: [...this.muted],
@@ -480,6 +483,20 @@ export class GameEngine {
    * これがあるから「ずっと本当のことを言って、ここぞで裏切る」が起こる。
    * 区画が変わると顔ぶれごと入れ替わり、積んだ読みは一度捨てられる。
    */
+  /**
+   * この区画の部屋数。区画ごとに違えられる（奥を短くしてある）。
+   * 配列が足りなければ roomsPerSection で埋める
+   */
+  private roomsFor(sectionIndex: number): number {
+    return this.cfg.roomsBySection?.[sectionIndex] ?? this.cfg.roomsPerSection;
+  }
+
+  private totalRooms(): number {
+    let n = 0;
+    for (let i = 0; i < this.cfg.sections; i++) n += this.roomsFor(i);
+    return n;
+  }
+
   private castingForSection(eligible: readonly AdvisorInfo[]): Casting {
     const current = this.sectionCasting;
     if (!current || this.sectionCastingIndex !== this.sectionIndex) {
@@ -490,6 +507,9 @@ export class GameEngine {
         mode: this.selectionMode,
         volunteers: this.gateway.volunteers(),
         nominated: this.nominated,
+        // 手を挙げた人・賭けを当てている人を厚く引く。
+        // 配信で発言できない99%から枠へ上がる道
+        weight: this.gateway.slotWeight ? (id: string) => this.gateway.slotWeight?.(id) ?? 1 : undefined,
         rng: this.rng,
       });
       this.nominated = [];
@@ -633,6 +653,8 @@ export class GameEngine {
       roundId, room: fullRoom,
       casting: { speakerIds: speakingIds, liarIds: casting.liarIds },
       knowledge, deadlineAt,
+      roomInSection: this.clearedInSection,
+      roomsPerSection: this.roomsFor(this.sectionIndex),
     });
     this.emit();
   }
@@ -849,7 +871,7 @@ export class GameEngine {
     if (verdict.survived) {
       this.clearedInSection += 1;
       this.totalCleared += 1;
-      if (this.clearedInSection >= this.cfg.roomsPerSection) {
+      if (this.clearedInSection >= this.roomsFor(this.sectionIndex)) {
         this.sectionIndex += 1;
         this.clearedInSection = 0;
         this.sectionCasting = null; // 顔ぶれごと入れ替える
