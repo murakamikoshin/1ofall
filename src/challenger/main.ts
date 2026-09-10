@@ -760,8 +760,9 @@ function waitForParty(socket: WebSocket, status: HTMLElement): void {
       root: app!,
       source: new RemotePartySource(socket),
       onGuide: () => openPartyBriefing(),
-      // 同じ部屋のまま次の周へ。合言葉を入れ直させない
-      onAgainHere: () => socket.send(JSON.stringify({ t: 'challenger/start', mode: 'party', locale: currentLocale })),
+      // 客は次の周を始められない（開き直せるのは最初に繋いだ一人だけ）。
+      // 口を出しても断られるので、待っていると書いて、届いたら勝手に入る
+      waitsForHost: true,
       onExit: () => {
         partyBoard?.dispose();
         partyBoard = null;

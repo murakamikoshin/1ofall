@@ -141,6 +141,10 @@ export const ja = {
     retry: 'もう一度',
     retryHere: '同じ賭場でもう一度',
     leaveRoom: '賭場を閉じる',
+    // 部屋を開き直せるのは最初に繋いだ一人だけ。ほかの人は待つしかないので、
+    // 押しても効かない口を出さずに、待っていることを書く
+    waitingHost: '主が次の周を始めるのを待っている',
+    leaveHere: '賭場を出る',
     reveal: (names: string) => `嘘つきだったのは ${names}`,
     roundLiars: (names: string) => `嘘つきは ${names} だった`,
     followedCrowd: '一番多く名の挙がった道だった',

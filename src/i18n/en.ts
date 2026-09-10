@@ -137,6 +137,8 @@ export const en: Strings = {
     retry: 'Again',
     retryHere: 'Again, same room',
     leaveRoom: 'Close the room',
+    waitingHost: 'Waiting for the host to start the next run',
+    leaveHere: 'Leave the room',
     reveal: (names: string) => `The liars were ${names}`,
     roundLiars: (names: string) => `The liars were ${names}`,
     followedCrowd: 'It was the door the most voices named',

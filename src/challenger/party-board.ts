@@ -53,6 +53,15 @@ export interface PartyBoardOptions {
    * 6〜8人で遊ぶモードなので、入れ直しの手間は人数ぶんかかる。
    */
   onAgainHere?(): void;
+  /**
+   * 次の周を始められるのは部屋の主だけ。客はこれを立てる。
+   *
+   * 部屋を開き直せるのは最初に線を繋いだ一人（`challengerId`）で、
+   * 客が `challenger/start` を投げても黙って断られる。それでも客の画面に
+   * 「同じ賭場でもう一度」を出していたので、**押した客は終わりの画面を失い、
+   * 何も起きないまま止まっていた**。押せない口は出さず、待っていると書く。
+   */
+  waitsForHost?: boolean;
   /** HUD の「?」から手引きを開く */
   onGuide?(): void;
 }
@@ -68,6 +77,7 @@ export class PartyBoard {
   private readonly root: HTMLElement;
   private readonly onExit: () => void;
   private readonly onAgainHere: (() => void) | null;
+  private readonly waitsForHost: boolean;
 
   private roster = el('div', 'party-roster');
   private stage = el('main', 'stage grain vignette');
@@ -89,11 +99,14 @@ export class PartyBoard {
   /** この部屋で通報した相手。描き直しても消えないよう覚えておく */
   private reported = new Set<string>();
   private ended = false;
+  /** 乗せた終わりの画面。主が次の周を始めたら、自分で押していなくても下ろす */
+  private endScreen: HTMLElement | null = null;
 
   constructor(options: PartyBoardOptions) {
     this.root = options.root;
     this.onExit = options.onExit;
     this.onAgainHere = options.onAgainHere ?? null;
+    this.waitsForHost = options.waitsForHost ?? false;
     this.source = options.source;
 
     const lamp = el('div', 'lamp');
@@ -147,6 +160,12 @@ export class PartyBoard {
       }
       return;
     }
+    /*
+     * 終わりの画面が乗ったまま次の周が届くことがある（主が押した）。
+     * 下ろさないと、扉は DOM にあるのに客は終わった画面を見続ける。
+     * 押した本人は renderEnd の中で下ろしているので、ここは残りの全員ぶん。
+     */
+    if (this.ended) this.dropEnd();
     this.renderRoster(state);
 
     // 判定が立ったら演出を流す。誰が段を進めるかは供給源が決める
@@ -508,6 +527,7 @@ export class PartyBoard {
       }
     }
 
+    const tail: HTMLElement[] = [];
     const buttons: HTMLElement[] = [];
     if (this.onAgainHere) {
       const stay = document.createElement('button');
@@ -518,25 +538,47 @@ export class PartyBoard {
          * 盤面は作り直さず、終わりの画面を**上に重ねて**いる。
          * 下ろさないまま次の周が来ると、盤面が画面の裏に隠れたままになる。
          */
-        screen.remove();
-        this.ended = false;
+        this.dropEnd();
         this.onAgainHere?.();
       });
       buttons.push(stay);
+      tail.push(stay);
+    } else if (this.waitsForHost) {
+      // 客は待つ。主が始めれば render 側で勝手に下ろすので、押す口はいらない
+      const note = el('p', 'end-stat is-waiting');
+      note.textContent = T.verdict.waitingHost;
+      tail.push(note);
     }
 
     const again = document.createElement('button');
-    again.className = `end-action${this.onAgainHere ? ' is-quiet' : ''}`;
-    again.textContent = this.onAgainHere ? T.verdict.leaveRoom : T.verdict.retry;
+    // 主は賭場を閉じる。客は自分だけ出る。一人遊びは題名へ戻ってやり直す
+    const quiet = this.onAgainHere || this.waitsForHost;
+    again.className = `end-action${quiet ? ' is-quiet' : ''}`;
+    again.textContent = this.onAgainHere
+      ? T.verdict.leaveRoom
+      : this.waitsForHost ? T.verdict.leaveHere : T.verdict.retry;
     again.addEventListener('click', () => {
       this.dispose();
       this.onExit();
     });
     buttons.push(again);
+    tail.push(again);
 
-    screen.append(mark, stat, survivors, traitors, ...buttons);
+    screen.append(mark, stat, survivors, traitors, ...tail);
+    this.endScreen = screen;
     this.root.append(screen);
     buttons[0]?.focus();
+  }
+
+  /** 終わりの画面を下ろす。押した本人からも、主が始めたときからも通る */
+  private dropEnd(): void {
+    this.endScreen?.remove();
+    this.endScreen = null;
+    this.ended = false;
+    // 次の周は新しい roundId で来るが、断られて同じ周に戻ることもある。
+    // 覚えたままだと描き直さないので忘れる。
+    // playedRound は忘れない（忘れると、届き直した判定でもう一度死ぬ演出が流れる）
+    this.roundId = null;
   }
 
   /* ───────────────────────────── 時計と AI ───────────────────────────── */

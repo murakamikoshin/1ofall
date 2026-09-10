@@ -703,6 +703,22 @@
   letter-spacing: 0.16em;
 }
 
+/* 客が主を待っている一行。押す口の代わりに置くので、静かに息をさせる */
+.end-stat.is-waiting {
+  margin-top: 1.4rem;
+  letter-spacing: 0.14em;
+  animation: waiting-breath 2.8s ease-in-out infinite;
+}
+
+@keyframes waiting-breath {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .end-stat.is-waiting { animation: none; opacity: 0.75; }
+}
+
 /* ─────────────────────────── 賭場の待合 ─────────────────────────── */
 
 .lobby-heading {
