@@ -29,9 +29,16 @@ for (let i = 0; i < RUNS; i++) {
     await p.locator('.choice').nth(Math.floor(Math.random() * n)).click();
     picks++;
     await p.waitForFunction(
-      () => !!document.querySelector('.choice:not([disabled])') || !!document.querySelector('.end-screen'),
+      () => !!document.querySelector('.choice:not([disabled])')
+        || !!document.querySelector('.end-screen')
+        // 区画の切れ目の答え合わせ（16回目）。見ないと待ち続ける
+        || !!document.querySelector('.answer-veil'),
       null, { timeout: 20000 },
     );
+    if (await p.locator('.answer-veil').count()) {
+      await p.locator('.answer-go').click().catch(() => {});
+      await p.waitForTimeout(400);
+    }
     const nowRoom = parseInt((await p.locator('.room-count').textContent()) ?? '0', 10);
     if (nowRoom > roomNo) survived++;
   }

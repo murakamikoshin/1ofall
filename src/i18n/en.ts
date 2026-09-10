@@ -317,16 +317,22 @@ export const en: Strings = {
       (n: string) => `${n}'s the liar`,
       (n: string) => `${n} is wrong`,
       (n: string) => `Ignore ${n}`,
+      // 一部屋に何人も撃つ部屋がある。5種では使い切って重なる
+      (n: string) => `${n}'s words are lies`,
+      (n: string) => `Doubt ${n}`,
+      (n: string) => `${n} can't be trusted`,
     ],
     back: [
       (n: string) => `${n} is straight`,
       (n: string) => `Trust ${n}`,
       (n: string) => `${n} is right`,
       (n: string) => `Go with ${n}`,
+      (n: string) => `${n}'s words are true`,
+      (n: string) => `Bet on ${n}`,
     ],
     // テンプレートと必ず揃えること
-    doubtPattern: /is lying|don't trust|the liar|is wrong|^ignore |　ignore /i,
-    backPattern: /is straight|^trust |　trust |is right|go with/i,
+    doubtPattern: /is lying|don't trust|the liar|is wrong|^ignore |　ignore |are lies|^doubt |　doubt |can't be trusted/i,
+    backPattern: /is straight|^trust |　trust |is right|go with|are true|^bet on|　bet on/i,
     // テンプレートと必ず揃えること（冠詞を外したとき合わせ忘れて英語の記録が壊れた）
     avoidPattern: /\bnot\b|kills|stay off|is a trap|anything but|avoid|don't touch|leave .* alone/i,
     hedgePattern: /maybe|looks like|i think|feels like|either|down to|can't tell|or |perhaps|i'd guess/i,

@@ -103,6 +103,32 @@ for (let run = 1; run <= RUNS; run++) {
   let lastRoom = '';
   for (let guard = 0; guard < 400; guard++) {
     if (await p.locator('.end-screen').count()) break;
+
+    /*
+     * 区画の答え合わせ（16回目に足した段）。
+     *
+     * **この道具はここで止まっていた。** 紙が盤面を覆うので助言の数が
+     * 増えなくなり、「出そろった」と見なして空回りし、5部屋目——
+     * ちょうど区画の切れ目——で記録が終わっていた。
+     * 遊びの一部なので、送るだけでなく中身も書き出す。
+     */
+    if (await p.locator('.answer-veil').count()) {
+      const sheet = await p.evaluate(() => ({
+        head: (document.querySelector('.answer-heading')?.textContent ?? '').trim(),
+        score: (document.querySelector('.answer-score')?.textContent ?? '').trim(),
+        rows: [...document.querySelectorAll('.answer-row')].map((r) => ({
+          name: (r.querySelector('.answer-name')?.textContent ?? '').trim(),
+          role: (r.querySelector('.answer-role')?.textContent ?? '').trim(),
+          rec: (r.querySelector('.answer-record')?.textContent ?? '').trim(),
+        })),
+      }));
+      say(`\n  ▽ ${sheet.head}`);
+      for (const r of sheet.rows) say(`     ${r.role === '嘘つき' ? '●' : '○'} ${r.name}　${r.role}　${r.rec}`);
+      if (sheet.score) say(`     ${sheet.score}`);
+      await p.locator('.answer-go').click().catch(() => {});
+      await wait(300);
+      continue;
+    }
     if (!(await p.locator('.choice').count())) { await wait(120); continue; }
 
     // 助言が出そろうのを待つ（人間もそうする）。
@@ -208,7 +234,11 @@ for (let run = 1; run <= RUNS; run++) {
       const done = await p.evaluate((prev) => {
         const t = (s) => (document.querySelector(s)?.textContent ?? '').trim();
         const now = `${t('.room-count')}|${t('.prompt')}`;
-        return document.querySelectorAll('.end-screen').length > 0 || (t('.room-count') !== '' && now !== prev);
+        return document.querySelectorAll('.end-screen').length > 0
+          // 区画の切れ目では答え合わせが挟まる。部屋の名は変わらないので、
+          // これを見ないと14秒待って空振りする
+          || document.querySelectorAll('.answer-veil').length > 0
+          || (t('.room-count') !== '' && now !== prev);
       }, key);
       if (done) break;
       await wait(120);

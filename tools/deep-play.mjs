@@ -53,7 +53,14 @@ while (guard++ < 40) {
     return n && n.textContent && n.classList.contains('is-visible');
   }, null, { timeout: 15000 }).catch(() => {});
   console.log(`    判定 ${(await p.locator('.banner').textContent())?.trim()}`);
-  await p.waitForFunction(() => !!document.querySelector('.choice:not([disabled])') || !!document.querySelector('.end-screen'), null, { timeout: 25000 }).catch(() => {});
+  // 区画の切れ目では答え合わせが挟まる（16回目）。送らないと止まる
+  await p.waitForFunction(() => !!document.querySelector('.choice:not([disabled])')
+    || !!document.querySelector('.end-screen')
+    || !!document.querySelector('.answer-veil'), null, { timeout: 25000 }).catch(() => {});
+  if (await p.locator('.answer-veil').count()) {
+    await p.locator('.answer-go').click().catch(() => {});
+    await p.waitForTimeout(400);
+  }
 }
 if (await p.locator('.end-screen').count()) {
   console.log('\n=== 終了:', (await p.locator('.end-mark').textContent())?.trim(),

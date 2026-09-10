@@ -17,7 +17,14 @@ for (let i = 0; i < 8; i++) {
   console.log(`部屋${i + 1}: 表示 ${n} 通 / ヘッダ ${say} 人`);
   rooms++; shown += n; expected += 8;
   await p.locator('.choice').first().click();
-  await p.waitForFunction(() => !!document.querySelector('.choice:not([disabled])') || !!document.querySelector('.end-screen'), null, { timeout: 20000 }).catch(()=>{});
+  // 区画の切れ目の答え合わせを送る（16回目）。送らないと5部屋目で止まる
+  await p.waitForFunction(() => !!document.querySelector('.choice:not([disabled])')
+    || !!document.querySelector('.end-screen')
+    || !!document.querySelector('.answer-veil'), null, { timeout: 20000 }).catch(()=>{});
+  if (await p.locator('.answer-veil').count()) {
+    await p.locator('.answer-go').click().catch(()=>{});
+    await p.waitForTimeout(400);
+  }
   if (await p.locator('.end-screen').count()) break;
 }
 console.log(`\n平均 ${(shown / rooms).toFixed(1)} 通 / 発言枠 8 人 → 欠落 ${(8 - shown / rooms).toFixed(1)} 通`);

@@ -236,6 +236,8 @@ export class GameEngine {
   private nominated: string[] = [];
   private roundCounter = 0;
   private sectionAnswer: SectionAnswer | null = null;
+  /** この部屋で使った「人を指す言い方」。部屋ごとに捨てる */
+  private usedCallShapes = new Set<string>();
   /** この区画で扉について一言でも出した人 */
   private spokeInSection = new Set<string>();
   /** 前の区画で席にいたのに一言も出さなかった人。次の抽選で薄く引く */
@@ -748,6 +750,8 @@ export class GameEngine {
 
     const deadlineAt = this.now() + timeLimitMs;
     this.pausedAt = null;
+    // 撃つ言い方は部屋ごとに引き直す
+    this.usedCallShapes.clear();
     this.round = {
       roundId,
       room,
@@ -868,9 +872,21 @@ export class GameEngine {
       return;
     }
     const me = this.advisors.find((a) => a.id === advisorId);
+    /*
+     * 言い方は**この部屋でまだ使っていないものから**引く。
+     *
+     * 素朴に引いていたら、一部屋に「まめを信じるな」が二回並んだ（実測）。
+     * 撃つ一言はこの遊びで一番強い文なので、同じ文が二つ並ぶと
+     * 場が作り物に見える。使い切ったら全部から引き直す。
+     */
     const shapes = doubt ? strings().hints.doubt : strings().hints.back;
-    const shape = shapes[Math.floor(this.rng() * shapes.length)] ?? shapes[0];
+    const family = doubt ? 'd' : 'b';
+    const free = shapes.map((_, i) => i).filter((i) => !this.usedCallShapes.has(`${family}${i}`));
+    const pool = free.length > 0 ? free : shapes.map((_, i) => i);
+    const index = pool[Math.floor(this.rng() * pool.length)] ?? 0;
+    const shape = shapes[index];
     if (!shape) return;
+    this.usedCallShapes.add(`${family}${index}`);
     this.addAdvice(round, {
       advisorId,
       advisorName: me?.name ?? '',

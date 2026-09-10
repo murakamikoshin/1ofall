@@ -20,7 +20,7 @@ await build({
     export * from './src/core/ai-advisors'; export * from './src/core/limits';
     export * from './src/core/party-engine';
     export * from './src/core/name-calling';
-    export { setLocale, localized } from './src/i18n';`, resolveDir: root, loader: 'ts' },
+    export { setLocale, localized, strings } from './src/i18n';`, resolveDir: root, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent',
 });
 const C = await import(pathToFileURL(out).href);
@@ -44,6 +44,7 @@ for (const modeId of MODES) {
   let calls = 0, doors = 0, rooms = 0;
   let bothMouths = 0;
   let shooters = new Set();
+  let callRooms = 0, dupCallText = 0, dupCallShape = 0;
   let maxMark = 0;
   let marksAfter = 0;
 
@@ -64,6 +65,25 @@ for (const modeId of MODES) {
     for (const c of call) if (door.some((d) => d.advisorId === c.advisorId)) bothMouths++;
 
     for (const c of call) shooters.add(c.advisorId);
+    /*
+     * 一部屋の中で撃つ一言が重ならないこと。
+     *
+     * 素朴に引いていたら「まめを信じるな」が一部屋に二回並んだ（実測）。
+     * 5種から3人が引けば半分の部屋で重なる（4人なら8割）。
+     * 撃つ一言はこの遊びで一番強い文なので、同じ文が並ぶと場が作り物に見える。
+     */
+    // 言い方の数より多く撃つ部屋では、使い切るので重なってよい
+    if (call.length >= 2 && call.length <= C.strings().hints.doubt.length) {
+      callRooms++;
+      const texts = call.map((c) => c.text);
+      if (new Set(texts).size !== texts.length) dupCallText++;
+      const frames = call.map((c) => {
+        let t = c.text;
+        for (const sp of round.speakers) t = t.split(sp.name).join('＿');
+        return t;
+      });
+      if (new Set(frames).size !== frames.length) dupCallShape++;
+    }
     for (const a of round.advice) maxMark = Math.max(maxMark, a.record.hit + a.record.miss);
 
     // でたらめに選ぶと毎部屋死んで区画がやり直しになり、記録が積まれない。
@@ -86,6 +106,8 @@ for (const modeId of MODES) {
   void finalRecords;
   console.log(`\n【${modeId}】 ${rooms}部屋　扉について ${doors}件　名指し ${calls}件`);
   check(`${modeId}: AI が人を指す`, calls > 0, `${calls}件`);
+  check(`${modeId}: 同じ文が一部屋に並ばない`, dupCallText === 0, `${dupCallText}/${callRooms}部屋`);
+  check(`${modeId}: 同じ言い方が一部屋に並ばない`, dupCallShape === 0, `${dupCallShape}/${callRooms}部屋`);
   check(`${modeId}: 指しても扉の一言が残る（別の口）`, calls === 0 || bothMouths === calls, `${bothMouths}/${calls}`);
   check(`${modeId}: 区画のあいだに記録が積まれる`, maxMark >= 2, `最大 ${maxMark}`);
   void marksAfter;
