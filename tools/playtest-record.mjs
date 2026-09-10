@@ -101,6 +101,9 @@ for (let run = 1; run <= RUNS; run++) {
   let room = 0;
   let deaths = 0;
   let lastRoom = '';
+  /** 送った答え合わせ。生死を書いたあとに続けて書き出す */
+  let pendingSheet = null;
+
   for (let guard = 0; guard < 400; guard++) {
     if (await p.locator('.end-screen').count()) break;
 
@@ -122,9 +125,7 @@ for (let run = 1; run <= RUNS; run++) {
           rec: (r.querySelector('.answer-record')?.textContent ?? '').trim(),
         })),
       }));
-      say(`\n  ▽ ${sheet.head}`);
-      for (const r of sheet.rows) say(`     ${r.role === '嘘つき' ? '●' : '○'} ${r.name}　${r.role}　${r.rec}`);
-      if (sheet.score) say(`     ${sheet.score}`);
+      pendingSheet = sheet;
       await p.locator('.answer-go').click().catch(() => {});
       await wait(300);
       continue;
@@ -244,6 +245,34 @@ for (let run = 1; run <= RUNS; run++) {
       await wait(120);
     }
 
+    /*
+     * 区画の答え合わせは**命を読む前に**送る。
+     *
+     * 紙が乗っているあいだ盤面は描き直されないので、失った命の印が
+     * まだ付いていない。紙が出た部屋の生死をここで読むと、
+     * 死んだ回を「通った」と書いてしまう（実際にそう記録していた）。
+     */
+    if (await p.locator('.answer-veil').count()) {
+      const sheet = await p.evaluate(() => ({
+        head: (document.querySelector('.answer-heading')?.textContent ?? '').trim(),
+        score: (document.querySelector('.answer-score')?.textContent ?? '').trim(),
+        rows: [...document.querySelectorAll('.answer-row')].map((r) => ({
+          name: (r.querySelector('.answer-name')?.textContent ?? '').trim(),
+          role: (r.querySelector('.answer-role')?.textContent ?? '').trim(),
+          rec: (r.querySelector('.answer-record')?.textContent ?? '').trim(),
+        })),
+      }));
+      pendingSheet = sheet;
+      await p.locator('.answer-go').click().catch(() => {});
+      for (let t = 0; t < 60; t++) {
+        const ready = await p.evaluate(() => document.querySelectorAll('.answer-veil').length === 0
+          && (document.querySelectorAll('.choice').length > 0
+            || document.querySelectorAll('.end-screen').length > 0));
+        if (ready) break;
+        await wait(150);
+      }
+    }
+
     const outcome = await p.evaluate(() => {
       const txt = (el) => (el?.textContent ?? '').trim();
       return {
@@ -258,6 +287,14 @@ for (let run = 1; run <= RUNS; run++) {
       const lost = board.lives !== null && outcome.lives < board.lives;
       say(`     ${lost ? `✗ 死んだ（命 ${board.lives}→${outcome.lives}）` : '○ 通った'}`);
       if (lost) deaths++;
+    }
+    if (pendingSheet) {
+      say(`\n  ▽ ${pendingSheet.head}`);
+      for (const r of pendingSheet.rows) {
+        say(`     ${r.role === '嘘つき' ? '●' : '○'} ${r.name}　${r.role}　${r.rec}`);
+      }
+      if (pendingSheet.score) say(`     ${pendingSheet.score}`);
+      pendingSheet = null;
     }
     if (outcome.end) {
       say(`\n  ▼ ${outcome.endMark}`);
