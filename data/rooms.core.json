@@ -4105,6 +4105,856 @@
         "ja": "持ち上げた先が繋がっていた",
         "en": "It was attached to something"
       }
+    },
+    {
+      "id": "room_103",
+      "theme": "hide",
+      "prompt": {
+        "ja": "足音が近づく。どこに隠れる",
+        "en": "Footsteps coming. Where do you hide?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "樽の中",
+            "en": "In the barrel"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "天井裏",
+            "en": "Above the ceiling"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "人の影",
+            "en": "In someone shadow"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "水の中",
+            "en": "Under the water"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "隠れない",
+            "en": "You do not hide"
+          }
+        }
+      ],
+      "correct": "c3",
+      "deathMessage": {
+        "ja": "樽は外から蓋をされた",
+        "en": "The barrel was lidded from outside"
+      }
+    },
+    {
+      "id": "room_104",
+      "theme": "ferry",
+      "prompt": {
+        "ja": "舟は一度しか出ない。何を先に渡す",
+        "en": "The boat goes once. What crosses first?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "荷",
+            "en": "The load"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "犬",
+            "en": "The dog"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "灯り",
+            "en": "The lamp"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "自分",
+            "en": "Yourself"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "何も",
+            "en": "Nothing"
+          }
+        }
+      ],
+      "correct": "c1",
+      "deathMessage": {
+        "ja": "自分から乗った者は荷を失った",
+        "en": "Those who boarded first lost their load"
+      }
+    },
+    {
+      "id": "room_105",
+      "theme": "signal",
+      "prompt": {
+        "ja": "音のどれかが合図だ。何に従う",
+        "en": "One of these sounds is the signal. Which?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "鈴",
+            "en": "A bell"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "水音",
+            "en": "Water"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "足音",
+            "en": "Footsteps"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "自分の名",
+            "en": "Your own name"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "沈黙",
+            "en": "The silence"
+          }
+        }
+      ],
+      "correct": "c5",
+      "deathMessage": {
+        "ja": "呼ばれて答えた者は数えられた",
+        "en": "Those who answered were counted"
+      }
+    },
+    {
+      "id": "room_106",
+      "theme": "leave",
+      "prompt": {
+        "ja": "持っていけるのは一つだけだ",
+        "en": "You can take exactly one of these"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "帳面",
+            "en": "The ledger"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "銭",
+            "en": "The coins"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "面",
+            "en": "The mask"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "縄",
+            "en": "The rope"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "名前",
+            "en": "Your name"
+          }
+        }
+      ],
+      "correct": "c4",
+      "deathMessage": {
+        "ja": "銭は重い。縄は要った",
+        "en": "Coins are heavy. The rope was needed"
+      }
+    },
+    {
+      "id": "room_107",
+      "theme": "hand",
+      "prompt": {
+        "ja": "手を出せと言われた。どちらを出す",
+        "en": "They tell you to hold out a hand. Which?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "右手",
+            "en": "Your right"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "左手",
+            "en": "Your left"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "両手",
+            "en": "Both"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "布を巻いた手",
+            "en": "A wrapped hand"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "出さない",
+            "en": "Neither"
+          }
+        }
+      ],
+      "correct": "c4",
+      "deathMessage": {
+        "ja": "素手で触れた者は印を残された",
+        "en": "Bare skin took the mark"
+      }
+    },
+    {
+      "id": "room_108",
+      "theme": "burn",
+      "prompt": {
+        "ja": "火が要る。何を燃やす",
+        "en": "You need a fire. What do you burn?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "帳面",
+            "en": "The ledger"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "布",
+            "en": "Cloth"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "骨",
+            "en": "Bone"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "髪",
+            "en": "Hair"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "何も",
+            "en": "Nothing"
+          }
+        }
+      ],
+      "correct": "c2",
+      "deathMessage": {
+        "ja": "骨を燃やすと煙が呼ぶ",
+        "en": "Burning bone calls something"
+      }
+    },
+    {
+      "id": "room_109",
+      "theme": "cut",
+      "prompt": {
+        "ja": "断てば進める。何を断つ",
+        "en": "Cut one and you move on. What?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "縄",
+            "en": "The rope"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "鎖",
+            "en": "The chain"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "布",
+            "en": "The cloth"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "影",
+            "en": "The shadow"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "息",
+            "en": "Your breath"
+          }
+        }
+      ],
+      "correct": "c1",
+      "deathMessage": {
+        "ja": "鎖は音を立てた",
+        "en": "The chain made a sound"
+      }
+    },
+    {
+      "id": "room_110",
+      "theme": "first",
+      "prompt": {
+        "ja": "誰かが先に行く。誰を出す",
+        "en": "Someone goes first. Who?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "自分",
+            "en": "Yourself"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "老人",
+            "en": "The old man"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "子ども",
+            "en": "The child"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "犬",
+            "en": "The dog"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "誰も",
+            "en": "Nobody"
+          }
+        }
+      ],
+      "correct": "c1",
+      "deathMessage": {
+        "ja": "人を先に出した者は戻れなかった",
+        "en": "Those who sent another never returned"
+      }
+    },
+    {
+      "id": "room_111",
+      "theme": "trade",
+      "prompt": {
+        "ja": "代わりに何か置いていけと言う",
+        "en": "They want something in exchange"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "記憶",
+            "en": "A memory"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "名",
+            "en": "Your name"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "目",
+            "en": "An eye"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "声",
+            "en": "Your voice"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "一年",
+            "en": "A year"
+          }
+        }
+      ],
+      "correct": "c5",
+      "deathMessage": {
+        "ja": "名を置いた者は呼ばれなくなった",
+        "en": "Those who left a name stopped being called"
+      }
+    },
+    {
+      "id": "room_112",
+      "theme": "card",
+      "prompt": {
+        "ja": "札を一枚出せ。どれを出す",
+        "en": "Play one card. Which?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "白札",
+            "en": "The white one"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "朱札",
+            "en": "The red one"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "無地",
+            "en": "The blank one"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "破れ札",
+            "en": "The torn one"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "誰かの札",
+            "en": "Someone else card"
+          }
+        }
+      ],
+      "correct": "c3",
+      "deathMessage": {
+        "ja": "朱の札は借りの印だった",
+        "en": "The red card marked a debt"
+      }
+    },
+    {
+      "id": "room_113",
+      "theme": "breath",
+      "prompt": {
+        "ja": "水が上がってくる。どこで息を吸う",
+        "en": "Water is rising. Where do you breathe?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "水面",
+            "en": "At the surface"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "隙間",
+            "en": "In the gap"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "布越し",
+            "en": "Through cloth"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "天井近く",
+            "en": "Near the ceiling"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "吸わない",
+            "en": "Not at all"
+          }
+        }
+      ],
+      "correct": "c2",
+      "deathMessage": {
+        "ja": "天井の空気はもう無かった",
+        "en": "There was no air left at the ceiling"
+      }
+    },
+    {
+      "id": "room_114",
+      "theme": "trace",
+      "prompt": {
+        "ja": "足跡は残る。どこを踏む",
+        "en": "Footprints stay. Where do you walk?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "灰",
+            "en": "Ash"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "泥",
+            "en": "Mud"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "水",
+            "en": "Water"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "雪",
+            "en": "Snow"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "石",
+            "en": "Stone"
+          }
+        }
+      ],
+      "correct": "c5",
+      "deathMessage": {
+        "ja": "灰の上の足跡は追われた",
+        "en": "The prints in the ash were followed"
+      }
+    },
+    {
+      "id": "room_115",
+      "theme": "promise",
+      "prompt": {
+        "ja": "守れる約束は一つだけだ",
+        "en": "You can keep exactly one promise"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "昨日の",
+            "en": "Yesterday one"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "誰かの",
+            "en": "Someone else"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "自分の",
+            "en": "Your own"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "破れた",
+            "en": "A broken one"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "何も",
+            "en": "None of them"
+          }
+        }
+      ],
+      "correct": "c3",
+      "deathMessage": {
+        "ja": "他人の約束を背負った者は潰れた",
+        "en": "Carrying another promise crushed them"
+      }
+    },
+    {
+      "id": "room_116",
+      "theme": "count",
+      "prompt": {
+        "ja": "数えれば分かる。何を数える",
+        "en": "Count and you will know. Count what?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "銭",
+            "en": "The coins"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "段",
+            "en": "The steps"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "息",
+            "en": "Your breaths"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "影",
+            "en": "The shadows"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "数えない",
+            "en": "Do not count"
+          }
+        }
+      ],
+      "correct": "c2",
+      "deathMessage": {
+        "ja": "影を数えた者は一つ多いことに気づいた",
+        "en": "Whoever counted shadows found one too many"
+      }
+    },
+    {
+      "id": "room_117",
+      "theme": "answer",
+      "prompt": {
+        "ja": "名を訊かれた。何と答える",
+        "en": "They ask your name. What do you say?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "本名",
+            "en": "Your real one"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "偽名",
+            "en": "A false one"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "誰かの名",
+            "en": "Someone else"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "黙る",
+            "en": "Say nothing"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "訊き返す",
+            "en": "Ask theirs"
+          }
+        }
+      ],
+      "correct": "c2",
+      "deathMessage": {
+        "ja": "本名を渡した者は帳面に載った",
+        "en": "Real names went into the ledger"
+      }
+    },
+    {
+      "id": "room_101",
+      "theme": "discard",
+      "prompt": {
+        "ja": "捨てなければ通れない。何を置く",
+        "en": "No passing with all of it. What do you leave?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "灯り",
+            "en": "The lamp"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "水",
+            "en": "The water"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "刃物",
+            "en": "The blade"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "履物",
+            "en": "Your shoes"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "地図",
+            "en": "The map"
+          }
+        }
+      ],
+      "correct": "c5",
+      "deathMessage": {
+        "ja": "地図を手放した者は戻り道を失う",
+        "en": "Whoever gives up the map loses the way back"
+      }
+    },
+    {
+      "id": "room_102",
+      "theme": "listen",
+      "prompt": {
+        "ja": "三人が別のことを言う。誰に従う",
+        "en": "Three say different things. Who do you follow?"
+      },
+      "choices": [
+        {
+          "id": "c1",
+          "label": {
+            "ja": "門番",
+            "en": "The gatekeeper"
+          }
+        },
+        {
+          "id": "c2",
+          "label": {
+            "ja": "子ども",
+            "en": "The child"
+          }
+        },
+        {
+          "id": "c3",
+          "label": {
+            "ja": "医者",
+            "en": "The doctor"
+          }
+        },
+        {
+          "id": "c4",
+          "label": {
+            "ja": "壁の字",
+            "en": "Writing on the wall"
+          }
+        },
+        {
+          "id": "c5",
+          "label": {
+            "ja": "自分の勘",
+            "en": "Your own gut"
+          }
+        }
+      ],
+      "correct": "c2",
+      "deathMessage": {
+        "ja": "医者の言うことは筋が通っていた",
+        "en": "The doctor made perfect sense"
+      }
     }
   ]
 }
