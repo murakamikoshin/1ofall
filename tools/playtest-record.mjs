@@ -12,7 +12,14 @@ import { writeFileSync } from 'node:fs';
 const OUT = process.argv[2] ?? '/tmp';
 const MODE = process.argv[3] ?? 'party';
 const RUNS = Number(process.argv[4] ?? 1);
-const LABEL = { standard: '一人で遊ぶ', brink: '崖っぷち', party: '全員挑戦者' }[MODE] ?? '全員挑戦者';
+const LABELS = { standard: '一人で遊ぶ', brink: '崖っぷち', party: '全員挑戦者' };
+const LABEL = LABELS[MODE];
+// 引数の順を間違えると黙って0周になって、遊んだつもりで何も見ていないことになる
+if (!LABEL || !Number.isFinite(RUNS) || RUNS < 1) {
+  console.error(`使い方: node tools/playtest-record.mjs <出力先> <${Object.keys(LABELS).join('|')}> <周回数>`);
+  console.error(`受け取ったもの: 出力先=${OUT} モード=${MODE} 周回数=${process.argv[4]}`);
+  process.exit(2);
+}
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const lines = [];

@@ -59,6 +59,7 @@ export const en: Strings = {
         'Exactly one advisor can be trusted. Every other one is lying.',
         'That one knows the answer. Find them and they carry you to the end of the block.',
         'Six lives. Room to probe, but not forever.',
+        'One advisor per room can be silenced. Hit a liar and they are gone; miss and the next room is shorter. That is how you search.',
       ],
       party: [
         'Your companions walk the same rooms. Every one of them is betting their own life.',

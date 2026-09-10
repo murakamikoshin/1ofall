@@ -410,12 +410,8 @@ export class GameEngine {
    * 区画が変わると顔ぶれごと入れ替わり、積んだ読みは一度捨てられる。
    */
   private castingForSection(eligible: readonly AdvisorInfo[]): Casting {
-    const stale =
-      !this.sectionCasting ||
-      this.sectionCastingIndex !== this.sectionIndex ||
-      this.sectionCasting.speakerIds.some((id) => !eligible.some((a) => a.id === id));
-
-    if (stale) {
+    const current = this.sectionCasting;
+    if (!current || this.sectionCastingIndex !== this.sectionIndex) {
       this.castJustChanged = true;
       const speakerIds = castSpeakers({
         advisors: eligible,
@@ -432,8 +428,34 @@ export class GameEngine {
       };
       this.sectionCastingIndex = this.sectionIndex;
       this.records.clear();
+      return this.sectionCasting;
     }
-    return this.sectionCasting as Casting;
+
+    // 誰かを黙らせた等で席が空いた。
+    //
+    // **その席だけ入れ替える。** 前は顔ぶれごと引き直していたので、
+    // 嘘つきを黙らせるたびに積んだ記録が消えていた。
+    // 崖っぷちは「信じられる一人を探す」遊びなのに、
+    // 探す道具を使うと探した結果が消える、という形になっていた。
+    const gone = current.speakerIds.filter((id) => !eligible.some((a) => a.id === id));
+    if (gone.length === 0) return current;
+
+    const kept = current.speakerIds.filter((id) => !gone.includes(id));
+    const pool = eligible.filter((a) => !kept.includes(a.id)).map((a) => a.id);
+    const added = pickSome(pool, Math.min(gone.length, pool.length), this.rng);
+
+    // 抜けた席の役をそのまま引き継ぐ。嘘つきの人数を保つ
+    // （崖っぷちなら正直者はいつも一人のまま）
+    const goneLiars = gone.filter((id) => current.liarIds.includes(id)).length;
+    const keptLiars = current.liarIds.filter((id) => kept.includes(id));
+    const newLiars = added.slice(0, Math.min(goneLiars, added.length));
+
+    this.sectionCasting = {
+      speakerIds: [...kept, ...added],
+      liarIds: [...keptLiars, ...newLiars],
+    };
+    for (const id of gone) this.records.delete(id);
+    return this.sectionCasting;
   }
 
   /** 区画が進むほど択の多い部屋を出す。山札からは二度と同じ部屋を引かない */
