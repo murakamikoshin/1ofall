@@ -29,7 +29,7 @@ const EMPTY: EngineState = {
   phase: 'title', lives: 0, maxLives: 0, round: null, verdict: null,
   sectionIndex: 0, sectionCount: 1, clearedInSection: 0, roomsPerSection: 1,
   totalCleared: 0, totalRooms: 0, selectionMode: 'lottery',
-  advisors: [], mutedIds: [], liarLog: [],
+  advisors: [], mutedIds: [], confirmedLiars: [], liarLog: [],
 };
 
 export type RoomStatus = 'connecting' | 'open' | 'playing' | 'closed';
@@ -153,6 +153,7 @@ export class RemoteGame implements GameHandle {
       selectionMode: 'lottery',
       advisors: view.advisors,
       mutedIds: view.mutedIds,
+      confirmedLiars: view.confirmedLiars,
       // 今の部屋の嘘つきはサーバーが送ってこない。終わったときだけ分かる
       liarLog: [],
       round: view.round

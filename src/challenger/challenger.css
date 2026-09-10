@@ -885,3 +885,7 @@
 
 /* 顔ぶれが入れ替わった、という知らせは埋もれさせない */
 .hints-note.is-fresh { color: var(--rust); }
+
+/* 黙らせて当たった相手。声は止まっているが情報として残す */
+.hint-row.is-confirmed { opacity: 0.6; }
+.hint-row.is-confirmed .hint-text { color: var(--rust); }

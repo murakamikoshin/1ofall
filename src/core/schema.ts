@@ -163,6 +163,8 @@ export const ChallengerViewSchema = z.object({
   totalRooms: z.number().int(),
   advisors: z.array(AdvisorInfoSchema),
   mutedIds: z.array(AdvisorIdSchema),
+  /** 黙らせて当たった相手。挑戦者が自分で得た情報なので送ってよい */
+  confirmedLiars: z.array(AdvisorIdSchema),
   round: z
     .object({
       roundId: z.string(),

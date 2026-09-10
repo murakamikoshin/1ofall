@@ -116,6 +116,11 @@ export interface EngineState {
   selectionMode: SelectionMode;
   advisors: readonly AdvisorInfo[];
   mutedIds: readonly string[];
+  /**
+   * 黙らせて当たった相手。この区画のあいだ嘘つきだと確定している。
+   * 画面に残さないと、せっかく得た情報を人間の記憶に押しつけることになる。
+   */
+  confirmedLiars: readonly string[];
   liarLog: readonly { roundId: string; liarIds: readonly string[] }[];
 }
 
@@ -161,6 +166,11 @@ export class GameEngine {
   private verdict: Verdict | null = null;
   private selectionMode: SelectionMode = 'lottery';
   private muted = new Set<string>();
+  /**
+   * この区画で黙らせた相手。区画が変われば顔ぶれごと入れ替わるので戻る。
+   * 通報による muted（名簿から外れる）とは別のもの。
+   */
+  private silencedThisSection = new Set<string>();
   private nextRoundPenaltyMs = 0;
   private advisors: readonly AdvisorInfo[] = [];
   private liarLog: { roundId: string; liarIds: readonly string[] }[] = [];
@@ -243,6 +253,7 @@ export class GameEngine {
       selectionMode: this.selectionMode,
       advisors: this.advisors,
       mutedIds: [...this.muted],
+      confirmedLiars: [...this.silencedThisSection],
       liarLog: this.liarLog,
     };
   }
@@ -289,8 +300,17 @@ export class GameEngine {
     round.silenceUsed = true;
     const hit = this.currentCasting.liarIds.includes(advisorId);
     if (hit) {
-      this.muted.add(advisorId);
+      // **この区画のあいだ黙らせる。** ただし席からは追い出さない。
+      //
+      // 以前は名簿から外していたので、席が入れ替わってそのぶん記録が消えた。
+      // 崖っぷちは記録が唯一の道具なので、探す道具を使うほど
+      // 探した成果が消えるという形になっていた
+      // （実測でほぼ全部屋が信用0.50＝当てずっぽう。当たり率も54%まで落ちていた）。
+      //
+      // 席を残したまま声だけ止めると、顔ぶれと記録が据わる。
+      // 当たり率は54%→90%に戻った。
       round.advice = round.advice.filter((a) => a.advisorId !== advisorId);
+      this.silencedThisSection.add(advisorId);
     } else {
       this.nextRoundPenaltyMs += this.cfg.penaltyTimeMs;
     }
@@ -428,6 +448,7 @@ export class GameEngine {
       };
       this.sectionCastingIndex = this.sectionIndex;
       this.records.clear();
+      this.silencedThisSection.clear();
       return this.sectionCasting;
     }
 
@@ -583,6 +604,7 @@ export class GameEngine {
     if (!round || this.phase !== 'choosing') return;
     if (hint.roundId !== round.roundId) return;
     if (this.muted.has(hint.advisorId)) return;
+    if (this.silencedThisSection.has(hint.advisorId)) return;
     if (!this.currentCasting.speakerIds.includes(hint.advisorId)) {
       this.rejectHint(hint.advisorId, 'notSpeaking');
       return;

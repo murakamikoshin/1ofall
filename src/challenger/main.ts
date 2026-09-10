@@ -928,6 +928,22 @@ function renderHints(state: EngineState, s: Shell): void {
   s.hints.append(head);
 
   const list = el('div', 'hints-list');
+
+  // 黙らせて当たった相手を残す。声は止まっているが、
+  // 「嘘つきだった」という情報は自分で得たもの。
+  // 画面から消すと、その情報を人間の記憶に押しつけることになる
+  for (const id of state.confirmedLiars) {
+    const who = round.speakers.find((sp) => sp.id === id);
+    if (!who) continue;
+    const row = el('div', 'hint-row is-confirmed');
+    const name = el('span', 'hint-name');
+    name.textContent = who.name;
+    const text = el('span', 'hint-text');
+    text.textContent = T.challenger.confirmedLiar;
+    row.append(name, text);
+    list.append(row);
+  }
+
   // 届いた順に並べる。早い遅いも読みの材料になる
   for (const advice of [...round.advice].sort((a, b) => a.sentAt - b.sentAt)) {
     list.append(renderAdviceRow(advice, round.silenceUsed));

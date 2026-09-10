@@ -474,6 +474,7 @@ export class RoomSession {
         totalRooms: state.totalRooms,
         advisors: [...state.advisors],
         mutedIds: [...state.mutedIds],
+        confirmedLiars: [...state.confirmedLiars],
         round: round
           ? {
               roundId: round.roundId,

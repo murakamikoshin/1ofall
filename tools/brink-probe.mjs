@@ -40,6 +40,9 @@ async function play(mode, useProbe, seed) {
     seed,
   });
   let rooms = 0, deaths = 0, probes = 0, hits = 0;
+  // 黙らせて当たった相手は「確定で嘘つき」。人間はこれを覚えて使う
+  let known = new Set();
+  let section = -1;
   engine.start();
 
   for (let guard = 0; guard < 400; guard++) {
@@ -49,6 +52,8 @@ async function play(mode, useProbe, seed) {
 
     await tick();
     const round = s.round;
+    // 区画が変わると顔ぶれごと入れ替わるので、確定した相手も忘れる
+    if (round.sectionIndex !== section) { section = round.sectionIndex; known = new Set(); }
     const rowsOf = () => (engine.snapshot().round?.advice ?? []).map((a) => ({
       advisorId: a.advisorId, text: a.text, record: a.record,
     }));
@@ -56,17 +61,20 @@ async function play(mode, useProbe, seed) {
     // 一番信用できない発言者を黙らせる。当たれば嘘つきが一人消える
     if (useProbe && !round.silenceUsed) {
       const rows = rowsOf();
-      if (rows.length > 0) {
-        let worst = rows[0];
-        for (const r of rows) if (C.trustOf(r.record) < C.trustOf(worst.record)) worst = r;
+      const fresh = rows.filter((r) => !known.has(r.advisorId));
+      if (fresh.length > 0) {
+        let worst = fresh[0];
+        for (const r of fresh) if (C.trustOf(r.record) < C.trustOf(worst.record)) worst = r;
         const result = engine.silence(worst.advisorId);
-        if (result) { probes++; if (result.hit) hits++; }
+        if (result) { probes++; if (result.hit) { hits++; known.add(worst.advisorId); } }
       }
     }
 
     const after = engine.snapshot().round;
     if (!after) break;
-    const score = C.scoreChoices({ choices: after.room.choices, rows: rowsOf(), own: null });
+    // 確定した嘘つきの言葉は信用しない（実際には黙っているが、区画をまたぐ前の発言も含めて割り引く）
+    const rows = rowsOf().map((r) => (known.has(r.advisorId) ? { ...r, record: { hit: 0, miss: 9 } } : r));
+    const score = C.scoreChoices({ choices: after.room.choices, rows, own: null });
     engine.choose(C.bestChoice(score, after.room.choices, rng));
     rooms++;
     const v = engine.snapshot().verdict;
@@ -77,11 +85,23 @@ async function play(mode, useProbe, seed) {
   return { rooms, deaths, probes, hits, cleared: final.phase === 'cleared' };
 }
 
-console.log(`崖っぷち　${RUNS}周\n`);
+function brinkMode() {
+  const b = C.MODES.brink;
+  const slots = Number(process.env.SLOTS ?? b.slotsBySection[0]);
+  return {
+    ...b,
+    lives: Number(process.env.LIVES ?? b.lives),
+    roomsPerSection: Number(process.env.PER_SECTION ?? b.roomsPerSection),
+    slotsBySection: [slots, slots, slots, slots],
+  };
+}
+
+const m = brinkMode();
+console.log(`崖っぷち　${RUNS}周　命${m.lives} ${m.sections}区画×${m.roomsPerSection} 発言枠${m.slotsBySection[0]}\n`);
 for (const [name, useProbe] of [['黙らせるを使わない', false], ['黙らせるを使う', true]]) {
   let rooms = 0, deaths = 0, probes = 0, hits = 0, cleared = 0;
   for (let i = 0; i < RUNS; i++) {
-    const r = await play(C.MODES.brink, useProbe, 5000 + i);
+    const r = await play(brinkMode(), useProbe, 5000 + i);
     rooms += r.rooms; deaths += r.deaths; probes += r.probes; hits += r.hits;
     cleared += r.cleared ? 1 : 0;
   }
