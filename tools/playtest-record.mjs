@@ -279,7 +279,9 @@ for (let run = 1; run <= RUNS; run++) {
         lives: document.querySelectorAll('.pip:not(.is-lost)').length,
         end: document.querySelectorAll('.end-screen').length > 0,
         endMark: txt(document.querySelector('.end-mark')),
-        endStats: [...document.querySelectorAll('.end-stat')].map((e) => txt(e)),
+        // 隠してある行（札を置かなかった周の「読み」など）は数えない。
+        // textContent だけ見ていたので、出ていない行を記録に書いていた
+        endStats: [...document.querySelectorAll('.end-stat')].filter((e) => !e.hidden).map((e) => txt(e)),
         party: [...document.querySelectorAll('.hint-row')].map((e) => txt(e.querySelector('.hint-text'))),
       };
     });
