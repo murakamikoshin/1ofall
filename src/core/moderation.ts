@@ -19,7 +19,9 @@ export type RejectReason =
   /** 番号や位置で指した */
   | 'pointing'
   /** 一度に選択肢を挙げすぎた */
-  | 'tooManyChoices';
+  | 'tooManyChoices'
+  /** 疑いの札を置かれているのに、言い切っていない（扉ひとつ・迷いなし） */
+  | 'mustCommit';
 
 export type Rejection = { ok: true; text: string } | { ok: false; reason: RejectReason };
 
@@ -117,6 +119,26 @@ export function countChoicesMentioned(text: string, labels: readonly string[]): 
   return labels.filter((l) => l.length > 0 && n.includes(normalize(l))).length;
 }
 
+/**
+ * 押されている者の一言か。
+ *
+ * 疑いの札を置かれた者は**言い切らなければならない**——扉ひとつを名指しして、
+ * 迷いの言い方（「たぶん」「どっちか」）を使わない。
+ * AI だけの作法にはしない。人間の助言者にも同じ規則をかけるので、ここで判る。
+ *
+ * 押す側の取り引きは、言い切らせれば次の部屋で正誤が付く＝**記録が早く固まる**
+ * かわりに、その人の迷いは読めなくなる（迷いは一番強い手掛かり）。
+ */
+export function isCommitted(text: string, labels: readonly string[]): boolean {
+  if (countChoicesMentioned(text, labels) !== 1) return false;
+  let rest = normalize(text);
+  for (const l of labels) {
+    if (l.length === 0) continue;
+    rest = rest.split(normalize(l)).join('　');
+  }
+  return !strings().hints.hedgePattern.test(rest);
+}
+
 export interface HintGuardState {
   /** 助言者ごとの最終送信時刻 */
   lastSentAt: Map<string, number>;
@@ -137,6 +159,8 @@ export function checkHint(
   raw: string,
   now: number,
   labels: readonly string[] = [],
+  /** 疑いの札を置かれている（押されている）か。押されていれば言い切りしか通さない */
+  opts: { pressed?: boolean } = {},
 ): Rejection {
   const text = raw.trim();
   if (text.length === 0) return { ok: false, reason: 'empty' };
@@ -147,6 +171,10 @@ export function checkHint(
   if (isPointing(text, labels)) return { ok: false, reason: 'pointing' };
   if (labels.length && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) {
     return { ok: false, reason: 'tooManyChoices' };
+  }
+  // 押されている者は言い切る。連投判定より前に返す（弾いた一通を数えない）
+  if (opts.pressed && labels.length && !isCommitted(text, labels)) {
+    return { ok: false, reason: 'mustCommit' };
   }
 
   // 初回は連投になり得ない。?? 0 にすると now が小さいとき初回が弾かれる

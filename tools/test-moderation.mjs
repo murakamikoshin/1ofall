@@ -8,7 +8,7 @@ const out = join(tmpdir(), `mod-${process.pid}.mjs`);
 await build({ entryPoints: [resolve(root, 'src/core/moderation.ts')], bundle: true,
               format: 'esm', platform: 'node', outfile: out, logLevel: 'silent' });
 const { checkHint, createHintGuard, containsBlocked, isPointing, countChoicesMentioned,
-        createReportBook, fileReport, AUTO_MUTE_REPORTS } = await import(pathToFileURL(out).href);
+        isCommitted, createReportBook, fileReport, AUTO_MUTE_REPORTS } = await import(pathToFileURL(out).href);
 
 let pass = 0, fail = 0;
 const check = (name, got, want) => {
@@ -70,6 +70,29 @@ check('三つ以上に触れたら通らない',
   checkHint(createHintGuard(), 'z', '魚かパンか果実', 0, ['魚', 'パン', '果実']).ok, false);
 check('二つまでなら通る', checkHint(createHintGuard(), 'y', '魚かパン', 0, ['魚', 'パン', '果実']).ok, true);
 check('番号入りは通らない', checkHint(createHintGuard(), 'x', '2番だ', 0, LABELS).ok, false);
+
+/*
+ * 押されている者（疑いの札を置かれた者）は言い切る。
+ *
+ * 扉ひとつを名指しして、迷いの言い方を使わない。**人間にも同じ規則**を
+ * かけるので（AI だけの作法にしない）、ここで判る必要がある。
+ * 迷いに隠れて紛れられなくなるのが、札を置く側の得。
+ */
+const L = ['焼いた魚', '白いパン', '青い実'];
+check('言い切りは押されていても通る', checkHint(createHintGuard(), 'p', '焼いた魚だ', 0, L, { pressed: true }).ok, true);
+check('二つ挙げると通らない', checkHint(createHintGuard(), 'p', '焼いた魚か白いパン', 0, L, { pressed: true }).ok, false);
+check('迷いの言い方は通らない', checkHint(createHintGuard(), 'p', 'たぶん焼いた魚', 0, L, { pressed: true }).ok, false);
+check('通らない理由は mustCommit',
+  checkHint(createHintGuard(), 'p', 'たぶん焼いた魚', 0, L, { pressed: true }).reason, 'mustCommit');
+check('扉に触れていない一言も通らない', checkHint(createHintGuard(), 'p', 'よく分からん', 0, L, { pressed: true }).ok, false);
+check('押されていなければ迷いも通る', checkHint(createHintGuard(), 'q', 'たぶん焼いた魚', 0, L).ok, true);
+// 「これは死ぬ」は言い切りの一つ（扉ひとつを名指ししている）
+check('死ぬと言い切るのは通る', checkHint(createHintGuard(), 'p', '白いパンは死ぬ', 0, L, { pressed: true }).ok, true);
+check('言い切りの判定（単独）', isCommitted('焼いた魚だ', L), true);
+check('言い切りの判定（二つ）', isCommitted('焼いた魚か青い実', L), false);
+check('言い切りの判定（迷い）', isCommitted('焼いた魚な気がする', L), false);
+// 扉の名前の中に迷いの語が入っていても、名前を外してから見る
+check('名前の中の語で読み違えない', isCommitted('白いパンだ', L), true);
 
 // 通報
 const book = createReportBook();

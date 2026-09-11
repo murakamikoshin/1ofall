@@ -1101,6 +1101,11 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
     else doubted.delete(advice.advisorId);
     // 次の部屋から効く。いま並んでいる助言は書き換わらない
     engine?.doubt(advice.advisorId, on);
+    announce(
+      on
+        ? T.challenger.doubtPlaced(advice.advisorName)
+        : T.challenger.doubtLifted(advice.advisorName),
+    );
     // 札を置いた手応え。専用の音は作らない（扉に触れる音を借りる）
     audio.play('hover');
     paint();

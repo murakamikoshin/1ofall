@@ -106,7 +106,9 @@ export const en: Strings = {
     recordHint: 'How honest they have been in this block',
     doubt: 'Doubt',
     doubtOn: 'Doubted',
-    doubtHint: 'They are told. Liars pile onto whoever is marked',
+    doubtHint: 'They are told, and must then name one door',
+    doubtPlaced: (name: string) => `Marked ${name}. Next room they must name one door`,
+    doubtLifted: (name: string) => `Lifted the mark on ${name}`,
     doubtHintPrivate: 'Your own note. Nobody else sees it',
     reportedNotice: 'Reported. Their voice no longer reaches you',
     confirmedLiar: 'Silenced. Confirmed liar',
@@ -207,6 +209,7 @@ export const en: Strings = {
     runSaved: (n: number) => `You got them through ${n} times`,
     doubtedYou: 'The challenger doubts you',
     doubtedMark: 'doubted',
+    doubtedRule: 'Your next word must name one door',
     followedLived: 'They took your word and lived',
     followedDied: 'They took your word and died',
     ignoredLived: 'They did not believe you. They lived',
@@ -261,6 +264,7 @@ export const en: Strings = {
     tooManyChoices: 'Name at most two',
     tooLong: 'Too long',
     speakFirst: 'Say your own line first',
+    mustCommit: 'You are doubted. Name one door, no hedging',
   },
 
   language: {

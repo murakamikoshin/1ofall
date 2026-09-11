@@ -67,6 +67,7 @@ room.receive(A1, JSON.stringify({ t: 'advisor/join', roomCode: 'ABC123', name: '
 room.receive(A2, JSON.stringify({ t: 'advisor/join', roomCode: 'ABC123', name: 'すず' }));
 room.receive(CH, JSON.stringify({ t: 'challenger/start', mode: 'standard', locale: 'ja' }));
 
+const roomSend = (id, msg) => room.receive(id, JSON.stringify(msg));
 const opensFor = (id) => inbox.get(id).filter((m) => m.t === 'round/open');
 const firstOpen = (id) => opensFor(id)[0];
 
@@ -169,6 +170,55 @@ check('助言者は札を置けない',
 room.receive(CH, JSON.stringify({ t: 'challenger/doubt', advisorId: A1, on: false }));
 check('札を外すと消える', (inbox.get(A1).filter((m) => m.t === 'room/doubts').pop()?.ids ?? []).length === 0);
 check('札の増減が一通ずつ届く', inbox.get(A1).filter((m) => m.t === 'room/doubts').length >= doubtsBefore + 2);
+
+/* ── 6.9 押された者は言い切る ───────────────────────────────── */
+
+/*
+ * 札は印だけではない。**置かれた者は言い切らなければならない**
+ * （扉ひとつを名指しして、迷いの言い方を使わない）。
+ * AI だけの作法にしてしまうと、賭場では札が何も起こさない飾りに戻る。
+ */
+if (speaker) {
+  const choices = firstOpen(speaker).room.choices;
+  const one = choices[0].label.ja;
+  const two = choices[1].label.ja;
+  const mustCommitErrors = () =>
+    inbox.get(speaker).filter((m) => m.t === 'error' && m.code === 'mustCommit').length;
+  const delivered = (text) =>
+    inbox.get(CH).filter((m) => m.t === 'round/hints').some((m) => m.hints.some((h) => h.text === text));
+
+  const before = mustCommitErrors();
+  roomSend(CH, { t: 'challenger/doubt', advisorId: speaker, on: true });
+
+  clock += 5000;
+  const hedged = `たぶん${one}`;
+  roomSend(speaker, { t: 'advisor/hint', text: hedged, roundId: chOpen.roundId });
+  check('押された者の迷いの言い方は弾かれる',
+    mustCommitErrors() > before && !delivered(hedged), hedged);
+
+  clock += 5000;
+  const committed = `${two}にしろ`;
+  roomSend(speaker, { t: 'advisor/hint', text: committed, roundId: chOpen.roundId });
+  check('言い切れば通る', delivered(committed), committed);
+
+  roomSend(CH, { t: 'challenger/doubt', advisorId: speaker, on: false });
+  clock += 5000;
+  const hedgedAgain = `${one}な気がする`;
+  roomSend(speaker, { t: 'advisor/hint', text: hedgedAgain, roundId: chOpen.roundId });
+  check('札を外せば迷いの言い方も通る', delivered(hedgedAgain), hedgedAgain);
+  /*
+   * 書き直した一言が挑戦者に届くか。
+   *
+   * 場の言葉は**件数**が増えたときだけ流していた。一部屋につき一人一通で
+   * 書き直しは上書きなので、件数は変わらない——言い直した一言が
+   * 賭場では届かなかった（ソロは本体の状態をそのまま描くので出ていた）。
+   */
+  check('言い直した一言が最後の便に乗っている',
+    (inbox.get(CH).filter((m) => m.t === 'round/hints').pop()?.hints ?? [])
+      .some((h) => h.advisorId === speaker && h.text === hedgedAgain));
+} else {
+  check('この部屋は AI だけだった（押す検査は飛ばす）', true);
+}
 
 /* ── 7. 挑戦者が落ちたら畳む ────────────────────────────────── */
 

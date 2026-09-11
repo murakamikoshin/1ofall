@@ -5,7 +5,7 @@ import './advisor.css';
 import { choiceArt } from '@/ui/placeholder';
 import { HINT_MAX_LENGTH } from '@/core/limits';
 import {
-  containsBlocked, isPointing, countChoicesMentioned, MAX_CHOICES_PER_HINT,
+  containsBlocked, isPointing, countChoicesMentioned, isCommitted, MAX_CHOICES_PER_HINT,
 } from '@/core/moderation';
 import type { Choice } from '@/core/schema';
 import { strings, localized, detectLocale, setLocale } from '@/i18n';
@@ -364,6 +364,7 @@ function renderBoard(): void {
       tooManyChoices: T.errors.tooManyChoices,
       tooLong: T.errors.tooLong,
       speakFirst: T.errors.speakFirst,
+      mustCommit: T.errors.mustCommit,
       rateLimited: T.errors.rateLimited,
       silenced: T.advisor.silenced,
       survived: T.verdict.survived,
@@ -486,7 +487,15 @@ function renderBoard(): void {
     const me = view.myId ?? '';
     const on = me.length > 0 && (view.doubtedIds ?? []).includes(me);
     doubtBanner.hidden = !on;
-    doubtBanner.textContent = on ? strings().advisor.doubtedYou : '';
+    // 規則まで出す。押されているのに理由が分からないまま弾かれるのが一番悪い
+    doubtBanner.textContent = on
+      ? `${strings().advisor.doubtedYou}　${strings().advisor.doubtedRule}`
+      : '';
+    /*
+     * 入力欄の検査を回し直す。札は部屋の途中で置かれるので、
+     * 打ちかけの文が規則に合わなくなることがある（打った字は消さない）。
+     */
+    compose.querySelector('.compose-row .field')?.dispatchEvent(new Event('input'));
   };
 
   connection.onView((view) => {
@@ -823,7 +832,17 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
   const counter = el('p', 'counter');
   const status = el('p', 'status');
   const labels = view.choices.map((c) => localized(c.label));
-
+  /*
+   * 押されている（疑いの札を置かれている）か。
+   * サーバーでも同じ規則で弾くが、押してから断るのでは遅いので手元でも見る。
+   *
+   * **その場の view を見る。** 札は部屋の途中で置かれるので、入力欄を作った
+   * 時点の写しを見ていると、置かれたのに素通しになる（実測でそうなっていた）。
+   */
+  const amPressed = (): boolean => {
+    const now = get() ?? view;
+    return (now.doubtedIds ?? []).includes(now.myId ?? '');
+  };
 
   // 送れないものは、送らせない。押してから断るのでは遅い
   const sync = (): void => {
@@ -839,6 +858,8 @@ function renderCompose(host: HTMLElement, view: AdvisorView, get: () => AdvisorV
     else if (text && isPointing(text, labels)) reason = T.errors.pointing;
     else if (text && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) {
       reason = T.errors.tooManyChoices;
+    } else if (text && amPressed() && !isCommitted(text, labels)) {
+      reason = T.errors.mustCommit;
     }
 
     status.textContent = reason;

@@ -131,6 +131,19 @@ export interface WriteOptions {
   liarMimicRate?: number;
   /** 話し方の癖 */
   voice?: Voice;
+  /**
+   * 疑いの札を置かれている（＝挑戦者に押されている）か。
+   *
+   * 押された者は**言い切らなければならない**——扉ひとつを名指しして、
+   * 迷いの言い方を使わない。人間の助言者にも同じ規則がかかる
+   * （`checkHint` が弾く）ので、AI だけの作法にはしない。
+   *
+   * 押す側の取り引きはこう。言い切らせれば次の部屋で正誤が付くので、
+   * **記録が早く固まる**（嘘つきは罠を押すしかないので崩れる）。
+   * 代わりに、その人の「迷い」は読めなくなる——迷いは強い手掛かりなので、
+   * 押した相手からはそれを捨てることになる。
+   */
+  pressed?: boolean;
 }
 
 /**
@@ -140,9 +153,20 @@ export interface WriteOptions {
  */
 export function writeHint({
   choices, knowledge, rng, liarHonestyRate = 0.35, liarMimicRate = 0.25, voice = DEFAULT_VOICE,
-  liarHonest,
+  liarHonest, pressed = false,
 }: WriteOptions): string {
   const beHonest = (): boolean => (liarHonest === undefined ? rng() < liarHonestyRate : liarHonest);
+  /*
+   * 押されている者は言い切る。
+   *
+   * 二つ挙げる形（「AかBのどっちか」）と迷いの言い方を封じるので、
+   * 迷ったふりで紛れることもできない。嘘つきは罠を押すか、
+   * 外れ一つを潰して信用を作るかの二つしか残らない。
+   */
+  const commit = (label: string): string =>
+    trySh(strings().hints.push, label, rng, voice.seat)
+    ?? trySh(strings().hints.hedge, label, rng, voice.seat)
+    ?? label;
 
   if (knowledge.kind === 'liar') {
     const wrong = choices.filter((c) => c.id !== knowledge.correct);
@@ -163,16 +187,17 @@ export function writeHint({
         const label = localized(pick.label);
         return trySh(strings().hints.avoid, label, rng, voice.seat) ?? `${label}はだめだ`;
       }
-      // 正解を含む二択の形に紛れる
+      // 正解を含む二択の形に紛れる（押されているときは二つ挙げられない）
       const decoy = wrong[Math.floor(rng() * wrong.length)];
       const a = labelOf(choices, knowledge.correct);
       const b = decoy ? localized(decoy.label) : '';
+      if (pressed) return commit(a);
       const narrowed = writeNarrow(a, b, rng);
       if (narrowed) return narrowed;
       return trySh(strings().hints.hedge, a, rng, voice.seat) ?? a;
     }
     // 迷ったふり。外れ二つを挙げて、絞れていない協力者に見せかける
-    if (rng() < liarMimicRate) {
+    if (!pressed && rng() < liarMimicRate) {
       const a = labelOf(choices, knowledge.trap);
       const other = wrong.filter((c) => c.id !== knowledge.trap);
       const b = other.length ? localized((other[Math.floor(rng() * other.length)] as Choice).label) : '';
@@ -186,6 +211,7 @@ export function writeHint({
     }
     // 罠へ誘う。嘘つき全員が同じ罠を見ているので、ここで力が集まる
     const label = labelOf(choices, knowledge.trap);
+    if (pressed) return commit(label);
     const shapes = rng() < voice.assertive ? strings().hints.push : strings().hints.hedge;
     return trySh(shapes, label, rng, voice.seat) ?? trySh(strings().hints.hedge, label, rng, voice.seat) ?? label;
   }
@@ -197,12 +223,13 @@ export function writeHint({
       // 本当のことを言う回。罠を避けろ、は真実なので記録が良くなる
       return trySh(strings().hints.avoid, label, rng, voice.seat) ?? `${label}はだめだ`;
     }
-    if (rng() < liarMimicRate) {
+    if (!pressed && rng() < liarMimicRate) {
       const other = choices.filter((c) => c.id !== knowledge.trap);
       const b = other.length ? localized((other[Math.floor(rng() * other.length)] as Choice).label) : '';
       const narrowed = writeNarrow(label, b, rng);
       if (narrowed) return narrowed;
     }
+    if (pressed) return commit(label);
     const shapes = rng() < voice.assertive ? strings().hints.push : strings().hints.hedge;
     return trySh(shapes, label, rng, voice.seat) ?? label;
   }
@@ -219,11 +246,12 @@ export function writeHint({
   const b = second ? labelOf(choices, second) : '';
 
   // 三択まで絞れている場合は、二つ挙げて残りを匂わせるのが精一杯
-  if (b && rng() < voice.narrows) {
+  if (!pressed && b && rng() < voice.narrows) {
     const narrowed = writeNarrow(a, b, rng);
     if (narrowed) return narrowed;
   }
   const bet = rng() < 0.5 ? a : b || a;
+  if (pressed) return commit(bet);
   // 言い切りやすい者は、絞れていなくても言い切ってしまう
   const shapes = rng() < voice.assertive ? strings().hints.push : strings().hints.hedge;
   return trySh(shapes, bet, rng, voice.seat) ?? trySh(strings().hints.hedge, bet, rng, voice.seat) ?? bet;

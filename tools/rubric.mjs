@@ -41,6 +41,15 @@ const AVOID = C.strings().hints.avoidPattern;
  * POINT=0 で名指しの無い形と比べられる。
  */
 const pointFor = (mode) => (process.env.POINT === undefined ? mode.nameCall ?? 0 : Number(process.env.POINT));
+/**
+ * 挑戦者が置く疑いの札の枚数。**押された者は言い切る**（`writeHint` の pressed）。
+ *
+ * 0 で押さない形。札は記録が崩れている者から順に置く（人の打ち方）。
+ * 押すと嘘つきの「迷ったふり」が封じられるので記録が早く固まるが、
+ * 場から迷いの言い方が減る——迷いはこのゲームで一番強い手掛かりなので、
+ * **押すほど読みしろを自分で削る**。その釣り合いをここで見る。
+ */
+const PRESS = Number(process.env.PRESS ?? 0);
 // SCHED=0 で、裏切りの段取りを外した昔の形（毎部屋のコイン投げ）と比べられる
 const SCHED = process.env.SCHED !== '0';
 const SEENSHOTS = { n: 0 };
@@ -50,7 +59,7 @@ const BOOST_MAX = Number(process.env.BOOST_MAX ?? 2.6);
 if (process.env.DEBUG) process.on('exit', () => console.error(`[dbg] 読み手に届いた指し ${SEENSHOTS.n}`));
 
 /** 一部屋ぶん、先に喋った者を積みながら書く */
-function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6) {
+function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6, marked = new Set()) {
   const said = [];
   const texts = [];
   for (const id of ids) {
@@ -58,6 +67,7 @@ function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6) {
       choices: room.choices, knowledge: kn.get(id), rng,
       liarHonestyRate: mode.honesty(C.liarBias(id)), liarMimicRate: mode.mimic, voice: C.voiceOf(id),
       liarHonest: SCHED ? rng() < C.liarHonestyAt(id, roomInSection, roomsPer) : undefined,
+      pressed: marked.has(id),
     });
     said.push({ id, name: nameOf(id), text });
     texts.push(text);
@@ -287,6 +297,12 @@ function playSection(slots, mix, mode, players, acc, per) {
     : C.castLiars(speakerIds, rng);
   const recs = new Map(players.map((p) => [p, new Map()]));
   const alive = new Map(players.map((p) => [p, 0]));
+  /*
+   * 札は記録から置く。記録は振る舞いで付けるので打ち手ごとに同じ値になる。
+   * 一つの写しから決めて、**全員に同じ盤面**を見せる（打ち手の比較を崩さない）。
+   */
+  const canonRec = new Map();
+  let marked = new Set();
   // 区画を通した撃たれ方。顔ぶれは変わらないので積める
   const shotHist = new Map();
 
@@ -295,7 +311,7 @@ function playSection(slots, mix, mode, players, acc, per) {
     const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
     const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, !!mode.loneKnows, !!mode.trapper);
     const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
-    const texts = writeRound(speakerIds, room, kn, mode, r, PER);
+    const texts = writeRound(speakerIds, room, kn, mode, r, PER, marked);
 
     // 統計：票の集まり方
     if (acc) {
@@ -319,6 +335,14 @@ function playSection(slots, mix, mode, players, acc, per) {
     }
     // 記録は振る舞いで（本体と同じ）
     for (const p of players) bumpRecords(speakerIds, texts, room, labels, recs.get(p));
+    bumpRecords(speakerIds, texts, room, labels, canonRec);
+    if (PRESS > 0) {
+      marked = new Set([...canonRec.entries()]
+        .filter(([, v]) => v.miss > v.hit)
+        .sort((a, b) => (b[1].miss - b[1].hit) - (a[1].miss - a[1].hit))
+        .slice(0, PRESS)
+        .map(([id]) => id));
+    }
     for (const id of speakerIds) {
       const h = shotHist.get(id) ?? { shot: 0, rooms: 0 };
       h.rooms++;

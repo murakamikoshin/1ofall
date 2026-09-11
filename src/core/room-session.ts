@@ -476,7 +476,14 @@ export class RoomSession {
 
   private lastPhase = '';
   private lastRoundId = '';
-  private lastHintCount = -1;
+  /**
+   * 直前に流した「場の言葉」の中身。
+   *
+   * **件数で見ていた。** 助言は一部屋につき一人一通で、書き直しは上書きなので、
+   * 書き直しても件数が変わらない——賭場では**言い直した一言が挑戦者に届かなかった**。
+   * ソロは画面が本体の状態をそのまま描くので気づけない穴だった。
+   */
+  private lastHintKey = '';
 
   private onEngineState(state: EngineState): void {
     this.pushState(state);
@@ -485,11 +492,14 @@ export class RoomSession {
     const round = state.round;
     if (round && round.roundId !== this.lastRoundId) {
       this.lastRoundId = round.roundId;
-      this.lastHintCount = -1;
+      this.lastHintKey = '';
     }
     // 助言は増えたときだけ流す。1文字ごとに全員へ配らない
-    if (round && round.advice.length !== this.lastHintCount) {
-      this.lastHintCount = round.advice.length;
+    const hintKey = round
+      ? round.advice.map((a) => `${a.advisorId}:${a.kind ?? 'door'}:${a.text}`).join('|')
+      : '';
+    if (round && hintKey !== this.lastHintKey) {
+      this.lastHintKey = hintKey;
       this.sink.broadcast({
         t: 'round/hints',
         roundId: round.roundId,

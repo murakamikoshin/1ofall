@@ -839,7 +839,13 @@ export class GameEngine {
     }
 
     const labels = round.room.choices.map((c) => localized(c.label));
-    const checked = checkHint(this.guard, hint.advisorId, hint.text, this.now(), labels);
+    /*
+     * 疑いの札を置かれている者は言い切る（扉ひとつ・迷いの言い方なし）。
+     * AI だけの作法にはしない——人間の助言者にも同じ規則をかける。
+     */
+    const checked = checkHint(this.guard, hint.advisorId, hint.text, this.now(), labels, {
+      pressed: this.doubtedIds.has(hint.advisorId),
+    });
     if (!checked.ok) {
       this.rejectHint(hint.advisorId, checked.reason);
       return;

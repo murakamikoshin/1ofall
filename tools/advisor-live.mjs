@@ -97,6 +97,56 @@ if (board.canWrite) {
   const notice = await p.evaluate(() => document.querySelector('.board-notice')?.textContent);
   check('サーバーに断られた理由が画面に出る', notice === '少し待て', `出たのは「${notice}」`);
   await p.screenshot({ path: `${OUT}/live-4-notice.png`, fullPage: true });
+
+  /*
+   * 疑いの札を置かれたら、言い切るしかない。
+   *
+   * 札は挑戦者の覚え書きだったので、置かれても助言者側は何も起きなかった。
+   * いまは本人に届き、**扉ひとつを名指しして迷いの言い方を使えない**
+   * （サーバーでも弾くが、押してから断るのでは遅いので手元でも止める）。
+   * 札は部屋の途中で置かれるので、入力欄を作った時点の写しを見ていると
+   * 素通しになる——実際にそうなっていたので、ここで固定する。
+   */
+  /*
+   * 挑戦者の側からは、相手のIDは名簿でしか分からない
+   * （round/open の `you` は助言者あての便にしか乗らない）。
+   */
+  const me = (inbox.filter((m) => m.t === 'room/state').pop()?.roster ?? [])
+    .find((a) => a.name === 'みかん')?.id;
+  check('名簿から相手のIDが引ける', !!me, String(me));
+  ws.send(JSON.stringify({ t: 'challenger/doubt', advisorId: me, on: true }));
+  await wait(600);
+  const pressed = await p.evaluate(() => (document.querySelector('.role-doubt')?.textContent ?? '').trim());
+  check('札が本人の画面に出る', pressed.includes('疑われている'), pressed);
+  check('言い切る規則も出る', pressed.includes('言い切'), pressed);
+
+  const label = await p.evaluate(() =>
+    (document.querySelector('.cell span:not(.cell-flag)')?.textContent ?? '').trim());
+  await p.locator('.compose-row .field').fill(`たぶん${label}`);
+  await wait(200);
+  const hedge = await p.evaluate(() => ({
+    disabled: document.querySelector('.compose-row .primary')?.disabled,
+    status: (document.querySelector('.status')?.textContent ?? '').trim(),
+  }));
+  check('押されたら迷いの言い方は送らせない',
+    hedge.disabled === true && hedge.status.includes('言い切'), JSON.stringify(hedge));
+
+  await p.locator('.compose-row .field').fill(`${label}にしろ`);
+  await wait(200);
+  const commit = await p.evaluate(() => document.querySelector('.compose-row .primary')?.disabled);
+  check('言い切れば送れる', commit === false, `disabled=${commit}`);
+  await p.screenshot({ path: `${OUT}/live-5-pressed.png`, fullPage: true });
+
+  ws.send(JSON.stringify({ t: 'challenger/doubt', advisorId: me, on: false }));
+  await wait(600);
+  await p.locator('.compose-row .field').fill(`たぶん${label}`);
+  await wait(200);
+  const lifted = await p.evaluate(() => ({
+    banner: document.querySelectorAll('.role-doubt:not([hidden])').length,
+    disabled: document.querySelector('.compose-row .primary')?.disabled,
+  }));
+  check('札を外せば元に戻る', lifted.banner === 0 && lifted.disabled === false, JSON.stringify(lifted));
+  await p.locator('.compose-row .field').fill('');
 }
 
 // 線が切れたら自分で戻る

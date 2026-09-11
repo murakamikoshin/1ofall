@@ -100,6 +100,33 @@ if (myRow) {
   } else {
     check(`札がほかの人（${myRow.name}）の行にも出る`, seen.marks.length > 0, JSON.stringify(seen));
   }
+  /*
+   * 押された者は言い切る。
+   *
+   * 札が印だけなら、賭場では何も起きない飾りに戻る。置かれた者は
+   * 扉ひとつを名指しして、迷いの言い方を使えない（サーバーでも弾く）。
+   * 自分の画面にも規則が出ていないと、断られた理由が分からない。
+   */
+  if (myRow.mine && await guest.locator('.compose-row .field').count()) {
+    const rule = await guest.evaluate(() => (document.querySelector('.role-doubt')?.textContent ?? '').trim());
+    check('押された本人の画面に規則が出る', rule.includes('言い切'), rule);
+    const label = await guest.evaluate(() =>
+      (document.querySelector('.cell span:not(.cell-flag)')?.textContent ?? '').trim());
+    await guest.locator('.compose-row .field').fill(`たぶん${label}`);
+    await wait(250);
+    const blocked = await guest.evaluate(() => ({
+      disabled: document.querySelector('.compose-row .primary')?.disabled === true,
+      status: (document.querySelector('.status')?.textContent ?? '').trim(),
+    }));
+    check('迷いの言い方は送らせない', blocked.disabled && blocked.status.includes('言い切'), JSON.stringify(blocked));
+    await guest.locator('.compose-row .field').fill(`${label}にしろ`);
+    await wait(250);
+    const allowed = await guest.evaluate(() =>
+      document.querySelector('.compose-row .primary')?.disabled === false);
+    check('言い切れば送れる', allowed);
+    await guest.locator('.compose-row .field').fill('');
+  }
+
   // 外すと消える。残ると、疑いを解いたのに撃たれ続ける
   await host.evaluate(() => {
     const on = document.querySelector('.hint-doubt.is-on');

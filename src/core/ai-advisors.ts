@@ -119,11 +119,19 @@ export class AiAdvisorGateway implements AdvisorGateway {
       return v;
     };
 
+    /*
+     * 挑戦者に疑いの札を置かれている者。**言い切るしかない**
+     * （扉ひとつを名指しして、迷いの言い方も二択紛れも使えない）。
+     * 人間の助言者にも同じ規則がかかるので（`checkHint`）、
+     * AI だけの作法にはならない。
+     */
+    const pressed = new Set(briefing.doubtedIds ?? []);
     const write = (id: string, nudge = 0): string => {
       const knowledge = briefing.knowledge.get(id);
       if (!knowledge) return '';
       const voice = voiceOf(id);
       return writeHint({
+        pressed: pressed.has(id),
         choices: briefing.room.choices,
         knowledge,
         rng: this.rng,
