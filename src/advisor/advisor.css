@@ -417,6 +417,35 @@ body { overflow: auto; }
 .answer-go:focus-visible { border-color: var(--rust); }
 
 /* 周の終わりに出す通算。ここは「次の周を待っている」だけの画面だった */
+/*
+ * 通算。周をまたいで残るもの。
+ *
+ * 周ぶんの手柄（.run-tally）より**静かに**置く。いま終わった周の話と
+ * 積み上げの話が同じ濃さで並ぶと、どちらも読み流される。
+ */
+.career {
+  border: var(--edge);
+  border-left: 2px solid color-mix(in srgb, var(--paper-faint) 60%, transparent);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.7rem;
+}
+
+.career-head {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: var(--paper-faint);
+}
+
+.career-line {
+  margin: 0;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--paper) 82%, transparent);
+}
+
 .run-tally {
   border: var(--edge);
   border-left: 2px solid var(--rust);

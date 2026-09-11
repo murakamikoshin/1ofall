@@ -272,6 +272,17 @@ export const ja = {
     // 押された者の規則。迷いに隠れられないので、嘘つきは罠を押すしかなくなる
     doubtedRule: '次の一言は、扉ひとつを言い切る',
     /*
+     * 周をまたいで残る通算。**本人の端末にだけ**置く
+     * （名乗りは自由なので、名前で集計しても意味がない）。
+     * 毎日来る人にとって、自分が何をした人なのかがどこにも残っていなかった。
+     */
+    careerHead: 'あなたの通算',
+    careerSpoke: (followed: number, spoke: number) => `${spoke}部屋で喋り、${followed}部屋で採られた`,
+    careerOutcome: (killed: number, saved: number) => `${killed}部屋で死なせ、${saved}部屋で通した`,
+    careerBet: (hit: number, all: number) => `賭けは${all}回中${hit}回当たり`,
+    careerRole: (liar: number, all: number) => `${all}区画のうち${liar}区画で嘘つき`,
+    careerDoubted: (n: number) => `${n}部屋で疑いの札を置かれた`,
+    /*
      * 発言枠にいた人へ返すもの。
      *
      * 枠外の賭けには当たり外れが返るのに、言葉を書いた5〜8人には

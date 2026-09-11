@@ -116,6 +116,22 @@ check('採られた部屋が通算に積まれている', followedN > 0, followe
 check('採られた結果（死なせた／通した）まで出る',
   tally.lines.some((l) => l.includes('死なせた') || l.includes('通した')), JSON.stringify(tally.lines));
 
+/*
+ * 周をまたいで残る通算。
+ *
+ * 周ぶんの手柄は周が終われば消える。毎日来る人にとって、自分が何をした人なのかが
+ * どこにも残っていなかった（挑戦者には最高記録があるのに）。
+ * 本人の端末にだけ積むので、線の向こうは何も知らない。
+ */
+const mine = await p.evaluate(() => ({
+  head: (document.querySelector('.career-head')?.textContent ?? '').trim(),
+  lines: [...document.querySelectorAll('.career-line')].map((e) => (e.textContent ?? '').trim()),
+  saved: JSON.parse(localStorage.getItem('career:advisor') ?? 'null'),
+}));
+if (mine.head) console.log(`   ${mine.head}: ${mine.lines.join(' / ')}`);
+check('通算が周のあいだに出る', mine.lines.length > 0, JSON.stringify(mine));
+check('通算が端末に残っている', !!mine.saved && mine.saved.spoke > 0, JSON.stringify(mine.saved));
+
 // 同じ部屋のまま二周目
 const before = inbox.length;
 send({ t: 'challenger/start', mode: 'standard', locale: 'ja' });
@@ -144,6 +160,18 @@ console.log(`   一周目の顔ぶれ: ${firstRoster}`);
 console.log(`   二周目の顔ぶれ: ${secondRoster}`);
 check('AI の顔ぶれが周をまたいで同じ', firstRoster === secondRoster, `${firstRoster} / ${secondRoster}`);
 void before;
+
+/*
+ * 入り直しても残っているか。
+ * 通算の値打ちは「また来たときに前の自分が居ること」なので、
+ * 画面を開き直して入室前の画面に出ることまで見る。
+ */
+await p.reload({ waitUntil: 'networkidle' });
+const onEnter = await p.evaluate(() => ({
+  box: document.querySelectorAll('.career').length,
+  lines: [...document.querySelectorAll('.career-line')].map((e) => (e.textContent ?? '').trim()),
+}));
+check('入室前の画面にも通算が出る', onEnter.box > 0 && onEnter.lines.length > 0, JSON.stringify(onEnter));
 
 check('例外なし', errors.length === 0, errors.join(' / '));
 console.log(`\n${pass} 通過 / ${fail} 失敗`);

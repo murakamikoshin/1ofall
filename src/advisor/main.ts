@@ -9,6 +9,7 @@ import {
 } from '@/core/moderation';
 import type { Choice } from '@/core/schema';
 import { strings, localized, detectLocale, setLocale } from '@/i18n';
+import { career, hasCareer } from './career';
 import type { Knowledge } from '@/core/casting';
 import { LiveConnection } from './live-connection';
 
@@ -240,6 +241,36 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ''): HTML
   return node;
 }
 
+/**
+ * 通算の箱。入室前と、周のあいだに出す。
+ *
+ * 部屋ごとの結果も周ぶんの通算も返しているが、周が終われば消えていた。
+ * 毎日来る人にとって、**自分が何をした人なのかがどこにも残らない。**
+ * 残すのは本人の端末だけ（名乗りは自由なので、名前で集計しても意味がない）。
+ */
+function careerBox(): HTMLElement | null {
+  const c = career();
+  if (!hasCareer(c)) return null;
+  const T = strings().advisor;
+  const box = el('div', 'career');
+  const head = el('p', 'career-head');
+  head.textContent = T.careerHead;
+  box.append(head);
+  const lines = [
+    T.careerSpoke(c.followed, c.spoke),
+    ...(c.killed > 0 || c.saved > 0 ? [T.careerOutcome(c.killed, c.saved)] : []),
+    ...(c.betHit + c.betMiss > 0 ? [T.careerBet(c.betHit, c.betHit + c.betMiss)] : []),
+    ...(c.asLiar + c.asHonest > 0 ? [T.careerRole(c.asLiar, c.asLiar + c.asHonest)] : []),
+    ...(c.doubted > 0 ? [T.careerDoubted(c.doubted)] : []),
+  ];
+  for (const line of lines) {
+    const row = el('p', 'career-line');
+    row.textContent = line;
+    box.append(row);
+  }
+  return box;
+}
+
 function renderEnter(): void {
   app!.innerHTML = '';
   const frame = el('div', 'frame grain');
@@ -266,6 +297,9 @@ function renderEnter(): void {
   submit.textContent = strings().advisor.join;
 
   form.append(heading, note, code, name, submit);
+  // 戻ってきた人には、前に何をした人なのかを見せる
+  const mine = careerBox();
+  if (mine) form.append(mine);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void connection.join(code.value.trim(), name.value.trim()).then(renderBoard);
@@ -559,6 +593,8 @@ function renderBoard(): void {
         }
         floor.append(box);
       }
+      const mine = careerBox();
+      if (mine) floor.append(mine);
       return;
     }
     paintDoubt(view);

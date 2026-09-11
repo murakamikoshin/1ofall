@@ -1,4 +1,5 @@
 import type { AdvisorConnection, AdvisorView, SectionAnswerView } from './main';
+import { addCareer } from './career';
 import type { Choice, Knowledge } from '@/core/schema';
 import { localized } from '@/i18n';
 import { wasTruthful } from '@/core/moderation';
@@ -273,7 +274,11 @@ export class LiveConnection implements AdvisorConnection {
       }
       case 'room/doubts': {
         // 挑戦者が札を置いた／外した。盤面の外から来るので、いまの部屋に貼り直す
+        const was = this.doubted.includes(this.myId ?? '');
         this.doubted = msg.ids ?? [];
+        const now = this.doubted.includes(this.myId ?? '');
+        // 置かれた回数だけ数える（外した／置き直したで二重に数えない）
+        if (!was && now) addCareer({ doubted: 1 });
         this.publish();
         return;
       }
@@ -286,12 +291,14 @@ export class LiveConnection implements AdvisorConnection {
       }
       case 'game/over':
         // 周が終わった。次の部屋が来たら通算を白紙に戻す
+        if (this.played) addCareer({ runs: 1 });
         this.runEnded = true;
         this.push(null);
         return;
       case 'advisor/voteResult': {
         this.voteRecord = msg.record ?? this.voteRecord;
         this.voteRank = msg.rank ?? this.voteRank;
+        addCareer(msg.hit ? { betHit: 1 } : { betMiss: 1 });
         this.notify(msg.hit ? 'voteHit' : 'voteMiss');
         return;
       }
@@ -303,6 +310,9 @@ export class LiveConnection implements AdvisorConnection {
           cleared: msg.cleared === true,
           rows: msg.rows,
         };
+        // 自分の役が開いた。通算にはここでしか入らない（遊んでいるあいだは伏せ）
+        const mine = this.myId ? msg.rows.find((r) => r.id === this.myId) : undefined;
+        if (mine) addCareer(mine.liar ? { asLiar: 1 } : { asHonest: 1 });
         for (const l of this.answerListeners) l(answer);
         return;
       }
@@ -355,6 +365,13 @@ export class LiveConnection implements AdvisorConnection {
     } else {
       this.runTally.ignored += 1;
     }
+    // 周をまたいで残すぶん（本人の端末だけ）
+    addCareer({
+      spoke: 1,
+      followed: followed ? 1 : 0,
+      saved: followed && survived ? 1 : 0,
+      killed: followed && !survived ? 1 : 0,
+    });
     this.notify(followed
       ? (survived ? 'followedLived' : 'followedDied')
       : (survived ? 'ignoredLived' : 'ignoredDied'));
