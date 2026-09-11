@@ -148,6 +148,15 @@ export const ClientMessageSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('challenger/start'), mode: ModeIdSchema, locale: LocaleSchema.optional() }),
   z.object({ t: z.literal('challenger/choose'), choiceId: z.string(), roundId: z.string() }),
   z.object({ t: z.literal('challenger/silence'), advisorId: AdvisorIdSchema, roundId: z.string() }),
+  /**
+   * 疑いの札を置く／外す。
+   *
+   * 札は覚え書きだったので送っていなかった。**置いても場が何も変わらない**ので、
+   * 配信で一番おいしい「名指しされた人が弁解する」が起きなかった。
+   * 公開すると撃たれる側が振る舞いを変えられるが、それは測ってある
+   * （`tools/doubt-probe.mjs`。手掛かりの向きは倍率 6 まで保つ）。
+   */
+  z.object({ t: z.literal('challenger/doubt'), advisorId: AdvisorIdSchema, on: z.boolean() }),
   z.object({ t: z.literal('challenger/report'), advisorId: AdvisorIdSchema, roundId: z.string(), text: z.string().max(HINT_MAX_LENGTH) }),
   z.object({ t: z.literal('challenger/setSelectionMode'), mode: z.enum(['lottery', 'nominate']) }),
   /** 指名方式のとき、次の区画で喋らせる面々 */
@@ -385,6 +394,14 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
     restingIds: z.array(AdvisorIdSchema).optional(),
   }),
   z.object({ t: z.literal('round/hints'), roundId: z.string(), hints: z.array(HintSchema) }),
+  /**
+   * 挑戦者が置いた疑いの札。**助言者にだけ配る。**
+   *
+   * 挑戦者の画面には自分の札がもう出ているので送り返さない。
+   * 札の付いた本人には「あなたは疑われている」が出て、ほかの助言者には
+   * 誰に札が付いているかが見える（弁解も、乗って埋めるのも、ここから起きる）。
+   */
+  z.object({ t: z.literal('room/doubts'), ids: z.array(AdvisorIdSchema) }),
   z.object({
     t: z.literal('round/result'),
     roundId: z.string(),

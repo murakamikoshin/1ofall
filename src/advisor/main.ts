@@ -56,6 +56,14 @@ export interface AdvisorView {
   myId?: string;
   /** 手を挙げているか。区画のあいだ続く */
   volunteered?: boolean;
+  /**
+   * 挑戦者が疑いの札を置いた相手。
+   *
+   * 札は挑戦者の覚え書きだった（送っていない）。置かれても場が何も変わらないので、
+   * 配信で一番おいしい「名指しされた人が弁解する」が起きなかった。
+   * 自分に付いていれば頭に出て、ほかの人のぶんは場の行に出る。
+   */
+  doubtedIds?: readonly string[];
 }
 
 export interface AdvisorConnection {
@@ -275,7 +283,17 @@ function renderBoard(): void {
   const role = el('header', 'role');
   const roleTitle = el('p', 'role-title');
   const roleNote = el('p', 'role-note');
-  role.append(roleTitle, roleNote);
+  /*
+   * 挑戦者が自分に札を置いたら、頭に出す。
+   *
+   * 場の行にも札は出るが、**自分の一言をまだ出していない人・枠の外の人は
+   * 場の行に居ない。** 撃たれている当人にだけは、どこに居ても届かないと
+   * 弁解の機会にならない。
+   */
+  const doubtBanner = el('p', 'role-doubt');
+  doubtBanner.setAttribute('role', 'status');
+  doubtBanner.hidden = true;
+  role.append(roleTitle, roleNote, doubtBanner);
 
   const board = el('main', 'board');
   const prompt = el('h2', 'board-prompt');
@@ -463,6 +481,14 @@ function renderBoard(): void {
    */
   let drawnFor = '';
 
+  /** 自分に付いた札。どの部屋に居ても、枠の外に居ても出す */
+  const paintDoubt = (view: AdvisorView): void => {
+    const me = view.myId ?? '';
+    const on = me.length > 0 && (view.doubtedIds ?? []).includes(me);
+    doubtBanner.hidden = !on;
+    doubtBanner.textContent = on ? strings().advisor.doubtedYou : '';
+  };
+
   connection.onView((view) => {
     current = view;
     /*
@@ -491,6 +517,7 @@ function renderBoard(): void {
       floor.innerHTML = '';
       compose.innerHTML = '';
       drawnFor = '';
+      doubtBanner.hidden = true;
       /*
        * 周の終わりに、自分の一言がどうなったかの通算を出す。
        *
@@ -525,6 +552,7 @@ function renderBoard(): void {
       }
       return;
     }
+    paintDoubt(view);
     const roomKey = `${view.roundId}|${view.isSpeaker ? 's' : '-'}|${view.knowledge?.kind ?? '-'}`;
     if (roomKey === drawnFor) {
       // 増えたのは場の言葉だけ。扉と入力欄には触らない
@@ -690,12 +718,24 @@ function renderFloor(host: HTMLElement, view: AdvisorView): void {
   const canPoint = view.isSpeaker && typeof connection.point === 'function' && view.spoke === true;
   const mine = view.myCall ?? null;
 
+  const doubted = new Set(view.doubtedIds ?? []);
   for (const h of said) {
-    const row = el('div', `floor-row${h.advisorId === view.myId ? ' is-mine' : ''}`);
+    const marked = doubted.has(h.advisorId);
+    const row = el('div', `floor-row${h.advisorId === view.myId ? ' is-mine' : ''}${marked ? ' is-doubted' : ''}`);
     const name = el('span', 'floor-name');
     name.textContent = h.advisorName;
     const text = el('span', 'floor-text');
     text.textContent = h.text;
+    /*
+     * 挑戦者の札。付いている相手は場からも見える（撃つ相手を選ぶ材料になる）。
+     * 行は三列の格子（名前・本文・手）なので、四つめを足すと段が折れる。
+     * 札は本文の中へ入れる。
+     */
+    if (marked) {
+      const mark = el('span', 'floor-mark');
+      mark.textContent = h.advisorId === view.myId ? T.advisor.doubtedYou : T.advisor.doubtedMark;
+      text.append(' ', mark);
+    }
     row.append(name, text);
 
     // 自分の一言には撃つ手を出さない（自分は撃てない）

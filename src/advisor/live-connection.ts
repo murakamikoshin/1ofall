@@ -34,6 +34,8 @@ interface Incoming {
   rank?: { place: number; of: number };
   /** 挑戦者が選んだ扉。round/result で全員に配られる */
   chosen?: string;
+  /** 挑戦者が疑いの札を置いた相手。助言者にだけ配られる */
+  ids?: string[];
 }
 
 const RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
@@ -52,6 +54,14 @@ export class LiveConnection implements AdvisorConnection {
   /** この部屋でほかの人が言ったこと。届いた順のまま持つ */
   private said: { advisorId: string; advisorName: string; text: string; kind?: string }[] = [];
   private myCall: { targetId: string; doubt: boolean } | null = null;
+  /**
+   * 挑戦者が置いた疑いの札。
+   *
+   * 札は挑戦者の覚え書きだったので、こちらには何も来ていなかった。
+   * 見えるようになると、撃たれている本人は弁解でき、ほかの者は
+   * 「挑戦者はあいつを疑っている」を踏んで喋れる。
+   */
+  private doubted: readonly string[] = [];
   /** この部屋で自分の一言をもう出したか。出す前は人を指せない */
   private spoke = false;
   /** 自分のID。場に並ぶ言葉のどれが自分のものかを見分けるため */
@@ -257,7 +267,14 @@ export class LiveConnection implements AdvisorConnection {
           said: this.said,
           myCall: this.myCall,
           spoke: this.spoke,
+          doubtedIds: this.doubted,
         });
+        return;
+      }
+      case 'room/doubts': {
+        // 挑戦者が札を置いた／外した。盤面の外から来るので、いまの部屋に貼り直す
+        this.doubted = msg.ids ?? [];
+        this.publish();
         return;
       }
       case 'round/hints': {
@@ -355,6 +372,7 @@ export class LiveConnection implements AdvisorConnection {
       ...this.latest,
       said: this.said, myCall: this.myCall, myVote: this.myVote,
       spoke: this.spoke, myId: this.myId, volunteered: this.volunteered,
+      doubtedIds: this.doubted,
     });
   }
 

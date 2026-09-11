@@ -1,7 +1,7 @@
 import type { AdvisorInfo, Hint } from './schema';
 import type { AdvisorCall, AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { AiAdvisorGateway } from './ai-advisors';
-import { ADVISOR_NAME_MAX, type ModeConfig } from './limits';
+import { RUN, ADVISOR_NAME_MAX, type ModeConfig } from './limits';
 
 /**
  * 名前の重なりをほどく。
@@ -75,6 +75,8 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
     this.maxFill = options.maxFill ?? options.minAdvisors;
     this.ai = new AiAdvisorGateway({
       count: this.maxFill,
+      // 疑いの札は公開されている。嘘つきは札の付いた者へ寄る
+      pileOn: RUN.doubtPileOn,
       ...(options.aiSeed !== undefined ? { seed: options.aiSeed } : {}),
       ...(options.mode ? { mode: options.mode } : {}),
     });

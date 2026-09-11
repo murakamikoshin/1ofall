@@ -14,7 +14,7 @@ import { openRoomSocket } from './room-socket';
 import { companionNames } from '@/core/companion-names';
 import type { Advice } from '@/core/engine';
 import { AiAdvisorGateway } from '@/core/ai-advisors';
-import { MODES, type ModeId } from '@/core/limits';
+import { MODES, RUN, type ModeId } from '@/core/limits';
 
 import { audio } from '@/ui/audio';
 import { choiceArt } from '@/ui/placeholder';
@@ -472,7 +472,8 @@ function startGame(modeId: ModeId): void {
   const mode = MODES[modeId];
   const local = new GameEngine({
     pack, mode,
-    gateway: new AiAdvisorGateway({ count: 12, mode, ...aiHintDelays() }),
+    // 札は公開の一手。嘘つきは札の付いた者へ寄る（ソロでも同じ）
+    gateway: new AiAdvisorGateway({ count: 12, mode, pileOn: RUN.doubtPileOn, ...aiHintDelays() }),
   });
   engine = local;
   unsubscribe = local.subscribe((state) => render(state));
@@ -1073,7 +1074,18 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
     return row;
   }
 
-  // 疑いの札。盤面は何も変わらない（送らない）。答え合わせで突き合わせる
+  /*
+   * 疑いの札。**置くと相手に伝わる。**
+   *
+   * ここまで札は覚え書きだった（送っていない）。置いても場が何も変わらないので、
+   * 配信で一番おいしい「名指しされた人が弁解する」が起きない。
+   * 公開すると撃たれる側が振る舞いを変えられるが、嘘つきが札に群がっても
+   * 手掛かりの向きは保つことを測ってある（`tools/doubt-probe.mjs`）。
+   *
+   * 代金は読み違いのほうに出る。嘘つきが撃てる相手は元から限られていて、
+   * 札はそのあいだの選り好みしか動かさないので、正直に正解を言った人へ
+   * 置いた札が、その人を集中砲火に晒す。
+   */
   const doubt = document.createElement('button');
   doubt.type = 'button';
   const paint = (): void => {
@@ -1084,8 +1096,11 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
   };
   doubt.title = T.challenger.doubtHint;
   doubt.addEventListener('click', () => {
-    if (doubted.has(advice.advisorId)) doubted.delete(advice.advisorId);
-    else doubted.add(advice.advisorId);
+    const on = !doubted.has(advice.advisorId);
+    if (on) doubted.add(advice.advisorId);
+    else doubted.delete(advice.advisorId);
+    // 次の部屋から効く。いま並んでいる助言は書き換わらない
+    engine?.doubt(advice.advisorId, on);
     // 札を置いた手応え。専用の音は作らない（扉に触れる音を借りる）
     audio.play('hover');
     paint();

@@ -239,9 +239,10 @@ export class GameEngine {
   /**
    * 挑戦者が疑いの札を置いた相手。
    *
-   * **いまは誰も入れない。** 札は画面の中だけのもので、送っていない。
-   * 公開する案を測るための置き場で、`doubt()` から入る
-   * （`tools/doubt-probe.mjs` がそこを叩く）。
+   * 札は**公開する**。次の部屋を開くときに助言者へ配られ、AI の嘘つきは
+   * 札の付いた者へ寄って埋めにかかる（`RUN.doubtPileOn`）。
+   * 置いた瞬間ではなく次の部屋から効く——部屋の助言はもう出ているので、
+   * 読んでから置いた札がその場を書き換えては読み合いにならない。
    */
   private doubtedIds = new Set<string>();
   /** この部屋で使った「人を指す言い方」。部屋ごとに捨てる */
@@ -565,12 +566,17 @@ export class GameEngine {
   /**
    * 疑いの札を置く／外す。
    *
-   * 公開する案のための口。呼ばれなければ何も変わらない
-   * （既定では画面が呼んでいない）。
+   * 置いた札は次の部屋の頭で助言者へ配られる（賭場では札の付いた本人の
+   * 画面に出る）ので、置く側は「読みを明かす」代金を払う。
    */
   doubt(advisorId: string, on: boolean): void {
     if (on) this.doubtedIds.add(advisorId);
     else this.doubtedIds.delete(advisorId);
+  }
+
+  /** いま札が付いている者。賭場では助言者へ配るのに使う */
+  doubtedNow(): readonly string[] {
+    return [...this.doubtedIds];
   }
 
   retryFromTitle(): void {
@@ -633,6 +639,9 @@ export class GameEngine {
         this.quietLastSection = new Set();
       }
       this.spokeInSection.clear();
+      // 顔ぶれが変わったら札も捨てる。人が入れ替わったあとに札だけ残ると、
+      // 前の区画の読みで新しい人が撃たれる
+      this.doubtedIds.clear();
 
       const gatewayWeight = this.gateway.slotWeight;
       const quiet = this.quietLastSection;

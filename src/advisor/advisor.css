@@ -186,6 +186,36 @@ body { overflow: auto; }
 /* 自分の一言。撃つ手は出さない（自分は撃てない）ので、そのぶん静かに置く */
 .floor-row.is-mine { opacity: 0.62; }
 
+/*
+ * 挑戦者の疑いの札。
+ *
+ * 撃たれている行だけ左に印を入れる。色は「黙らされた」と同じ錆色にして、
+ * 「こちらに向かって不利が起きている」という読みを揃える。
+ * 自分の行は薄く置いてあるので、札が付いたら薄さを戻す（弁解の合図なので）。
+ */
+.floor-row.is-doubted .floor-name { color: var(--rust); }
+.floor-row.is-doubted.is-mine { opacity: 1; }
+
+.floor-mark {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--rust);
+  border: 1px solid color-mix(in srgb, var(--rust) 55%, transparent);
+  border-radius: 2px;
+  padding: 0.05rem 0.3rem;
+  white-space: nowrap;
+}
+
+/* 自分に札が付いた。枠の外に居ても、まだ喋っていなくても届く一行 */
+.role-doubt {
+  margin: 0.35rem 0 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.14em;
+  color: var(--rust);
+  border-left: 2px solid var(--rust);
+  padding-left: 0.5rem;
+}
+
 .floor-row {
   /* 名前の列を詰める。指で押す手が二つ並ぶので本文の幅を残したい */
   grid-template-columns: minmax(3rem, 4.5rem) minmax(0, 1fr) auto;

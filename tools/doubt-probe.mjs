@@ -50,6 +50,17 @@ function run(mode, pileOn) {
     marked: 0, markedLiar: 0,   // 札の精度（挑戦者の読み）
     callsOnMarked: 0, callsOnMarkedLiar: 0,
     callsOnFree: 0, callsOnFreeLiar: 0,
+    /*
+     * 読み違いの代金。
+     *
+     * 嘘つきが撃てる相手は元から限られていて（正解を口にした者・罠を
+     * 「死ぬ」と言った者）、札はそのあいだの選り好みしか動かさない。
+     * つまり**当たった札は何も呼ばず、外した札が本人を集中砲火に晒す**はず。
+     * それが実際に起きているかを見る（起きていなければ、公開しても
+     * 見世物が増えるだけで、置く側の判断に重みが乗らない）。
+     */
+    honestMarked: { n: 0, shots: 0, buried: 0 },
+    honestFree: { n: 0, shots: 0, buried: 0 },
   };
   for (let seed = 0; seed < SEEDS; seed++) {
     const rng = C.createRng(9000 + seed * 733);
@@ -108,6 +119,12 @@ function run(mode, pileOn) {
         }
         for (const id of speakerIds) {
           const n = hitsOn.get(id) ?? 0;
+          if (!liarIds.includes(id)) {
+            const box = doubted.has(id) ? acc.honestMarked : acc.honestFree;
+            box.n++;
+            box.shots += n;
+            if (n >= 2) box.buried++;
+          }
           const b = acc.byHits.get(n) ?? { n: 0, liar: 0, correct: 0 };
           b.n++;
           if (liarIds.includes(id)) b.liar++;
@@ -164,6 +181,10 @@ for (const [label, mode] of Object.entries(MODES)) {
     console.log(`    撃たれていない者が正解を口にしていた       ${pct(hits0.correct, hits0.n)}（${hits0.n}人）`);
     console.log(`    札の付いた者への撃ち               ${a.callsOnMarked}件（うち相手が嘘つき ${pct(a.callsOnMarkedLiar, a.callsOnMarked)}）`);
     console.log(`    札の無い者への撃ち                 ${a.callsOnFree}件（うち相手が嘘つき ${pct(a.callsOnFreeLiar, a.callsOnFree)}）`);
+    const hm = a.honestMarked, hf = a.honestFree;
+    console.log(`    外した札の代金（協力者が撃たれた回数の平均） 札あり ${
+      (hm.shots / Math.max(1, hm.n)).toFixed(2)}（${hm.n}人）　札なし ${
+      (hf.shots / Math.max(1, hf.n)).toFixed(2)}（${hf.n}人）`);
   }
   /*
    * 手掛かりが生きているか。
@@ -176,6 +197,29 @@ for (const [label, mode] of Object.entries(MODES)) {
    * どちらも手掛かりで、向きが違うだけ。見たいのは
    * **札を公開して群がらせても向きが保つか**。
    */
+  /*
+   * 代金が実在するか。
+   *
+   * 倍率を上げたとき、**外した札（協力者に置いた札）の持ち主が
+   * より撃たれるようになる**こと。ここが動かないなら、公開しても
+   * 置く側の判断には何も乗らない（見世物だけが増える）。
+   */
+  const b1 = rows.find((x) => x.pileOn === 1);
+  const b25 = rows.find((x) => x.pileOn === 2.5);
+  const cost = (a) => a.honestMarked.shots / Math.max(1, a.honestMarked.n);
+  if (b1.a.honestMarked.n < 50) {
+    /*
+     * 崖っぷちには外した札がほとんど無い。**ほぼ全員が嘘つき**なので、
+     * 記録が崩れている者に置けば当たってしまう（実測 精度100%）。
+     * 代金を測る対象が居ないだけなので、ここは測らない。
+     */
+    check(`${label}: 外した札がほぼ起きない遊び方（札の精度 ${pct(b1.a.markedLiar, b1.a.marked)}）`, true);
+  } else {
+    check(`${label}: 外した札に代金が付く（倍率2.5で撃たれ方が増える）`,
+      cost(b25.a) > cost(b1.a) * 1.15,
+      `札あり ${cost(b1.a).toFixed(2)} → ${cost(b25.a).toFixed(2)}`);
+  }
+
   const base = rows.find((x) => x.pileOn === 1);
   const baseLift = (base.hits2.correct / Math.max(1, base.hits2.n))
     - (base.hits0.correct / Math.max(1, base.hits0.n));

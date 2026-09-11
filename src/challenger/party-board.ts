@@ -413,7 +413,8 @@ export class PartyBoard {
         // 疑いの札。押しても盤面は動かない（答え合わせで突き合わせる）
         const doubt = document.createElement('button');
         doubt.type = 'button';
-        doubt.title = T.challenger.doubtHint;
+        // 全員挑戦者では札を配らない（挑戦者が何人もいて誰の札か決まらない）
+        doubt.title = T.challenger.doubtHintPrivate;
         const paint = (): void => {
           const on = this.doubted.has(advice.memberId);
           doubt.className = `hint-doubt${on ? ' is-on' : ''}`;

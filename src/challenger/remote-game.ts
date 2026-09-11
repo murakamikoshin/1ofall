@@ -17,6 +17,8 @@ export interface GameHandle {
   timeUp(): void;
   advancePresentation(): void;
   silence(advisorId: string): { hit: boolean } | null;
+  /** 疑いの札。置くと助言者の画面に出る（賭場では本人にも） */
+  doubt(advisorId: string, on: boolean): void;
   report(reporterId: string, targetId: string, text: string): unknown;
   pause(): void;
   resume(): void;
@@ -124,6 +126,10 @@ export class RemoteGame implements GameHandle {
     this.send({ t: 'challenger/silence', advisorId, roundId });
     // 当たりかどうかはサーバーが決める。届いた画面ぶんに出る
     return null;
+  }
+
+  doubt(advisorId: string, on: boolean): void {
+    this.send({ t: 'challenger/doubt', advisorId, on });
   }
 
   report(_reporterId: string, targetId: string, text: string): unknown {

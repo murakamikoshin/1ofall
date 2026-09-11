@@ -74,6 +74,47 @@ const hints = await host.locator('.hint-row').count();
 check('AI の助言も届く', hints > 0, `${hints}件`);
 await host.screenshot({ path: `${OUT}/host-5-hints.png` });
 
+/*
+ * 疑いの札が、相手の画面に出るか。
+ *
+ * 札は挑戦者の覚え書きだった（送っていなかった）ので、置かれても場が
+ * 何も変わらず、配信で一番おいしい「名指しされた人が弁解する」が起きなかった。
+ * 撃たれている本人には頭に一行、ほかの人には場の行に印が出る。
+ */
+const myRow = await host.evaluate(() => {
+  const rows = [...document.querySelectorAll('.hint-row')];
+  const mine = rows.find((r) => (r.querySelector('.hint-name')?.textContent ?? '').includes('みかん'));
+  const row = mine ?? rows.find((r) => r.querySelector('.hint-doubt'));
+  if (!row) return null;
+  row.querySelector('.hint-doubt')?.click();
+  return { mine: row === mine, name: (row.querySelector('.hint-name')?.textContent ?? '').trim() };
+});
+if (myRow) {
+  await wait(800);
+  const seen = await guest.evaluate(() => ({
+    banner: (document.querySelector('.role-doubt:not([hidden])')?.textContent ?? '').trim(),
+    marks: [...document.querySelectorAll('.floor-mark')].map((e) => (e.textContent ?? '').trim()),
+  }));
+  if (myRow.mine) {
+    check('札を置かれた本人の画面に出る', seen.banner.includes('疑われている'), JSON.stringify(seen));
+  } else {
+    check(`札がほかの人（${myRow.name}）の行にも出る`, seen.marks.length > 0, JSON.stringify(seen));
+  }
+  // 外すと消える。残ると、疑いを解いたのに撃たれ続ける
+  await host.evaluate(() => {
+    const on = document.querySelector('.hint-doubt.is-on');
+    on?.click();
+  });
+  await wait(800);
+  const after = await guest.evaluate(() => ({
+    banner: document.querySelectorAll('.role-doubt:not([hidden])').length,
+    marks: document.querySelectorAll('.floor-mark').length,
+  }));
+  check('札を外すと相手の画面から消える', after.banner === 0 && after.marks === 0, JSON.stringify(after));
+} else {
+  check('この部屋には札を置ける行が無かった', true);
+}
+
 // 選んで演出まで
 await host.locator('.choice').first().click();
 await wait(6500);

@@ -144,6 +144,32 @@ check('助言者には画面ぶんを送らない',
 check('選ぶ前は verdict が立っていない',
   views.filter((v) => v.view.phase === 'choosing').every((v) => v.view.verdict === null));
 
+/* ── 6.8 疑いの札は助言者へ配られる（挑戦者には返さない） ───── */
+
+/*
+ * 札は挑戦者の覚え書きだった。置かれても場が何も変わらないので、
+ * 配信で一番おいしい「名指しされた人が弁解する」が起きなかった。
+ * 公開するにあたって見るのは二つ。**撃たれている本人に届くか**と、
+ * **札を置けるのは挑戦者だけか**（助言者が互いに札を貼れると、
+ * 挑戦者の読みを騙る道になる）。
+ */
+const doubtsBefore = inbox.get(A1).filter((m) => m.t === 'room/doubts').length;
+room.receive(CH, JSON.stringify({ t: 'challenger/doubt', advisorId: A1, on: true }));
+const marks = inbox.get(A1).filter((m) => m.t === 'room/doubts').pop();
+check('札が助言者に届く', !!marks && marks.ids.includes(A1), JSON.stringify(marks));
+check('札は撃たれていない人にも見える', (inbox.get(A2).filter((m) => m.t === 'room/doubts').pop()?.ids ?? []).includes(A1));
+check('札を挑戦者へ送り返さない', inbox.get(CH).filter((m) => m.t === 'room/doubts').length === 0);
+
+const errsBefore = inbox.get(A2).filter((m) => m.t === 'error').length;
+room.receive(A2, JSON.stringify({ t: 'challenger/doubt', advisorId: A1, on: false }));
+check('助言者は札を置けない',
+  (inbox.get(A1).filter((m) => m.t === 'room/doubts').pop()?.ids ?? []).includes(A1)
+  && inbox.get(A2).filter((m) => m.t === 'error').length > errsBefore);
+
+room.receive(CH, JSON.stringify({ t: 'challenger/doubt', advisorId: A1, on: false }));
+check('札を外すと消える', (inbox.get(A1).filter((m) => m.t === 'room/doubts').pop()?.ids ?? []).length === 0);
+check('札の増減が一通ずつ届く', inbox.get(A1).filter((m) => m.t === 'room/doubts').length >= doubtsBefore + 2);
+
 /* ── 7. 挑戦者が落ちたら畳む ────────────────────────────────── */
 
 room.disconnect(CH);

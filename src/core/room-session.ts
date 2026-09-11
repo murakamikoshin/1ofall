@@ -88,6 +88,7 @@ export class RoomSession {
     this.humans.join(connectionId, undefined, this.defaultName(connectionId));
     this.pushState();
     this.pushRoundTo(connectionId);
+    this.pushDoubts(connectionId);
   }
 
   disconnect(connectionId: string): void {
@@ -144,6 +145,7 @@ export class RoomSession {
         this.humans.join(connectionId, msg.name, this.defaultName(connectionId));
         this.pushState();
         this.pushRoundTo(connectionId);
+        this.pushDoubts(connectionId);
         return;
       }
       case 'advisor/hint':
@@ -198,6 +200,15 @@ export class RoomSession {
         if (!isChallenger) return this.fail(connectionId, 'notChallenger');
         this.engine?.silence(msg.advisorId);
         return;
+      case 'challenger/doubt': {
+        if (!isChallenger) return this.fail(connectionId, 'notChallenger');
+        // 全員挑戦者では挑戦者が何人もいるので、誰の札かが決まらない。
+        // そちらの札は画面の中だけに置いたままにする
+        if (this.party || !this.engine) return;
+        this.engine.doubt(msg.advisorId, msg.on);
+        this.pushDoubts();
+        return;
+      }
       case 'challenger/report':
         if (!isChallenger) return this.fail(connectionId, 'notChallenger');
         this.engine?.report('challenger', msg.advisorId, msg.text);
@@ -248,6 +259,9 @@ export class RoomSession {
       this.humans.onRound((briefing) => {
         this.briefing = briefing;
         for (const id of this.connections) this.pushRoundTo(id);
+        // 顔ぶれが変わった部屋では札が捨てられている。配り直さないと
+        // 助言者の画面に前の区画の札が残る
+        this.pushDoubts();
         this.armDeadline(briefing.roundId, briefing.deadlineAt);
       }),
       engine.subscribe((state) => this.onEngineState(state)),
@@ -688,6 +702,22 @@ export class RoomSession {
       you: connectionId,
       ...(this.humans.voteOf(connectionId) ? { myVote: this.humans.voteOf(connectionId) as string } : {}),
     });
+  }
+
+  /**
+   * 疑いの札を助言者へ配る。
+   *
+   * 挑戦者には送り返さない（置いた本人の画面にはもう出ている）。
+   * 札の付いた本人には「あなたは疑われている」が出るので、
+   * 弁解するか、開き直るか、その場で決められる。
+   */
+  private pushDoubts(target?: string): void {
+    if (this.party) return;
+    const ids = [...(this.engine?.doubtedNow() ?? [])];
+    for (const id of target ? [target] : this.connections) {
+      if (id === this.challengerId) continue;
+      this.sink.send(id, { t: 'room/doubts', ids: [...ids] });
+    }
   }
 
   private fail(connectionId: string, code: string): void {
