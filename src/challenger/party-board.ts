@@ -6,7 +6,7 @@ import { choiceArt } from '@/ui/placeholder';
 import { playResolution, resetStage, type ResolutionRefs } from '@/ui/death-sequence';
 import { audio } from '@/ui/audio';
 import {
-  containsBlocked, isPointing, countChoicesMentioned, MAX_CHOICES_PER_HINT,
+  containsBlocked, isPointing, countChoicesMentioned, isCommitted, MAX_CHOICES_PER_HINT,
 } from '@/core/moderation';
 import { HINT_MAX_LENGTH } from '@/core/limits';
 
@@ -36,6 +36,11 @@ export interface PartySource {
   pick(choiceId: string): void;
   /** 暴言を見た者がその場で挙げる。野良で遊ぶなら必ず要る */
   report(memberId: string, text: string): void;
+  /**
+   * 疑いの札を置く／外す。**全員挑戦者では公開で、みなが置ける。**
+   * 二人以上から付いた者が押される（次の一言は扉ひとつの言い切り）。
+   */
+  doubt(memberId: string, on: boolean): void;
   /** 締切が来た。ローカルなら自分で閉じる */
   timeUp(): void;
   advance(): void;
@@ -301,6 +306,18 @@ export class PartyBoard {
     if (!round) return;
 
     const labels = round.room.choices.map((c) => localized(c.label));
+    /*
+     * 二人以上から札が付くと押される。押された者は扉ひとつを言い切るしかない
+     * （サーバー／本体でも同じ規則で弾く。押してから断るのでは遅いので手元でも見る）。
+     * 自分が押されたことを知らないまま断られるのが一番悪いので、先に一行出す。
+     */
+    const amPressed = (state.pressedIds ?? []).includes(this.source.meId);
+    if (amPressed) {
+      const note = el('p', 'compose-pressed');
+      note.setAttribute('role', 'status');
+      note.textContent = T.challenger.pressedYou;
+      this.composeHost.append(note);
+    }
     const row = el('div', 'compose-row');
     const input = document.createElement('input');
     input.className = 'field';
@@ -322,6 +339,7 @@ export class PartyBoard {
       else if (text && containsBlocked(text)) reason = T.errors.blocked;
       else if (text && isPointing(text, labels)) reason = T.errors.pointing;
       else if (text && countChoicesMentioned(text, labels) > MAX_CHOICES_PER_HINT) reason = T.errors.tooManyChoices;
+      else if (text && amPressed && !isCommitted(text, labels)) reason = T.errors.mustCommit;
       status.textContent = reason;
       status.classList.toggle('is-error', !!reason);
       send.disabled = text.length === 0 || !!reason;
@@ -404,17 +422,35 @@ export class PartyBoard {
       name.append(rec);
       const text = el('span', 'hint-text');
       text.textContent = advice.text;
+      /*
+       * 押されている者の印。**誰が札を置いたかは出さない**
+       * （出すと吊し上げの名簿になり、置く側が名前を晒されるのを嫌って
+       * 誰も置かなくなる）。出すのは「この人は言い切るしかない」だけ。
+       */
+      if ((state.pressedIds ?? []).includes(advice.memberId)) {
+        const mark = el('span', 'hint-pressed');
+        mark.textContent = T.challenger.pressedMark;
+        text.append(' ', mark);
+        row.classList.add('is-pressed');
+      }
       row.append(name, text);
       if (this.doubted.has(advice.memberId)) row.classList.add('is-doubted');
 
       // 自分の発言は通報できない。人を指した一言にも手を出さない
       if (!isCall && advice.memberId !== this.source.meId) {
         const actions = el('span', 'hint-actions');
-        // 疑いの札。押しても盤面は動かない（答え合わせで突き合わせる）
+        /*
+         * 疑いの札。**全員挑戦者では公開で、みなが置ける。**
+         *
+         * ここまでは各自の覚え書きだった（答え合わせで自分の読みに点が付くだけ）。
+         * 6〜8人で遊ぶ卓で、置いても場が何も変わらないのは一番惜しい——
+         * 「名指しされた人が弁解する」が起きないので。
+         * 二人以上から札が付くと相手は押され、次の一言で扉ひとつを言い切るしかない。
+         * 一人で押せると裏切り者が正直者を黙らせる道具になるので、合意が要る。
+         */
         const doubt = document.createElement('button');
         doubt.type = 'button';
-        // 全員挑戦者では札を配らない（挑戦者が何人もいて誰の札か決まらない）
-        doubt.title = T.challenger.doubtHintPrivate;
+        doubt.title = T.challenger.doubtHintParty;
         const paint = (): void => {
           const on = this.doubted.has(advice.memberId);
           doubt.className = `hint-doubt${on ? ' is-on' : ''}`;
@@ -423,8 +459,10 @@ export class PartyBoard {
           row.classList.toggle('is-doubted', on);
         };
         doubt.addEventListener('click', () => {
-          if (this.doubted.has(advice.memberId)) this.doubted.delete(advice.memberId);
-          else this.doubted.add(advice.memberId);
+          const on = !this.doubted.has(advice.memberId);
+          if (on) this.doubted.add(advice.memberId);
+          else this.doubted.delete(advice.memberId);
+          this.source.doubt(advice.memberId, on);
           paint();
         });
         paint();

@@ -47,6 +47,27 @@ for (const [name, viewport] of [['pc', { width: 1280, height: 720 }], ['sp', { w
     check(`${name}: この語は送れなかった`, true);
   }
 
+  /*
+   * 疑いの札。**一人卓（仲間はAI）では一枚で押せる。**
+   *
+   * 押された者は次の一言で扉ひとつを言い切るしかない。ここまで札は
+   * 各自の覚え書きで、置いても場が何も動かなかった。
+   */
+  const pressed = await p.evaluate(() => {
+    const row = [...document.querySelectorAll('.hint-row')].find((r) => r.querySelector('.hint-doubt'));
+    if (!row) return null;
+    row.querySelector('.hint-doubt').click();
+    return (row.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim();
+  });
+  if (pressed) {
+    await wait(500);
+    const marks = await p.evaluate(() =>
+      [...document.querySelectorAll('.hint-pressed')].map((e) => (e.textContent ?? '').trim()));
+    check(`${name}: 札一枚で押される（${pressed}）`, marks.length > 0, JSON.stringify(marks));
+  } else {
+    check(`${name}: 札を置ける行が無かった`, true);
+  }
+
   // 選ぶ → 全員の手が開く → 次の部屋
   await p.locator('.choice').first().click();
   await wait(1200);

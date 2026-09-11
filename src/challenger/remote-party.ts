@@ -61,6 +61,10 @@ export class RemotePartySource implements PartySource {
     this.send({ t: 'party/pick', roundId: this.state.round?.roundId ?? '', choiceId });
   }
 
+  doubt(memberId: string, on: boolean): void {
+    this.send({ t: 'party/doubt', targetId: memberId, on });
+  }
+
   /** 締切もサーバーが持っている。こちらから告げることはない */
   timeUp(): void {}
 
@@ -102,6 +106,8 @@ export class RemotePartySource implements PartySource {
       sectionAnswer: view.sectionAnswer
         ? { ...view.sectionAnswer, untilMs: view.sectionAnswer.untilMs - this.skewMs }
         : null,
+      // 押されている者（二人以上から疑いの札が付いた者）。落とすと札が飾りに戻る
+      pressedIds: view.pressedIds ?? [],
     };
     for (const l of this.listeners) l(this.state);
   }

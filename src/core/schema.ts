@@ -145,6 +145,12 @@ export const ClientMessageSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('advisor/report'), targetId: AdvisorIdSchema, roundId: z.string(), text: z.string().max(HINT_MAX_LENGTH) }),
   /** 全員挑戦者モード。助言者席の人間も自分の扉を選ぶ */
   z.object({ t: z.literal('party/pick'), roundId: z.string(), choiceId: z.string().min(1) }),
+  /**
+   * 全員挑戦者モードの疑いの札。**みなが置ける。**
+   * 二人以上から付いた者が押される（次の一言は扉ひとつの言い切り）。
+   * 一人で押せると、裏切り者が正直者を黙らせる道具になる。
+   */
+  z.object({ t: z.literal('party/doubt'), targetId: AdvisorIdSchema, on: z.boolean() }),
   z.object({ t: z.literal('challenger/start'), mode: ModeIdSchema, locale: LocaleSchema.optional() }),
   z.object({ t: z.literal('challenger/choose'), choiceId: z.string(), roundId: z.string() }),
   z.object({ t: z.literal('challenger/silence'), advisorId: AdvisorIdSchema, roundId: z.string() }),
@@ -341,6 +347,12 @@ export const PartyViewSchema = z.object({
     .nullable(),
   /** その人自身に配られたもの。ほかの人には送らない */
   knowledge: KnowledgeSchema.nullable(),
+  /**
+   * いま押されている者（疑いの札が二人以上から付いた者）。
+   * **誰が置いたかは載せない。** 出すと吊し上げの名簿になり、
+   * 札を置く側が名前を晒されるのを嫌って誰も置かなくなる。
+   */
+  pressedIds: z.array(AdvisorIdSchema).optional(),
   serverNow: z.number().int(),
 });
 

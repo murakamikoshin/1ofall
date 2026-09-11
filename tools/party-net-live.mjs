@@ -82,6 +82,60 @@ const after = await Promise.all([host, guest].map((p) => p.evaluate(() => ({
   choices: document.querySelectorAll('.choice').length,
   room: document.querySelector('.room-count')?.textContent,
 }))));
+/*
+ * 疑いの札は**二人揃って初めて効く。**
+ *
+ * 全員挑戦者では札は公開で、みなが置ける。一人で押せてしまうと、
+ * 裏切り者が正直者を黙らせる（言い切らせる）道具になるので、合意が要る。
+ * 二人の本物のブラウザで、一枚では効かず二枚で効くことを見る。
+ */
+// 助言が届くまで待つ（札を置ける行が無いと検査が素通りする）
+let target = null;
+for (let i = 0; i < 20 && !target; i++) {
+  target = await host.evaluate(() => {
+    const rows = [...document.querySelectorAll('.hint-row')];
+    const row = rows.find((r) => r.querySelector('.hint-doubt')
+      && (r.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim().length > 0);
+    if (!row) return null;
+    return (row.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim();
+  });
+  if (!target) await wait(400);
+}
+if (target) {
+  await host.evaluate((name) => {
+    const row = [...document.querySelectorAll('.hint-row')].find(
+      (r) => (r.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim() === name
+        && r.querySelector('.hint-doubt'));
+    row?.querySelector('.hint-doubt').click();
+  }, target);
+}
+if (target) {
+  await wait(700);
+  const oneMark = await Promise.all([host, guest].map((p) => p.evaluate(() =>
+    document.querySelectorAll('.hint-pressed').length)));
+  check('一枚では押せない', oneMark[0] === 0 && oneMark[1] === 0, JSON.stringify(oneMark));
+
+  const alsoMarked = await guest.evaluate((name) => {
+    const row = [...document.querySelectorAll('.hint-row')].find(
+      (r) => (r.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim() === name
+        && r.querySelector('.hint-doubt'));
+    if (!row) return false;
+    row.querySelector('.hint-doubt').click();
+    return true;
+  }, target);
+  if (alsoMarked) {
+    await wait(900);
+    const twoMarks = await Promise.all([host, guest].map((p) => p.evaluate(() =>
+      [...document.querySelectorAll('.hint-pressed')].map((e) => (e.textContent ?? '').trim()))));
+    check(`二枚で押される（${target}）`,
+      twoMarks[0].length > 0 && twoMarks[1].length > 0, JSON.stringify(twoMarks));
+  } else {
+    check('客の画面にその人の行が無かった（札の検査は飛ばす）', true);
+  }
+} else {
+  check('この部屋には札を置ける行が無かった', true);
+}
+
 check('主が先へ進む', after[0].end > 0 || after[0].choices > 0, JSON.stringify(after[0]));
 check('客も先へ進む', after[1].end > 0 || after[1].choices > 0, JSON.stringify(after[1]));
 check('二人が同じ部屋にいる', after[0].room === after[1].room, `${after[0].room} / ${after[1].room}`);

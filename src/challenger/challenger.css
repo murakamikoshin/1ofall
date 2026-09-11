@@ -335,6 +335,32 @@
 }
 
 .hint-past.is-traitor { color: color-mix(in srgb, var(--blood-lit) 62%, var(--paper-faint)); }
+
+/*
+ * 押されている者（全員挑戦者。二人以上から疑いの札が付いた者）。
+ * 「この人は言い切るしかない」だけを出す。誰が置いたかは出さない
+ */
+.hint-pressed {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--blood-lit);
+  border: 1px solid color-mix(in srgb, var(--blood-lit) 45%, transparent);
+  border-radius: 2px;
+  padding: 0.02rem 0.28rem;
+  white-space: nowrap;
+}
+
+.hint-row.is-pressed .hint-name { color: color-mix(in srgb, var(--blood-lit) 55%, var(--paper)); }
+
+/* 自分が押されたとき、入力欄の上に出す規則 */
+.compose-pressed {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--blood-lit);
+  border-left: 2px solid var(--blood-lit);
+  padding-left: 0.5rem;
+}
 .hint-row.is-dead { opacity: 0.5; }
 .hint-row.is-dead .hint-text { color: var(--blood-lit); }
 

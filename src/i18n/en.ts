@@ -54,6 +54,9 @@ export const en: Strings = {
       'Get two rooms into a block, and when you leave it, who was lying is revealed. That is where your read gets answered.',
       'Advisors can call each other out. "He is lying" lands in the same list as advice.',
       'Liars want to bury whoever named the answer. The one being shot at is usually telling the truth.',
+      'Mark someone as doubted and they are told. Their next line must name exactly one door — no hedging.',
+      'The mark costs you. Their record hardens fast, but you lose their hesitation, and liars pile onto whoever is marked.',
+      'The same twelve regulars come back every run. The ones who lie often carry it beside their name, as "lied 2/5".',
     ],
     modes: {
       standard: [
@@ -71,6 +74,8 @@ export const en: Strings = {
         'Your companions walk the same rooms. Every one of them is betting their own life.',
         'What you can see, only you can see. Nobody learns it unless you say it.',
         'A traitor is among them. Traitors die too, but they want to take you with them.',
+        'A doubt mark needs two of you. Whoever two people mark must name exactly one door next.',
+        'Press too often and you lose. Hesitation means they narrowed it down, so silencing it leaves you less to read.',
       ],
     },
   },
@@ -112,6 +117,9 @@ export const en: Strings = {
     pastLiar: (liar: number, of: number) => `lied ${liar}/${of}`,
     pastLiarHint: 'Sections together where they were a liar. Some are drawn as liars more often — this is not their role now',
     doubtHintPrivate: 'Your own note. Nobody else sees it',
+    doubtHintParty: 'Two marks and they must name one door',
+    pressedMark: 'pressed',
+    pressedYou: 'You are pressed. Name one door',
     reportedNotice: 'Reported. Their voice no longer reaches you',
     confirmedLiar: 'Silenced. Confirmed liar',
     freshCast: 'New faces. The record starts blank',

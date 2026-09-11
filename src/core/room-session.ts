@@ -177,6 +177,13 @@ export class RoomSession {
         }
         this.humans.pick(connectionId, msg.roundId, msg.choiceId);
         return;
+      case 'party/doubt': {
+        // 全員挑戦者の札。置けるのは全員で、二人以上で押せる
+        if (!this.party) return;
+        // 本体が配り直す（押されているかどうかが盤面に出る）
+        this.party.doubt(connectionId, msg.targetId, msg.on);
+        return;
+      }
       case 'advisor/report':
         if (this.party) this.party.report(connectionId, msg.targetId, msg.text);
         else this.engine?.report(connectionId, msg.targetId, msg.text);
@@ -456,6 +463,7 @@ export class RoomSession {
             }
           : null,
         knowledge: this.party?.knowledgeFor(connectionId) ?? null,
+        pressedIds: [...(state.pressedIds ?? [])],
         serverNow: this.now(),
       },
     });

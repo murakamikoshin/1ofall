@@ -64,6 +64,29 @@ check('全員挑戦者: 誰かが踏破 60〜88%', inBand(groupCleared, 60, 88),
 const edge = num(party, /裏切りの得\s+(-?[\d.]+)pt/);
 check('全員挑戦者: 裏切りが得にならない（+4pt未満）', Number.isFinite(edge) && edge < 4, `${edge}pt`);
 
+/*
+ * 疑いの札（全員挑戦者。二人以上で押すと、その人は言い切るしかなくなる）。
+ *
+ * 押すと相手の迷いが読めなくなる。迷いは「二つに絞れている」という本当の情報なので、
+ * **毎部屋のように押すと自分の目を潰す。** 実測でもそうなった
+ * （1部屋生存 81.9% → 80.7%、最後まで 45.3% → 39.8%）。
+ * 二つ以上外している一人に絞れば得になる（82.2% / 47.8%）。
+ * 「使いどころを選べば得、振り回すと損」でなくなったら、それは道具ではない。
+ */
+const readerRow = (needle) => {
+  const line = party.split('\n').find((l) => l.includes(needle));
+  const m = line ? /([\d.]+)%\s+([\d.]+)%\s+([\d.]+)%/.exec(line) : null;
+  return m ? { perRoom: Number(m[1]), toEnd: Number(m[2]) } : null;
+};
+const pressMany = readerRow('＋札を');
+const pressOne = readerRow('＋札は');
+check('全員挑戦者: 札を絞れば得になる',
+  !!pressOne && !!row && pressOne.perRoom >= perRoom - 0.5 && pressOne.toEnd >= survivedToEnd - 1,
+  `置かない ${perRoom}%/${survivedToEnd}% → 一枚 ${pressOne?.perRoom}%/${pressOne?.toEnd}%`);
+check('全員挑戦者: 札を振り回すと損をする',
+  !!pressMany && !!pressOne && pressMany.toEnd < pressOne.toEnd,
+  `二枚 ${pressMany?.toEnd}% / 一枚 ${pressOne?.toEnd}%`);
+
 /* ── 崖っぷち：道具を使ったときの数字 ───────────────────────────── */
 
 const brink = run('brink-probe.mjs', { RUNS: '200' });

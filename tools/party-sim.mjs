@@ -51,6 +51,41 @@ const READERS = {
     return C.bestChoice(s, choices, rng);
   },
   '設計どおり': ({ choices, rows, own }) => C.bestChoice(C.scoreChoices({ choices, rows, own }), choices, rng),
+  /*
+   * 設計どおりに読みつつ、**記録が崩れている二人に疑いの札を置く**打ち手。
+   *
+   * 全員挑戦者の札は公開で、二人以上から付いた者が押される
+   * （人間が一人の卓では一枚で押せるので、この試算では毎回押せる）。
+   * 押された者は扉ひとつを言い切るしかない——嘘つきは罠を押すしかなくなるので
+   * 記録が早く固まるが、その人の迷いは読めなくなる。
+   * その釣り合いを、同じ物差し（生き残り率）で見る。
+   */
+  '設計どおり＋札を置く': ({ choices, rows, own, press }) => {
+    const worst = [...rows]
+      .filter((r) => r.record && r.record.hit + r.record.miss > 0)
+      .sort((a, b) => (b.record.miss - b.record.hit) - (a.record.miss - a.record.hit))
+      .slice(0, 2)
+      .filter((r) => r.record.miss > r.record.hit)
+      .map((r) => r.advisorId);
+    press?.(worst);
+    return C.bestChoice(C.scoreChoices({ choices, rows, own }), choices, rng);
+  },
+  /*
+   * 札を**確信したときだけ**置く打ち手。
+   *
+   * 押すと相手の迷いが読めなくなる（迷いは絞れている証なので、
+   * 全員挑戦者では正直者の一番大事な情報）。毎部屋二人を押すのは
+   * 自分の目を潰すのと同じはずなので、二つ以上外している一人に絞る。
+   */
+  '設計どおり＋札は一枚だけ': ({ choices, rows, own, press }) => {
+    const sure = [...rows]
+      .filter((r) => r.record && r.record.miss - r.record.hit >= 2)
+      .sort((a, b) => (b.record.miss - b.record.hit) - (a.record.miss - a.record.hit))
+      .slice(0, 1)
+      .map((r) => r.advisorId);
+    press?.(sure);
+    return C.bestChoice(C.scoreChoices({ choices, rows, own }), choices, rng);
+  },
 };
 
 function runOnce(reader, seed) {
@@ -67,6 +102,8 @@ function runOnce(reader, seed) {
   };
   const engine = new C.PartyEngine({ pack: C.corePackage(), members, seed, mode });
   let rooms = 0, ties = 0, myDeaths = 0, myRooms = 0;
+  /** いま自分が札を置いている相手 */
+  let marked = new Set();
   // 裏切り者は罠を知っている＝一つ外せる。それが生き残りに効きすぎていないか
   const traitorRooms = { picks: 0, deaths: 0 };
   const honestRooms = { picks: 0, deaths: 0 };
@@ -92,7 +129,16 @@ function runOnce(reader, seed) {
       const s = C.scoreChoices({ choices, rows, own });
       const mx = Math.max(...[...s.values()]);
       if (choices.filter((c) => s.get(c.id) === mx).length > 1) ties++;
-      engine.pick('me', reader({ choices, rows, own }));
+      /*
+       * 札を置く打ち手のために、置き直す口を渡す。
+       * 効くのは次の部屋から（いま並んでいる助言はもう書かれている）。
+       */
+      const press = (ids) => {
+        for (const id of marked) if (!ids.includes(id)) engine.doubt('me', id, false);
+        for (const id of ids) if (!marked.has(id)) engine.doubt('me', id, true);
+        marked = new Set(ids);
+      };
+      engine.pick('me', reader({ choices, rows, own, press }));
       myRooms++;
     }
     for (const [id, choice] of engine.aiPicks()) engine.pick(id, choice);

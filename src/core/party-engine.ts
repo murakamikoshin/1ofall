@@ -120,6 +120,12 @@ export interface PartyState {
   traitorsBySection: readonly { sectionIndex: number; ids: readonly string[] }[];
   /** 区画を離れるときの答え合わせ。phase==='answer' のあいだだけ入る */
   sectionAnswer: PartySectionAnswer | null;
+  /**
+   * いま押されている者（二人以上から疑いの札が付いた者。
+   * 人間が一人しかいない卓では一枚で押される）。
+   * 誰が置いたかは載せない——吊し上げの名簿にしないため。
+   */
+  pressedIds?: readonly string[];
 }
 
 export interface PartyEngineConfig {
@@ -169,6 +175,14 @@ export class PartyEngine {
   private guard: HintGuardState = createHintGuard();
   private reports: ReportBook = createReportBook();
   private muted = new Set<string>();
+  /**
+   * 疑いの札。相手の id → 札を置いた人の id。
+   *
+   * 公開するのは「押されているかどうか」だけで、**誰が置いたかは出さない**。
+   * 出すと吊し上げの名簿になり、置く側が名前を晒されるのを嫌って
+   * 誰も置かなくなる（置かせたいので出さない）。
+   */
+  private doubts = new Map<string, Set<string>>();
   private listeners = new Set<Listener>();
 
   constructor(config: PartyEngineConfig) {
@@ -210,6 +224,8 @@ export class PartyEngine {
       traitorsBySection:
         this.phase === 'gameover' || this.phase === 'cleared' ? this.traitorLog : [],
       sectionAnswer: this.sectionAnswer,
+      // 押されている者。誰が札を置いたかは出さない（吊し上げの名簿にしない）
+      pressedIds: this.pressedIds(),
     };
   }
 
@@ -285,6 +301,8 @@ export class PartyEngine {
       for (const id of this.traitorIds) this.allTraitors.add(id);
       this.traitorLog = [...this.traitorLog, { sectionIndex: this.sectionIndex, ids: [...this.traitorIds] }];
       this.records.clear();
+      // 配役が変わったら札も捨てる。前の区画の読みで新しい裏切り者を押さない
+      this.doubts.clear();
     }
     // 途中で抜けた人ぶんを詰める
     this.traitorIds = this.traitorIds.filter((id) => everyone.includes(id));
@@ -327,6 +345,41 @@ export class PartyEngine {
   /* ─────────────────────────── 参加者の操作 ─────────────────────────── */
 
   /** 助言を送る。検査を通らなかったら理由を返す */
+  /**
+   * 疑いの札を置く／外す。**全員挑戦者では札は公開で、みなが置ける。**
+   *
+   * ここまで札は各自の画面の中だけにあった（答え合わせで自分の読みに点が付くだけ）。
+   * 置いても場が何も変わらないので、6〜8人で遊ぶこのモードで**一番おいしい
+   * 「名指しされた人が弁解する」が起きない。**
+   *
+   * 一人の札では効かない。**二人以上から札が付いた者が「押される」**——
+   * 次の一言で扉ひとつを言い切るしかなくなる。一人で押せると、
+   * 裏切り者が正直者を黙らせる道具になる（人数が要る＝合意が要る）。
+   * 人間が一人しかいない卓（ソロの全員挑戦者）では一枚で押せる。
+   */
+  doubt(memberId: string, targetId: string, on: boolean): void {
+    if (memberId === targetId) return;
+    const markers = this.doubts.get(targetId) ?? new Set<string>();
+    if (on) markers.add(memberId);
+    else markers.delete(memberId);
+    this.doubts.set(targetId, markers);
+    // 押されているかどうかは盤面に出る（誰が置いたかは出さない）ので、配り直す
+    this.emit();
+  }
+
+  /** 何枚で押されるか。人間が二人以上いる卓では合意が要る */
+  private pressThreshold(): number {
+    return this.members.filter((m) => m.kind === 'human').length >= 2 ? 2 : 1;
+  }
+
+  /** いま押されている者。公開されるのはこれだけ（誰が置いたかは出さない） */
+  pressedIds(): string[] {
+    const need = this.pressThreshold();
+    return [...this.doubts.entries()]
+      .filter(([, markers]) => markers.size >= need)
+      .map(([id]) => id);
+  }
+
   hint(memberId: string, text: string): { ok: true } | { ok: false; reason: string } {
     const round = this.round;
     if (!round || this.phase !== 'choosing') return { ok: false, reason: 'closed' };
@@ -335,7 +388,10 @@ export class PartyEngine {
     // 死んだ裏切り者は道連れを狙い続ける
 
     const labels = round.room.choices.map((c) => localized(c.label));
-    const checked = checkHint(this.guard, memberId, text, this.now(), labels);
+    // 押されている者は言い切る（扉ひとつ・迷いの言い方なし）
+    const checked = checkHint(this.guard, memberId, text, this.now(), labels, {
+      pressed: this.pressedIds().includes(memberId),
+    });
     if (!checked.ok) return { ok: false, reason: checked.reason };
 
     const member = this.members.find((m) => m.id === memberId);
@@ -595,6 +651,8 @@ export class PartyEngine {
         liarMimicRate: this.mode.liarMimic,
         voice: { ...voice, seat: voice.seat + nudge },
         liarHonest: this.honestNow(id),
+        // 押された仲間は言い切るしかない（人間と同じ規則）
+        pressed: this.pressedIds().includes(id),
       });
     };
 

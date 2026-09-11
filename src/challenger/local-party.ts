@@ -56,6 +56,10 @@ export class LocalPartySource implements PartySource {
     this.engine.hint(this.meId, text);
   }
 
+  doubt(memberId: string, on: boolean): void {
+    this.engine.doubt(this.meId, memberId, on);
+  }
+
   report(memberId: string, text: string): void {
     this.engine.report(this.meId, memberId, text);
   }
