@@ -137,12 +137,22 @@ for (let run = 1; run <= RUNS; run++) {
     // 名指しは扉の話が出そろったあとに来るので、止まってからも少し待つ
     let seen = -1;
     let still = 0;
+    let veilHere = false;
     for (let t = 0; t < 60; t++) {
+      /*
+       * ここでも紙を見る。
+       *
+       * 全員挑戦者の紙は7秒で自分から消えるので、部屋が長引いた回は
+       * **この待ちのあいだに出て消えていた**（同じ条件で撮り直したら
+       * 三枚とも出たので、取りこぼしは時間の綾）。
+       */
+      if (await p.locator('.answer-veil').count()) { veilHere = true; break; }
       const n = await p.locator('.hint-row').count();
       if (n > 0 && n === seen) { if (++still >= 6) break; } else still = 0;
       seen = n;
       await wait(150);
     }
+    if (veilHere) continue;
     const board = await readBoard(p, isParty);
     // 部屋の番号だけで見分けると、死んで区画の頭へ戻ったときに
     // 「1部屋目 1/4」が前と同じ文字列になり、以降ずっと同じ部屋と見なして
@@ -279,6 +289,9 @@ for (let run = 1; run <= RUNS; run++) {
         lives: document.querySelectorAll('.pip:not(.is-lost)').length,
         end: document.querySelectorAll('.end-screen').length > 0,
         endMark: txt(document.querySelector('.end-mark')),
+        // 命が尽きた部屋では盤面が描き直されないので、失った命の印が付かない。
+        // 最後の死をずっと「通った」と書いていた
+        endDeath: document.querySelectorAll('.end-mark.is-death').length > 0,
         // 隠してある行（札を置かなかった周の「読み」など）は数えない。
         // textContent だけ見ていたので、出ていない行を記録に書いていた
         endStats: [...document.querySelectorAll('.end-stat')].filter((e) => !e.hidden).map((e) => txt(e)),
@@ -286,7 +299,8 @@ for (let run = 1; run <= RUNS; run++) {
       };
     });
     if (!isParty) {
-      const lost = board.lives !== null && outcome.lives < board.lives;
+      const lost = (board.lives !== null && outcome.lives < board.lives)
+        || (outcome.end && outcome.endDeath);
       say(`     ${lost ? `✗ 死んだ（命 ${board.lives}→${outcome.lives}）` : '○ 通った'}`);
       if (lost) deaths++;
     }
