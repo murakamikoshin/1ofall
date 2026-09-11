@@ -66,12 +66,20 @@ async function playUntilOver(label) {
         }
       }
     }
-    // 外れそうな扉（誰も触れていない扉）を選ぶ
+    /*
+     * 外れそうな扉（誰も触れていない扉）を選ぶ。ただし**自分が警告した扉は避ける。**
+     *
+     * 警告した扉をそのまま押すと、この助言者の一言は毎部屋「採られなかった」に
+     * なる（「Xは死ぬ」と言われて X を押した＝無視した）。つまり通算の
+     * 「採られた／死なせた／通した」側の行が一度も出ないまま通っていた。
+     */
+    const warned = v.round.room.choices[0]?.id;
     const mentioned = new Set();
     for (const a of v.round.advice) {
       for (const c of v.round.room.choices) if (a.text.includes(c.label.ja)) mentioned.add(c.id);
     }
-    const blind = v.round.room.choices.find((c) => !mentioned.has(c.id)) ?? v.round.room.choices[0];
+    const pool = v.round.room.choices.filter((c) => c.id !== warned);
+    const blind = pool.find((c) => !mentioned.has(c.id)) ?? pool[0] ?? v.round.room.choices[0];
     send({ t: 'challenger/choose', choiceId: blind.id, roundId: v.round.roundId });
     for (let k = 0; k < 6; k++) { send({ t: 'challenger/advance' }); await wait(200); }
   }
@@ -101,6 +109,12 @@ const tally = await p.evaluate(() => ({
 }));
 if (tally.head) console.log(`   ${tally.head}: ${tally.lines.join(' / ')}`);
 check('周の終わりに自分の通算が出る', tally.lines.length > 0, JSON.stringify(tally));
+// 「採られた」が0のままだと、通算の中身（死なせた／通した）は一行も出ない
+const followedLine = tally.lines.find((l) => l.includes('採られた')) ?? '';
+const followedN = Number(followedLine.match(/うち (\d+)部屋/)?.[1] ?? 0);
+check('採られた部屋が通算に積まれている', followedN > 0, followedLine);
+check('採られた結果（死なせた／通した）まで出る',
+  tally.lines.some((l) => l.includes('死なせた') || l.includes('通した')), JSON.stringify(tally.lines));
 
 // 同じ部屋のまま二周目
 const before = inbox.length;
