@@ -110,7 +110,7 @@ export const en: Strings = {
     doubtPlaced: (name: string) => `Marked ${name}. Next room they must name one door`,
     doubtLifted: (name: string) => `Lifted the mark on ${name}`,
     pastLiar: (liar: number, of: number) => `lied ${liar}/${of}`,
-    pastLiarHint: 'Sections you cleared together where they were a liar. Not their role now',
+    pastLiarHint: 'Sections together where they were a liar. Some are drawn as liars more often — this is not their role now',
     doubtHintPrivate: 'Your own note. Nobody else sees it',
     reportedNotice: 'Reported. Their voice no longer reaches you',
     confirmedLiar: 'Silenced. Confirmed liar',

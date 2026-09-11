@@ -136,6 +136,32 @@ const PLAYERS = {
     }
     return top(s);
   },
+  /*
+   * 常連の癖を知っている打ち手。
+   *
+   * 嘘つきの引きは id ごとに重みが違う（`liarBias`。0.35〜2.40 なので、
+   * 8人・嘘つき3人なら一人あたり 15%〜65% ほどに散る）。**周をまたいで
+   * 顔ぶれを固定した**ので、遊ぶ側はこの癖を覚えられる——そこで得られる
+   * 差を測る。大きすぎるなら、常連の札は攻略の終わりを早める。
+   */
+  '常連の癖を知っている': ({ labels, rows, own }) => {
+    const s = new Map(labels.map((c) => [c.id, 0]));
+    for (const id of own ?? []) s.set(id, (s.get(id) ?? 0) + 2.5);
+    for (const r of rows) {
+      const rec = (r.rec.hit + 1) / (r.rec.hit + r.rec.miss + 2);
+      // 癖（1.37 が平均）を素直に割る。よく裏切る常連の声を薄く聞く
+      const habit = 1.37 / Math.max(0.35, C.liarBias(r.id));
+      const w = rec * Math.max(0.4, Math.min(1.8, habit));
+      const t = labels.filter((c) => r.text.includes(c.label));
+      if (!t.length) continue;
+      let rest = r.text;
+      for (const c of t) rest = rest.split(c.label).join('　');
+      if (AVOID.test(rest)) { for (const c of t) s.set(c.id, s.get(c.id) - w * 1.2); continue; }
+      const hedging = t.length >= 2 || HEDGE.test(rest);
+      for (const c of t) s.set(c.id, s.get(c.id) + w * (hedging ? 1.25 : 0.8));
+    }
+    return top(s);
+  },
   '一番信用できる一人に賭ける': ({ labels, rows }) => {
     // 合計すると弱い声が数で勝ってしまう。一人を選んでその人に乗る
     if (!rows.length) return pick(labels).id;

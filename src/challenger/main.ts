@@ -1041,10 +1041,10 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
   /*
    * 常連の裏切り歴。
    *
-   * **いまの役は教えない。** 嘘つきは区画ごとにその場で引くので、
-   * 過去の回数は今回の役を当てない（`castLiars`）。積んで見えるのは
-   * 癖だけ——「この人は嘘つきになると最後の部屋で崩す」のほう。
-   * 読みの足しにはなるが、答えにはならない。
+   * **いまの役ではない**が、飾りでもない。嘘つきの引きは人ごとに重みが違う
+   * （`liarBias`）ので、よく裏切る常連は本当によく裏切る。
+   * 実測の差は通常で +2.2pt、崖っぷちでは逆に損（`tools/rubric.mjs`）。
+   * 効くけれど攻略は終わらない、の幅に収まっている。
    */
   const past = regularOf(advice.advisorName);
   if (past) {
