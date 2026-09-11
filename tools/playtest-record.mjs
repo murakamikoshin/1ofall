@@ -162,6 +162,43 @@ for (let run = 1; run <= RUNS; run++) {
     lastRoom = key;
     room++;
 
+    /*
+     * 道具を使う。使わないと、読んでいる記録が「素朴な打ち手」のものになる。
+     *
+     * 崖っぷちの黙らせるは、実測で腕の差を開かせている道具そのものなのに
+     * この記録には一度も出てこなかった（9部屋読んで気づいた）。
+     * 疑いの札も置いていなかったので、答え合わせの点がいつも
+     * 「誰も疑わなかった」だった。
+     */
+    const suspects = board.hints
+      .filter((h) => !h.call && /正(\d+)\s*嘘(\d+)/.test(h.record))
+      .map((h) => {
+        const m = /正(\d+)\s*嘘(\d+)/.exec(h.record);
+        return { name: h.name, hit: Number(m[1]), miss: Number(m[2]) };
+      })
+      .filter((x) => x.miss > x.hit)
+      .sort((a, b) => b.miss - a.miss - (b.hit - a.hit));
+
+    // 疑いの札。記録が崩れている者に置く（答え合わせで突き合わせる）
+    for (const s2 of suspects.slice(0, 2)) {
+      const row = p.locator('.hint-row', { hasText: s2.name }).first();
+      const btn = row.locator('.hint-doubt:not(.is-on)');
+      if (await btn.count()) { await btn.first().click().catch(() => {}); }
+    }
+
+    // 崖っぷちの黙らせる。一番崩れている者を狙う
+    let silenced = null;
+    if (MODE === 'brink' && suspects.length > 0) {
+      const row = p.locator('.hint-row', { hasText: suspects[0].name }).first();
+      const btn = row.locator('.hint-silence:not([disabled])');
+      if (await btn.count()) {
+        await btn.first().click().catch(() => {});
+        await wait(400);
+        const notice = await p.evaluate(() => (document.querySelector('.hud-notice')?.textContent ?? '').trim());
+        silenced = `${suspects[0].name}（正${suspects[0].hit} 嘘${suspects[0].miss}）→ ${notice}`;
+      }
+    }
+
     say(`\n── ${board.room}　残り${board.timer} ──`);
     if (isParty) say(`  席: ${board.seats.map((s) => `${s.name}${'●'.repeat(s.lives)}`).join('  ')}`);
     else say(`  命: ${board.lives}`);
@@ -172,6 +209,9 @@ for (let run = 1; run <= RUNS; run++) {
 
     // 設計どおりの読み方をなぞる：迷いを重く見て、記録で重みを変える。
     // 判定の言い回しは本体（src/i18n/ja.ts）から取る
+    if (silenced) say(`  ◇ 黙らせた: ${silenced}`);
+    if (suspects.length) say(`  ◇ 疑いの札: ${suspects.slice(0, 2).map((x) => x.name).join('、')}`);
+
     const pickIndex = await p.evaluate(({ avoidSrc, hedgeSrc }) => {
       const AVOID = new RegExp(avoidSrc);
       const HEDGE = new RegExp(hedgeSrc);
