@@ -299,9 +299,10 @@ for (let run = 1; run <= RUNS; run++) {
       };
     });
     if (!isParty) {
-      const lost = (board.lives !== null && outcome.lives < board.lives)
-        || (outcome.end && outcome.endDeath);
-      say(`     ${lost ? `✗ 死んだ（命 ${board.lives}→${outcome.lives}）` : '○ 通った'}`);
+      const dropped = board.lives !== null && outcome.lives < board.lives;
+      const lost = dropped || (outcome.end && outcome.endDeath);
+      // 命が尽きた回は印が更新されないので、数の遷移を書くと「1→1」になる
+      say(`     ${lost ? (dropped ? `✗ 死んだ（命 ${board.lives}→${outcome.lives}）` : '✗ 死んだ（命が尽きた）') : '○ 通った'}`);
       if (lost) deaths++;
     }
     if (pendingSheet) {
