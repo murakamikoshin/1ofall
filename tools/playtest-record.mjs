@@ -42,6 +42,14 @@ if (!LABEL || !Number.isFinite(RUNS) || RUNS < 1) {
 }
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+/*
+ * 周をまたいで**同じ入れ物**で遊ぶ。
+ *
+ * 周ごとに `browser.newPage()` していたので、周ごとに別の入れ物になり
+ * localStorage が空から始まっていた。常連（顔ぶれと裏切り歴）は
+ * そこに積むので、**記録の道具だけが常連を一度も見ていなかった。**
+ */
+const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
 const started = Date.now();
 const lines = [];
 // 長い通しなので、書きながら流す（終わるまで何も見えないと進みが分からない）
@@ -58,8 +66,14 @@ async function readBoard(p, isParty) {
       mark: txt(el.querySelector('.choice-known')),
     }));
     const hints = [...document.querySelectorAll('.hint-row')].map((el) => ({
-      name: txt(el.querySelector('.hint-name')).replace(/正\d+\s*嘘\d+$/, '').trim(),
+      /*
+       * 名前の欄には記録（正n 嘘n）と常連の裏切り歴が入れ子で入っている。
+       * textContent から後ろを正規表現で削っていたが、札が増えるたびに
+       * 崩れる。**自分の字だけ**を読む。
+       */
+      name: (el.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim(),
       record: txt(el.querySelector('.hint-record')),
+      past: txt(el.querySelector('.hint-past')),
       text: txt(el.querySelector('.hint-text')),
       // 人を指した一言は扉の話と分けて見たい
       call: el.classList.contains('is-call'),
@@ -83,7 +97,7 @@ async function readBoard(p, isParty) {
 
 for (let run = 1; run <= RUNS; run++) {
   // 演出の「間」を短い側にする（仕様として残っている道。飛ばしてはいない）
-  const p = await b.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
   p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -119,11 +133,31 @@ for (let run = 1; run <= RUNS; run++) {
       const sheet = await p.evaluate(() => ({
         head: (document.querySelector('.answer-heading')?.textContent ?? '').trim(),
         score: (document.querySelector('.answer-score')?.textContent ?? '').trim(),
-        rows: [...document.querySelectorAll('.answer-row')].map((r) => ({
-          name: (r.querySelector('.answer-name')?.textContent ?? '').trim(),
-          role: (r.querySelector('.answer-role')?.textContent ?? '').trim(),
-          rec: (r.querySelector('.answer-record')?.textContent ?? '').trim(),
-        })),
+        /*
+         * 名前の欄には「疑っていた」の札が、記録の欄には「積んで、崩した」が
+         * **入れ子で**入っている。textContent をそのまま読むと
+         * 「たろう疑っていた」「正4 嘘2積んで、崩した」と繋がって出る。
+         * 自分の字と入れ子を分けて読む。
+         */
+        rows: [...document.querySelectorAll('.answer-row')].map((r) => {
+          const own = (sel) => {
+            const el = r.querySelector(sel);
+            if (!el) return '';
+            return [...el.childNodes]
+              .filter((n) => n.nodeType === 3)
+              .map((n) => (n.textContent ?? '').trim())
+              .join('')
+              .trim();
+          };
+          const nested = (sel) => (r.querySelector(sel)?.textContent ?? '').trim();
+          return {
+            name: own('.answer-name'),
+            role: own('.answer-role'),
+            rec: own('.answer-record'),
+            mark: nested('.answer-mark'),
+            built: nested('.answer-built'),
+          };
+        }),
       }));
       pendingSheet = sheet;
       await p.locator('.answer-go').click().catch(() => {});
@@ -205,7 +239,10 @@ for (let run = 1; run <= RUNS; run++) {
     say(`  「${board.prompt}」`);
     for (const c of board.choices) say(`    ${c.mark ? '◆' : '・'}${c.label}${c.mark ? `（${c.mark}）` : ''}`);
     say(`  助言 ${board.hints.length}件:`);
-    for (const h of board.hints) say(`   ${h.call ? '＞' : ' '}${h.name}（${h.record}） 「${h.text}」`);
+    for (const h of board.hints) {
+      const marks = [h.record, h.past].filter(Boolean).join(' ');
+      say(`   ${h.call ? '＞' : ' '}${h.name}（${marks}） 「${h.text}」`);
+    }
 
     // 設計どおりの読み方をなぞる：迷いを重く見て、記録で重みを変える。
     // 判定の言い回しは本体（src/i18n/ja.ts）から取る
@@ -306,11 +343,31 @@ for (let run = 1; run <= RUNS; run++) {
       const sheet = await p.evaluate(() => ({
         head: (document.querySelector('.answer-heading')?.textContent ?? '').trim(),
         score: (document.querySelector('.answer-score')?.textContent ?? '').trim(),
-        rows: [...document.querySelectorAll('.answer-row')].map((r) => ({
-          name: (r.querySelector('.answer-name')?.textContent ?? '').trim(),
-          role: (r.querySelector('.answer-role')?.textContent ?? '').trim(),
-          rec: (r.querySelector('.answer-record')?.textContent ?? '').trim(),
-        })),
+        /*
+         * 名前の欄には「疑っていた」の札が、記録の欄には「積んで、崩した」が
+         * **入れ子で**入っている。textContent をそのまま読むと
+         * 「たろう疑っていた」「正4 嘘2積んで、崩した」と繋がって出る。
+         * 自分の字と入れ子を分けて読む。
+         */
+        rows: [...document.querySelectorAll('.answer-row')].map((r) => {
+          const own = (sel) => {
+            const el = r.querySelector(sel);
+            if (!el) return '';
+            return [...el.childNodes]
+              .filter((n) => n.nodeType === 3)
+              .map((n) => (n.textContent ?? '').trim())
+              .join('')
+              .trim();
+          };
+          const nested = (sel) => (r.querySelector(sel)?.textContent ?? '').trim();
+          return {
+            name: own('.answer-name'),
+            role: own('.answer-role'),
+            rec: own('.answer-record'),
+            mark: nested('.answer-mark'),
+            built: nested('.answer-built'),
+          };
+        }),
       }));
       pendingSheet = sheet;
       await p.locator('.answer-go').click().catch(() => {});
@@ -348,7 +405,8 @@ for (let run = 1; run <= RUNS; run++) {
     if (pendingSheet) {
       say(`\n  ▽ ${pendingSheet.head}`);
       for (const r of pendingSheet.rows) {
-        say(`     ${r.role === '嘘つき' ? '●' : '○'} ${r.name}　${r.role}　${r.rec}`);
+        say(`     ${r.role === '嘘つき' ? '●' : '○'} ${r.name}${r.mark ? `（${r.mark}）` : ''}　${
+          r.role}　${r.rec}${r.built ? `　← ${r.built}` : ''}`);
       }
       if (pendingSheet.score) say(`     ${pendingSheet.score}`);
       pendingSheet = null;

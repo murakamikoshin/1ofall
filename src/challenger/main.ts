@@ -6,6 +6,7 @@ import { corePackage } from '@/core/pack';
 import type { Choice } from '@/core/schema';
 import { GameEngine, type EngineState, type SectionAnswer, type Verdict } from '@/core/engine';
 import { RemoteGame, type GameHandle } from './remote-game';
+import { rosterSeed, regularOf, recordSection, regulars, REGULAR_MIN_SECTIONS } from './regulars';
 import { PartyBoard } from './party-board';
 import { aiHintDelays } from '@/ui/test-speed';
 import { LocalPartySource } from './local-party';
@@ -472,8 +473,20 @@ function startGame(modeId: ModeId): void {
   const mode = MODES[modeId];
   const local = new GameEngine({
     pack, mode,
-    // 札は公開の一手。嘘つきは札の付いた者へ寄る（ソロでも同じ）
-    gateway: new AiAdvisorGateway({ count: 12, mode, pileOn: RUN.doubtPileOn, ...aiHintDelays() }),
+    gateway: new AiAdvisorGateway({
+      count: 12, mode,
+      // 札は公開の一手。嘘つきは札の付いた者へ寄る（ソロでも同じ）
+      pileOn: RUN.doubtPileOn,
+      /*
+       * 顔ぶれは周をまたいで固定する。**振る舞いは毎周引き直す。**
+       *
+       * ここまで周ごとに顔ぶれを引き直していたので、「とんびは信用を
+       * 積んでから崩す」と分かっても次の周にとんびが居なかった。
+       * 裏切り癖は id から決まる作りなのに、それが遊ぶ側へ届いていない。
+       */
+      rosterSeed: rosterSeed(),
+      ...aiHintDelays(),
+    }),
   });
   engine = local;
   unsubscribe = local.subscribe((state) => render(state));
@@ -1025,6 +1038,21 @@ function renderAdviceRow(advice: Advice, silenceUsed: boolean, canSilence: boole
 
   const name = el('span', 'hint-name');
   name.textContent = advice.advisorName;
+  /*
+   * 常連の裏切り歴。
+   *
+   * **いまの役は教えない。** 嘘つきは区画ごとにその場で引くので、
+   * 過去の回数は今回の役を当てない（`castLiars`）。積んで見えるのは
+   * 癖だけ——「この人は嘘つきになると最後の部屋で崩す」のほう。
+   * 読みの足しにはなるが、答えにはならない。
+   */
+  const past = regularOf(advice.advisorName);
+  if (past) {
+    const badge = el('span', `hint-past${past.liarSections > 0 ? ' is-traitor' : ''}`);
+    badge.textContent = T.challenger.pastLiar(past.liarSections, past.sections);
+    badge.title = T.challenger.pastLiarHint;
+    name.append(badge);
+  }
   if (advice.record.hit + advice.record.miss > 0) {
     const rec = el('span', `hint-record${advice.record.miss > 0 ? ' is-suspect' : ''}`);
     rec.textContent = T.challenger.record(advice.record.hit, advice.record.miss);
@@ -1172,6 +1200,9 @@ function showSectionAnswer(answer: SectionAnswer): Promise<void> {
   return new Promise((resolve) => {
     const T = strings().answer;
     audio.play('answer');
+    // 開いた配役だけを積む（遊んでいるあいだの配役は覗かない）。
+    // 次の周から、この顔ぶれの裏切り歴が助言の行に出る
+    recordSection(answer.rows);
     const veil = el('div', 'answer-veil');
     veil.setAttribute('role', 'dialog');
     veil.setAttribute('aria-modal', 'true');
@@ -1457,6 +1488,28 @@ function renderEnd(state: EngineState): void {
     }
   }
 
+  /*
+   * 常連の裏切り歴。**周をまたいで積むのはここだけ。**
+   *
+   * 顔ぶれを固定したので、同じ12人が毎周出る。誰が裏切りがちかは
+   * 遊ぶほど分かるが、覚えるのを全部こちらの頭に任せると
+   * 「3周前のとんび」は残らない。よく裏切る三人だけ名前を出す。
+   */
+  const book = regulars();
+  const known = Object.entries(book)
+    .filter(([, r]) => r.sections >= REGULAR_MIN_SECTIONS && r.liarSections > 0)
+    .sort((a, b) => b[1].liarSections / b[1].sections - a[1].liarSections / a[1].sections)
+    .slice(0, 3);
+  const regularLine = el('p', 'end-stat is-regulars');
+  regularLine.hidden = known.length === 0;
+  if (known.length > 0) {
+    regularLine.textContent = strings().verdict.regulars(
+      known
+        .map(([name, r]) => strings().verdict.regularOne(name, r.liarSections, r.sections))
+        .join(strings().verdict.nameSeparator),
+    );
+  }
+
   /**
    * 賭場では**同じ部屋のまま次の周へ**入れるようにする。
    *
@@ -1488,9 +1541,31 @@ function renderEnd(state: EngineState): void {
     buttons.push(stay);
   }
 
+  /*
+   * ソロは**題名を経由せずに次の周へ入る。**
+   *
+   * ここまで「もう一度」は題名へ戻していた。モードを選び直す一手が挟まるので、
+   * 一周12分の遊びの切れ目が毎回二手になる。常連（顔ぶれ）は周をまたいで
+   * 同じなので、そのまま続けるほうが遊びの形にも合う。
+   */
+  if (!here) {
+    const replay = document.createElement('button');
+    replay.className = 'end-action';
+    replay.textContent = strings().verdict.retry;
+    replay.addEventListener('click', () => {
+      resolving = false;
+      unsubscribe?.();
+      engine?.dispose();
+      engine = null;
+      endRenewed = false;
+      startGame(currentMode);
+    });
+    buttons.push(replay);
+  }
+
   const again = document.createElement('button');
-  again.className = `end-action${here ? ' is-quiet' : ''}`;
-  again.textContent = here ? strings().verdict.leaveRoom : strings().verdict.retry;
+  again.className = `end-action${here ? ' is-quiet' : ' is-quiet'}`;
+  again.textContent = here ? strings().verdict.leaveRoom : strings().verdict.toTitle;
   again.addEventListener('click', () => {
     resolving = false;
     unsubscribe?.();
@@ -1500,7 +1575,7 @@ function renderEnd(state: EngineState): void {
   });
   buttons.push(again);
 
-  screen.append(mark, stat, best, readLine, reveal, ...buttons);
+  screen.append(mark, stat, best, readLine, regularLine, reveal, ...buttons);
   app!.append(screen);
   buttons[0]?.focus();
 }

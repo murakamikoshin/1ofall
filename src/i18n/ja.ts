@@ -126,6 +126,13 @@ export const ja = {
     doubtPlaced: (name: string) => `${name}に札を置いた。次の部屋では言い切らせる`,
     doubtLifted: (name: string) => `${name}の札を外した`,
     /*
+     * 常連の裏切り歴。**いまの役ではない。**
+     * 嘘つきは区画ごとにその場で引くので、過去の回数は今回を当てない。
+     * 見えるのは癖（嘘つきになったときにどう崩すか）だけ。
+     */
+    pastLiar: (liar: number, of: number) => `裏切${liar}/${of}`,
+    pastLiarHint: 'これまで一緒に越えた区画のうち、嘘つきだった回数。いまの役ではない',
+    /*
      * 全員挑戦者だけの言い回し。
      *
      * あちらは挑戦者が何人もいるので、誰の札を配るのかが決まらない。
@@ -164,6 +171,8 @@ export const ja = {
     gameover: '尽きた',
     cleared: '抜けた',
     retry: 'もう一度',
+    // ソロは終わりの画面から題名を経由せずに次の周へ入る（常連が同じなので続く）
+    toTitle: '題名へ戻る',
     retryHere: '同じ賭場でもう一度',
     leaveRoom: '賭場を閉じる',
     // 部屋を開き直せるのは最初に繋いだ一人だけ。ほかの人は待つしかないので、
@@ -175,6 +184,12 @@ export const ja = {
     followedCrowd: '一番多く名の挙がった道だった',
     revealSection: (n: number, names: string) => `${SECTION_NAMES[n - 1] ?? n}の嘘つき　${names}`,
     revealNone: '嘘つきはいなかった',
+    /*
+     * 常連の裏切り歴。顔ぶれを周をまたいで固定したので、遊ぶほど溜まる。
+     * ここだけが周を越えて残る読み。
+     */
+    regulars: (list: string) => `よく裏切る常連　${list}`,
+    regularOne: (name: string, liar: number, of: number) => `${name}（${liar}/${of}）`,
     best: (n: number) => `最高到達 ${n}部屋`,
     bestNone: 'まだ記録はない',
     newBest: '最高記録を更新した',

@@ -20,6 +20,15 @@ export interface AiAdvisorOptions {
   mode?: ModeConfig;
   seed?: number;
   /**
+   * 顔ぶれ（名前の引き）だけを決める種。**振る舞いの種とは分ける。**
+   *
+   * `seed` を渡すと名前も振る舞いも固定されるので、同じ部屋で何周しても
+   * 同じ助言が出る。逆に振る舞いを毎周引き直すと、名前も毎周変わって
+   * 「とんびは信用を積んでから崩す」を覚えられない。
+   * 覚えてほしいのは癖なので、名前だけ固定する。
+   */
+  rosterSeed?: number;
+  /**
    * 挑戦者の「疑いの札」を公開した場合に、嘘つきが札の付いた者へ寄る倍率。
    * 1 で札を見ない（既定＝いまの遊び）。採否は測ってから決める。
    */
@@ -52,11 +61,13 @@ export class AiAdvisorGateway implements AdvisorGateway {
   constructor(options: AiAdvisorOptions = {}) {
     const count = Math.min(options.count ?? 12, companionNames().length);
     this.rng = createRng(options.seed ?? (Date.now() & 0xffffffff));
+    // 名前は別の流れで引く。振る舞いを毎周引き直しても顔ぶれは動かない
+    const nameRng = createRng(options.rosterSeed ?? options.seed ?? (Date.now() & 0xffffffff));
     this.mode = options.mode ?? STANDARD;
     this.pileOn = options.pileOn ?? 1;
     this.minDelay = options.minDelayMs ?? 400;
     this.maxDelay = options.maxDelayMs ?? 3400;
-    this.advisors = shuffled(companionNames(), this.rng)
+    this.advisors = shuffled(companionNames(), nameRng)
       .slice(0, count)
       .map((name, i) => ({ id: `ai_${i}`, name, kind: 'ai' as const }));
   }

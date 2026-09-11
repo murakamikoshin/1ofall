@@ -52,7 +52,17 @@ export interface CompositeOptions {
   minAdvisors: number;
   /** AI を入れる上限。人が増えたら AI は減る */
   maxFill?: number;
+  /**
+   * AI の**顔ぶれ**を決める種。振る舞いの種ではない。
+   *
+   * ここを振る舞いにも渡していたので、同じ部屋で何周しても AI の乱数の流れが
+   * 同じところから始まっていた（部屋が違うので目立たなかったが、
+   * 同じ部屋を引けば同じ助言が並ぶ）。顔ぶれだけ固定して、
+   * 振る舞いは周ごとに引き直す。
+   */
   aiSeed?: number;
+  /** 振る舞いの種。検査で文面まで固定したいときだけ渡す */
+  aiBehaviourSeed?: number;
   /** AI の嘘のつき方はモードで変わる。渡さないと通常モードの癖になる */
   mode?: ModeConfig;
 }
@@ -77,7 +87,8 @@ export class CompositeAdvisorGateway implements AdvisorGateway {
       count: this.maxFill,
       // 疑いの札は公開されている。嘘つきは札の付いた者へ寄る
       pileOn: RUN.doubtPileOn,
-      ...(options.aiSeed !== undefined ? { seed: options.aiSeed } : {}),
+      ...(options.aiSeed !== undefined ? { rosterSeed: options.aiSeed } : {}),
+      ...(options.aiBehaviourSeed !== undefined ? { seed: options.aiBehaviourSeed } : {}),
       ...(options.mode ? { mode: options.mode } : {}),
     });
 

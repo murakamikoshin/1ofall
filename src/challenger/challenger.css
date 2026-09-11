@@ -319,6 +319,22 @@
 
 .hint-row.is-open .hint-name { color: var(--paper); }
 .hint-record { margin-left: 0.4rem; font-size: 0.7rem; color: var(--paper-faint); }
+
+/*
+ * 常連の裏切り歴。
+ *
+ * いまの部屋の記録（.hint-record）より**薄く**置く。こちらは今回の役を
+ * 当てないもの（癖でしかない）なので、同じ濃さで並べると読み違える。
+ * 一度でも裏切っている相手だけ、わずかに色を入れる。
+ */
+.hint-past {
+  margin-left: 0.35rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--paper-faint) 70%, transparent);
+}
+
+.hint-past.is-traitor { color: color-mix(in srgb, var(--blood-lit) 62%, var(--paper-faint)); }
 .hint-row.is-dead { opacity: 0.5; }
 .hint-row.is-dead .hint-text { color: var(--blood-lit); }
 
@@ -866,11 +882,13 @@
 }
 
 .hint-record { white-space: nowrap; }
+.hint-past { white-space: nowrap; }
 
 @media (max-width: 560px) {
   .hint-row { grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr) auto; }
   /* 名前の下に記録を落とす。横に並べると必ず溢れる */
   .hint-record { display: block; margin-left: 0; }
+  .hint-past { display: block; margin-left: 0; }
 }
 
 /* 全員挑戦者：自分も助言を書く */
