@@ -74,7 +74,10 @@ async function readBoard(p, isParty) {
       name: (el.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim(),
       record: txt(el.querySelector('.hint-record')),
       past: txt(el.querySelector('.hint-past')),
-      text: txt(el.querySelector('.hint-text')),
+      // 全員挑戦者で二人から札が付いた者に出る印。本文の中に入れ子で入っているので、
+      // 本文は自分の字だけを読む（でないと「〜で間違いない 押されている」と繋がる）
+      pressed: !!el.querySelector('.hint-pressed'),
+      text: (el.querySelector('.hint-text')?.childNodes[0]?.textContent ?? '').trim(),
       // 人を指した一言は扉の話と分けて見たい
       call: el.classList.contains('is-call'),
     }));
@@ -241,7 +244,7 @@ for (let run = 1; run <= RUNS; run++) {
     say(`  助言 ${board.hints.length}件:`);
     for (const h of board.hints) {
       const marks = [h.record, h.past].filter(Boolean).join(' ');
-      say(`   ${h.call ? '＞' : ' '}${h.name}（${marks}） 「${h.text}」`);
+      say(`   ${h.call ? '＞' : ' '}${h.name}（${marks}） 「${h.text}」${h.pressed ? '　◀ 押されている' : ''}`);
     }
 
     // 設計どおりの読み方をなぞる：迷いを重く見て、記録で重みを変える。
