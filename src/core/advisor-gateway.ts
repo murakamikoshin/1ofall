@@ -40,6 +40,13 @@ export interface RoundBriefing {
    */
   roomInSection: number;
   roomsPerSection: number;
+  /**
+   * 挑戦者が疑いの札を置いた相手。
+   *
+   * 札を**公開する**案を測るために配る口。公開しない今の遊びでは空のまま
+   * （AI 側も `pileOn: 1` で見ない）。入れる／入れないは実測で決める。
+   */
+  doubtedIds?: readonly string[];
 }
 
 export interface AdvisorGateway {

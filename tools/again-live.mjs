@@ -47,6 +47,25 @@ async function playUntilOver(label) {
     if (v.phase === 'gameover') return true;
     if (!v.round) { await wait(300); continue; }
     await wait(300);
+    /*
+     * 助言者に一言書かせる。
+     *
+     * 書かないと「この周のあなた」の通算が積まれない（自分の一言が
+     * あった部屋だけ返る仕組みなので）。ここは黙って見ているだけの
+     * 助言者だったので、周の終わりの通算を一度も見ていなかった。
+     */
+    if (await p.locator('.compose-row .field').count()) {
+      const label2 = v.round.room.choices[0]?.label?.ja ?? '';
+      if (label2) {
+        await p.locator('.compose-row .field').fill(`${label2}は死ぬ`);
+        await wait(150);
+        const send = p.locator('.compose-row .primary');
+        if (!(await send.isDisabled().catch(() => true))) {
+          await send.click().catch(() => {});
+          await wait(250);
+        }
+      }
+    }
     // 外れそうな扉（誰も触れていない扉）を選ぶ
     const mentioned = new Set();
     for (const a of v.round.advice) {
@@ -74,6 +93,14 @@ console.log(`   助言者の画面: 「${waitingText}」`);
 // 部屋は開いたまま次の周を待っている。「まだ開いていない」と出すと、
 // 見ている側は閉じられたと思って離れる
 check('周のあいだは「次の周を待っている」と出る', waitingText.includes('次の周'), waitingText);
+
+// 周の終わりに、自分の一言がどうなったかの通算が出る（書いた人だけ）
+const tally = await p.evaluate(() => ({
+  head: (document.querySelector('.run-tally-head')?.textContent ?? '').trim(),
+  lines: [...document.querySelectorAll('.run-tally-line')].map((e) => (e.textContent ?? '').trim()),
+}));
+if (tally.head) console.log(`   ${tally.head}: ${tally.lines.join(' / ')}`);
+check('周の終わりに自分の通算が出る', tally.lines.length > 0, JSON.stringify(tally));
 
 // 同じ部屋のまま二周目
 const before = inbox.length;

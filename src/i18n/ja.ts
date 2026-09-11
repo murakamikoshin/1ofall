@@ -226,6 +226,11 @@ export const ja = {
     betRecord: (hit: number, miss: number) => `通算 当${hit} 外${miss}`,
     // 賭けた人だけを分母にする。当てているほど発言枠へ上がりやすい
     betRank: (place: number, of: number) => `賭けた${of}人中 ${place}位`,
+    // 周の終わりに出す通算。嘘つきの手柄は「殺した」、正直者の手柄は「通した」
+    runHead: 'この周のあなた',
+    runFollowed: (n: number, all: number) => `${all}部屋のうち ${n}部屋であなたの言葉が採られた`,
+    runKilled: (n: number) => `${n}部屋で挑戦者を死なせた`,
+    runSaved: (n: number) => `${n}部屋で挑戦者を通した`,
     /*
      * 発言枠にいた人へ返すもの。
      *

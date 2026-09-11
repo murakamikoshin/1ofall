@@ -80,6 +80,14 @@ export interface AdvisorConnection {
    */
   betRank?(): { place: number; of: number } | null;
   /**
+   * この周で自分の一言がどうなったかの通算。
+   *
+   * 部屋ごとには返るが、周が終わると何も残らなかった。
+   * 嘘つきは「何人殺したか」を、正直者は「何度信じられたか」を
+   * 持ち帰れないまま次の周へ行っていた。
+   */
+  runTallyOf?(): { followed: number; ignored: number; killed: number; saved: number };
+  /**
    * 人を指す。「あいつは嘘だ」。
    * 扉について言う口とは別なので、指しても自分の一言は消えない。
    */
@@ -475,13 +483,46 @@ function renderBoard(): void {
       fadeNotice();
     }
     if (!view) {
+      const T = strings();
       prompt.textContent = connection.waitingFor?.() === 'betweenRuns'
-        ? strings().advisor.waitingNextRun
-        : strings().advisor.waiting;
+        ? T.advisor.waitingNextRun
+        : T.advisor.waiting;
       grid.innerHTML = '';
       floor.innerHTML = '';
       compose.innerHTML = '';
       drawnFor = '';
+      /*
+       * 周の終わりに、自分の一言がどうなったかの通算を出す。
+       *
+       * ここは「次の周を待っている」だけの画面だった。周が終わるたびに
+       * 自分の手柄が消えるので、何周やっても積み上がらない。
+       */
+      const tally = connection.runTallyOf?.();
+      if (tally && tally.followed + tally.ignored > 0) {
+        const box = el('div', 'run-tally');
+        const head = el('p', 'run-tally-head');
+        head.textContent = T.advisor.runHead;
+        const lines = [
+          T.advisor.runFollowed(tally.followed, tally.followed + tally.ignored),
+          ...(tally.killed > 0 ? [T.advisor.runKilled(tally.killed)] : []),
+          ...(tally.saved > 0 ? [T.advisor.runSaved(tally.saved)] : []),
+        ];
+        box.append(head);
+        for (const line of lines) {
+          const row = el('p', 'run-tally-line');
+          row.textContent = line;
+          box.append(row);
+        }
+        const rec = connection.betRecord?.();
+        if (rec && rec.hit + rec.miss > 0) {
+          const bet = el('p', 'run-tally-line');
+          const rank = connection.betRank?.();
+          bet.textContent = `${T.advisor.betRecord(rec.hit, rec.miss)}${
+            rank && rank.of > 1 ? `　${T.advisor.betRank(rank.place, rank.of)}` : ''}`;
+          box.append(bet);
+        }
+        floor.append(box);
+      }
       return;
     }
     const roomKey = `${view.roundId}|${view.isSpeaker ? 's' : '-'}|${view.knowledge?.kind ?? '-'}`;

@@ -63,6 +63,16 @@ export class LiveConnection implements AdvisorConnection {
   private voteRecord: { hit: number; miss: number } = { hit: 0, miss: 0 };
   /** 賭けている人の中での順位。届いていなければ null */
   private voteRank: { place: number; of: number } | null = null;
+  /**
+   * この周で自分の一言がどうなったかの通算。
+   *
+   * 部屋ごとには返すようにした（18回目）が、**周が終わると何も残らない**。
+   * 嘘つきは「何人殺したか」を、正直者は「何度信じられたか」を
+   * 持ち帰れないまま次の周へ行っていた。
+   */
+  private runTally = { followed: 0, ignored: 0, killed: 0, saved: 0 };
+  /** 周が終わった印。次の周の一部屋目で通算を白紙に戻す */
+  private runEnded = false;
   private name = '';
   private attempt = 0;
   private closed = false;
@@ -89,6 +99,11 @@ export class LiveConnection implements AdvisorConnection {
 
   betRank(): { place: number; of: number } | null {
     return this.voteRank;
+  }
+
+  /** この周の通算。周が終わったときに出す */
+  runTallyOf(): { followed: number; ignored: number; killed: number; saved: number } {
+    return { ...this.runTally };
   }
 
   /** 部屋がまだ開いていないのか、次の周を待っているのか */
@@ -214,6 +229,10 @@ export class LiveConnection implements AdvisorConnection {
         if (!room || !msg.roundId) return;
         this.myId = msg.you ?? this.myId;
         this.played = true;
+        if (this.runEnded) {
+          this.runEnded = false;
+          this.runTally = { followed: 0, ignored: 0, killed: 0, saved: 0 };
+        }
         // 手を挙げた扱いは区画の頭で切れる（サーバー側と同じ）
         if (msg.roomInSection === 0) this.volunteered = false;
         if (msg.roundId !== this.latest?.roundId) {
@@ -249,6 +268,8 @@ export class LiveConnection implements AdvisorConnection {
         return;
       }
       case 'game/over':
+        // 周が終わった。次の部屋が来たら通算を白紙に戻す
+        this.runEnded = true;
         this.push(null);
         return;
       case 'advisor/voteResult': {
@@ -309,6 +330,14 @@ export class LiveConnection implements AdvisorConnection {
      */
     const followed = wasTruthful(mine.text, labelOf(msg.chosen), labels);
     const survived = msg.chosen === msg.correct;
+    // 周ぶんに積む。嘘つきの手柄は killed、正直者の手柄は saved
+    if (followed) {
+      this.runTally.followed += 1;
+      if (survived) this.runTally.saved += 1;
+      else this.runTally.killed += 1;
+    } else {
+      this.runTally.ignored += 1;
+    }
     this.notify(followed
       ? (survived ? 'followedLived' : 'followedDied')
       : (survived ? 'ignoredLived' : 'ignoredDied'));

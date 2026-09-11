@@ -19,6 +19,11 @@ export interface AiAdvisorOptions {
   count?: number;
   mode?: ModeConfig;
   seed?: number;
+  /**
+   * 挑戦者の「疑いの札」を公開した場合に、嘘つきが札の付いた者へ寄る倍率。
+   * 1 で札を見ない（既定＝いまの遊び）。採否は測ってから決める。
+   */
+  pileOn?: number;
   minDelayMs?: number;
   maxDelayMs?: number;
 }
@@ -33,6 +38,8 @@ export class AiAdvisorGateway implements AdvisorGateway {
   private readonly minDelay: number;
   private readonly maxDelay: number;
   private readonly mode: ModeConfig;
+  /** 札の付いた者を撃つ倍率。1 なら札を見ない */
+  private readonly pileOn: number;
   private hintListeners = new Set<(hint: Hint) => void>();
   private callListeners = new Set<(call: AdvisorCall) => void>();
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -46,6 +53,7 @@ export class AiAdvisorGateway implements AdvisorGateway {
     const count = Math.min(options.count ?? 12, companionNames().length);
     this.rng = createRng(options.seed ?? (Date.now() & 0xffffffff));
     this.mode = options.mode ?? STANDARD;
+    this.pileOn = options.pileOn ?? 1;
     this.minDelay = options.minDelayMs ?? 400;
     this.maxDelay = options.maxDelayMs ?? 3400;
     this.advisors = shuffled(companionNames(), this.rng)
@@ -158,7 +166,13 @@ export class AiAdvisorGateway implements AdvisorGateway {
         knowledge.kind === 'liar' && honestNow(id)
           ? ({ kind: 'honest' as const, candidates: [knowledge.correct] })
           : knowledge;
-      const call = chooseCall(acting, briefing.room.choices, finalSaid.filter((s) => s.id !== id && s.text), this.rng);
+      const call = chooseCall(
+        acting,
+        briefing.room.choices,
+        finalSaid.filter((s) => s.id !== id && s.text),
+        this.rng,
+        this.pileOn === 1 ? undefined : { doubted: new Set(briefing.doubtedIds ?? []), pileOn: this.pileOn },
+      );
       if (call) calls.set(id, { targetId: call.id, doubt: call.doubt });
     }
 

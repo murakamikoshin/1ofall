@@ -80,13 +80,30 @@ export function readCall(text: string, people: readonly Person[]): Call | null {
  * 自分の知識から見て、誰をどう指せるか。
  * 指す理由が無ければ null（黙って扉の話をする）。
  */
+/**
+ * 撃つ相手を選ぶときの追加の重み。
+ *
+ * 挑戦者の「疑いの札」を公開した場合に、嘘つきが**札の付いた者へ寄る**
+ * （群がって埋める）かどうかを試すための口。1 なら札を見ない＝今までと同じ。
+ * 札を公開するかどうかは、この重みを入れて測ってから決める
+ * （`tools/doubt-probe.mjs`）。
+ */
+export interface CallBias {
+  doubted?: ReadonlySet<string>;
+  /** 札の付いた相手を撃つ重みの倍率。1 で無効 */
+  pileOn?: number;
+}
+
 export function chooseCall(
   knowledge: Knowledge,
   choices: readonly Choice[],
   said: readonly Said[],
   rng: Rng,
+  bias?: CallBias,
 ): { id: string; name: string; doubt: boolean } | null {
   const options: { id: string; name: string; doubt: boolean; weight: number }[] = [];
+  const marked = bias?.doubted;
+  const pileOn = bias?.pileOn ?? 1;
 
   for (const s of said) {
     const claim = readDoorClaim(s.text, choices);
@@ -94,7 +111,11 @@ export function chooseCall(
     if (!claim) continue;
     const pushes = (id: string): boolean => !claim.negative && claim.ids.includes(id);
     const buries = (id: string): boolean => claim.negative && claim.ids.includes(id);
-    const add = (doubt: boolean, weight: number): void => { options.push({ id: s.id, name: s.name, doubt, weight }); };
+    const add = (doubt: boolean, weight: number): void => {
+      // 札の付いた相手を撃つときだけ厚くする（庇うほうは触らない）
+      const mul = doubt && pileOn !== 1 && marked?.has(s.id) ? pileOn : 1;
+      options.push({ id: s.id, name: s.name, doubt, weight: weight * mul });
+    };
 
     if (knowledge.kind === 'liar') {
       // 一番効く一手。正解を口にした者を潰す

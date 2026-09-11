@@ -236,6 +236,14 @@ export class GameEngine {
   private nominated: string[] = [];
   private roundCounter = 0;
   private sectionAnswer: SectionAnswer | null = null;
+  /**
+   * 挑戦者が疑いの札を置いた相手。
+   *
+   * **いまは誰も入れない。** 札は画面の中だけのもので、送っていない。
+   * 公開する案を測るための置き場で、`doubt()` から入る
+   * （`tools/doubt-probe.mjs` がそこを叩く）。
+   */
+  private doubtedIds = new Set<string>();
   /** この部屋で使った「人を指す言い方」。部屋ごとに捨てる */
   private usedCallShapes = new Set<string>();
   /** この区画で扉について一言でも出した人 */
@@ -554,6 +562,17 @@ export class GameEngine {
     return { sectionIndex: this.sectionIndex, cleared: verdict.survived, rows };
   }
 
+  /**
+   * 疑いの札を置く／外す。
+   *
+   * 公開する案のための口。呼ばれなければ何も変わらない
+   * （既定では画面が呼んでいない）。
+   */
+  doubt(advisorId: string, on: boolean): void {
+    if (on) this.doubtedIds.add(advisorId);
+    else this.doubtedIds.delete(advisorId);
+  }
+
   retryFromTitle(): void {
     this.phase = 'title';
     this.round = null;
@@ -780,6 +799,7 @@ export class GameEngine {
       knowledge, deadlineAt,
       roomInSection: this.clearedInSection,
       roomsPerSection: this.roomsFor(this.sectionIndex),
+      doubtedIds: [...this.doubtedIds],
     });
     this.emit();
   }
