@@ -32,7 +32,7 @@ const rng = C.createRng(Number(process.env.SEED ?? 7));
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-async function play(mode, useProbe, seed) {
+async function play(mode, useProbe, seed, usePress = false) {
   const engine = new C.GameEngine({
     pack: C.corePackage(), mode,
     // 助言は時間差で届く。待たないと「助言ゼロで選んだ」ことになる
@@ -40,6 +40,8 @@ async function play(mode, useProbe, seed) {
     seed,
   });
   let rooms = 0, deaths = 0, probes = 0, hits = 0;
+  /** いま札を置いている相手（押すと次の部屋で言い切らせる） */
+  let marked = new Set();
   // 黙らせて当たった相手は「確定で嘘つき」。人間はこれを覚えて使う
   let known = new Set();
   let section = -1;
@@ -68,6 +70,26 @@ async function play(mode, useProbe, seed) {
         const result = engine.silence(worst.advisorId);
         if (result) { probes++; if (result.hit) { hits++; known.add(worst.advisorId); } }
       }
+    }
+
+    /*
+     * 疑いの札を置く（25〜26回目に足した道具）。
+     *
+     * 置かれた者は次の部屋で扉ひとつを言い切るしかない。崖っぷちは
+     * ほぼ全員が嘘つきなので、言い切らせるほど記録が崩れて正直者が浮く——
+     * **この道具まで使ったときに難易度の枠を割らないか**を見る
+     * （道具を使った生存は 65〜82% に収める約束になっている）。
+     */
+    if (usePress) {
+      const rows = rowsOf();
+      const worst = [...rows]
+        .filter((r) => r.record.miss - r.record.hit >= 1 && !known.has(r.advisorId))
+        .sort((a, b) => (b.record.miss - b.record.hit) - (a.record.miss - a.record.hit))
+        .slice(0, PRESS_MARKS);
+      const keep = new Set(worst.map((r) => r.advisorId));
+      for (const id of marked) if (!keep.has(id)) engine.doubt(id, false);
+      for (const r of worst) if (!marked.has(r.advisorId)) engine.doubt(r.advisorId, true);
+      marked = keep;
     }
 
     const after = engine.snapshot().round;
@@ -108,10 +130,15 @@ const m = brinkMode();
 const NAME = { standard: '通常', brink: '崖っぷち', party: '全員挑戦者' }[MODE_ID] ?? MODE_ID;
 const shape = m.roomsBySection ? m.roomsBySection.join('+') : `${m.sections}区画×${m.roomsPerSection}`;
 console.log(`${NAME}　${RUNS}周　命${m.lives} ${shape}部屋 発言枠${m.slotsBySection[0]}\n`);
-for (const [name, useProbe] of [['黙らせるを使わない', false], ['黙らせるを使う', true]]) {
+const PRESS_MARKS = Number(process.env.PRESS ?? 2);
+for (const [name, useProbe, usePress] of [
+  ['黙らせるを使わない', false, false],
+  ['黙らせるを使う', true, false],
+  ['黙らせる＋疑いの札', true, true],
+]) {
   let rooms = 0, deaths = 0, probes = 0, hits = 0, cleared = 0;
   for (let i = 0; i < RUNS; i++) {
-    const r = await play(brinkMode(), useProbe, 5000 + i);
+    const r = await play(brinkMode(), useProbe, 5000 + i, usePress);
     rooms += r.rooms; deaths += r.deaths; probes += r.probes; hits += r.hits;
     cleared += r.cleared ? 1 : 0;
   }

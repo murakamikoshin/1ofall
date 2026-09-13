@@ -91,6 +91,17 @@ check('全員挑戦者: 札を振り回すと損をする',
 
 const brink = run('brink-probe.mjs', { RUNS: '200' });
 const withProbe = brink.split('黙らせるを使う')[1] ?? '';
+/*
+ * 道具を**二つとも**使ったとき（黙らせる＋疑いの札）。
+ *
+ * 崖っぷちはほぼ全員が嘘つきなので、言い切らせるほど記録が崩れて正直者が浮く。
+ * 二つ重ねて枠（65〜82%）を割らないかを見る。実測では横ばい
+ * （75.4% → 74.2%、踏破 22.3% → 22.0%）で、黙らせるのほうが強い。
+ */
+const bothTools = brink.split('黙らせる＋疑いの札')[1] ?? '';
+const bothSurvival = num(bothTools, /生存 ([\d.]+)%/);
+check('崖っぷち: 道具を二つ使っても生存 65〜82%',
+  inBand(bothSurvival, 65, 82), `${bothSurvival}%`);
 const bSurv = num(withProbe, /生存 ([\d.]+)%/);
 const bClear = num(withProbe, /踏破 ([\d.]+)%/);
 check('崖っぷち: 道具を使うと生存 65〜82%', inBand(bSurv, 65, 82), `${bSurv}%`);
