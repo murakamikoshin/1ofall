@@ -81,36 +81,28 @@ await host.screenshot({ path: `${OUT}/host-5-hints.png` });
  * 何も変わらず、配信で一番おいしい「名指しされた人が弁解する」が起きなかった。
  * 撃たれている本人には頭に一行、ほかの人には場の行に印が出る。
  */
-const myRow = await host.evaluate(() => {
-  const rows = [...document.querySelectorAll('.hint-row')];
-  const mine = rows.find((r) => (r.querySelector('.hint-name')?.textContent ?? '').includes('みかん'));
-  const row = mine ?? rows.find((r) => r.querySelector('.hint-doubt'));
+/*
+ * 札は相手の画面に届くか。
+ *
+ * **どの行が相手のものかは、名前では決まらない**（助言者が名乗った名前と
+ * 同じ名前の AI が同じ卓にいることがある。それで「本人の画面に出る」が
+ * 空振りしていた）。ここでは**相手の画面のどこかに札が出る**ことだけを見て、
+ * 本人あての一行と言い切りの規則は `advisor-live`（相手のIDを名簿から引く）で見る。
+ */
+const marked = await host.evaluate(() => {
+  const row = [...document.querySelectorAll('.hint-row')].find((r) => r.querySelector('.hint-doubt'));
   if (!row) return null;
-  row.querySelector('.hint-doubt')?.click();
-  return { mine: row === mine, name: (row.querySelector('.hint-name')?.textContent ?? '').trim() };
+  row.querySelector('.hint-doubt').click();
+  return (row.querySelector('.hint-name')?.childNodes[0]?.textContent ?? '').trim();
 });
-if (myRow) {
+if (marked) {
   await wait(800);
   const seen = await guest.evaluate(() => ({
     banner: (document.querySelector('.role-doubt:not([hidden])')?.textContent ?? '').trim(),
     marks: [...document.querySelectorAll('.floor-mark')].map((e) => (e.textContent ?? '').trim()),
   }));
-  if (myRow.mine) {
-    check('札を置かれた本人の画面に出る', seen.banner.includes('疑われている'), JSON.stringify(seen));
-  } else {
-    check(`札がほかの人（${myRow.name}）の行にも出る`, seen.marks.length > 0, JSON.stringify(seen));
-  }
-  /*
-   * 押された者は言い切る規則が、本人の画面に出ているか。
-   *
-   * 打って断られるところまでは `advisor-live` が見る（あちらは枠に入るまで
-   * 部屋を立て直すので、毎回必ず通る）。ここは本物の挑戦者が置いた札で
-   * **規則が相手に届くか**だけを見る——部屋は進むので打ち込みは重ねない。
-   */
-  if (myRow.mine) {
-    const rule = await guest.evaluate(() => (document.querySelector('.role-doubt')?.textContent ?? '').trim());
-    check('押された本人の画面に規則が出る', rule.includes('言い切'), rule);
-  }
+  check(`札が相手の画面に出る（${marked}）`,
+    seen.banner.includes('疑われている') || seen.marks.length > 0, JSON.stringify(seen));
 
   // 外すと消える。残ると、疑いを解いたのに撃たれ続ける
   await host.evaluate(() => {
