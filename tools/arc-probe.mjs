@@ -61,7 +61,7 @@ const MODES = {
 
 for (const [label, mode] of Object.entries(MODES)) {
   const PER = mode.m.roomsPerSection;
-  const byRoom = Array.from({ length: PER }, () => ({ n: 0, hit: 0, naive: 0, gap: 0, gapN: 0 }));
+  const byRoom = Array.from({ length: PER }, () => ({ n: 0, hit: 0, naive: 0, regular: 0, gap: 0, gapN: 0 }));
 
   for (let seed = 0; seed < SEEDS; seed++) {
     const rng = C.createRng(9000 + seed * 613);
@@ -104,6 +104,32 @@ for (const [label, mode] of Object.entries(MODES)) {
         const tops = [...tally].filter(([, v]) => v === tm).map(([id]) => id);
         if (tops[Math.floor(rng() * tops.length)] === room.correct) b.naive++;
 
+        /*
+         * 常連の裏切り歴を知っている打ち手。
+         *
+         * 死ぬと区画の頭から引き直すので、**区画の一部屋目は記録が白紙**で、
+         * そこだけは読むものが無い（実測でも読みしろは +2pt しか無い）。
+         * 27回目に顔ぶれを周をまたいで固定して「裏切2/5」を出したので、
+         * **白紙の部屋にだけは残る手掛かり**になっているはず。そこを見る。
+         */
+        const score = new Map(labels.map((c) => [c.id, 0]));
+        for (const x of rows) {
+          const t = (x.rec.hit + 1) / (x.rec.hit + x.rec.miss + 2);
+          // 癖（平均 1.37）で割る。よく裏切る常連の声を薄く聞く
+          const habit = Math.max(0.4, Math.min(1.8, 1.37 / Math.max(0.35, C.liarBias(x.id))));
+          const touched = labels.filter((c) => x.text.includes(c.label));
+          if (!touched.length) continue;
+          let rest = x.text;
+          for (const c of touched) rest = rest.split(c.label).join('　');
+          const w = t * habit;
+          if (AVOID.test(rest)) { for (const c of touched) score.set(c.id, score.get(c.id) - w * 1.2); continue; }
+          const hedging = touched.length >= 2 || HEDGE.test(rest);
+          for (const c of touched) score.set(c.id, score.get(c.id) + w * (hedging ? 1.25 : 0.8));
+        }
+        const sm = Math.max(...score.values());
+        const stops = [...score].filter(([, v]) => v === sm).map(([id]) => id);
+        if (stops[Math.floor(rng() * stops.length)] === room.correct) b.regular++;
+
         // 記録がどれだけ割れているか（嘘つきと協力者の信用の差）
         const tr = (id) => {
           const x = rec.get(id) ?? { hit: 0, miss: 0 };
@@ -140,10 +166,11 @@ for (const [label, mode] of Object.entries(MODES)) {
   }
 
   console.log(`\n【${label}】  ${SEEDS}種 × 4区画　裏切りの段取り ${SCHEDULE ? 'あり' : 'なし'}`);
-  console.log('  部屋   読める   数えるだけ   読みしろ   記録の割れ');
+  console.log('  部屋   読める   数えるだけ   読みしろ   常連の癖も見る   記録の割れ');
   for (const [i, b] of byRoom.entries()) {
     const pc = (x) => `${((x / b.n) * 100).toFixed(1)}%`;
     const gap = b.gapN ? (b.gap / b.gapN).toFixed(3) : '—';
-    console.log(`   ${i + 1}    ${pc(b.hit).padStart(6)}   ${pc(b.naive).padStart(8)}   ${(((b.hit - b.naive) / b.n) * 100).toFixed(1).padStart(6)}pt   ${gap}`);
+    console.log(`   ${i + 1}    ${pc(b.hit).padStart(6)}   ${pc(b.naive).padStart(8)}   ${
+      (((b.hit - b.naive) / b.n) * 100).toFixed(1).padStart(6)}pt   ${pc(b.regular).padStart(10)}   ${gap}`);
   }
 }

@@ -77,6 +77,16 @@ let unknown = 0, doorLines = 0;
 const perRoomDistinct = [];
 const perRoomLines = [];
 const repeats = [];
+/**
+ * 人ごとの型の使い分け（常連が「その人らしく」喋っているか）。
+ *
+ * 27回目に顔ぶれを周をまたいで固定した。覚える相手が同じなら、
+ * **口ぶりで人が分かる**ほうがいい——「ゲンさんはいつも言い切る」が
+ * 分かって初めて、それが崩れた部屋に引っかかれる。
+ * 席（`voiceOf` の seat）で型の順を固定してあるが、実際に
+ * 見分けられる強さは一度も数えていなかった。
+ */
+const byPerson = new Map();   // 人 → (型 → 回数)
 
 for (let seed = 1; seed <= 6; seed++) {
   const gateway = new C.AiAdvisorGateway({ count: 12, mode, seed: 500 + seed, minDelayMs: 4, maxDelayMs: 16 });
@@ -100,6 +110,9 @@ for (let seed = 1; seed <= 6; seed++) {
       if (!frame) { unknown++; continue; }
       count.set(frame, (count.get(frame) ?? 0) + 1);
       seen.set(frame, (seen.get(frame) ?? 0) + 1);
+      const mine = byPerson.get(a.advisorId) ?? new Map();
+      mine.set(frame, (mine.get(frame) ?? 0) + 1);
+      byPerson.set(a.advisorId, mine);
     }
     perRoomDistinct.push(count.size);
     perRoomLines.push(door.length);
@@ -136,6 +149,73 @@ for (const [frame, n] of seen) {
   families[fam] = (families[fam] ?? 0) + n;
 }
 console.log(`  族ごとの件数                ${Object.entries(families).map(([f, n]) => `${f} ${n}`).join(' / ')}`);
+
+/*
+ * 口ぶりで人が分かるか。
+ *
+ *   一番使う型の割合   その人の一言のうち、一番よく使う型が占める割合
+ *   見分けの精度       「この型を一番よく使うのは誰か」で話者を当てた率
+ *                     （でたらめに当てると 1/人数）
+ */
+const people = [...byPerson.entries()].filter(([, m]) => [...m.values()].reduce((a, b) => a + b, 0) >= 8);
+const topShare = people.map(([, m]) => {
+  const total = [...m.values()].reduce((a, b) => a + b, 0);
+  return Math.max(...m.values()) / total;
+});
+const avgTop = topShare.reduce((a, b) => a + b, 0) / Math.max(1, topShare.length);
+// 型ごとに「一番よく使う人」を決めて、その型の一言を全部その人のものと当ててみる
+const ownerOf = new Map();
+for (const [frame] of seen) {
+  let best = null, bestN = 0;
+  for (const [id, m] of people) {
+    const n = m.get(frame) ?? 0;
+    if (n > bestN) { bestN = n; best = id; }
+  }
+  if (best) ownerOf.set(frame, best);
+}
+let guessed = 0, guessable = 0;
+for (const [id, m] of people) {
+  for (const [frame, n] of m) {
+    guessable += n;
+    if (ownerOf.get(frame) === id) guessed += n;
+  }
+}
+const chance = 1 / Math.max(1, people.length);
+/*
+ * 人が実際に読むのは**族**のほう（言い切る／迷う／二つ挙げる／警告する）。
+ * 28種の型を覚える人はいないが、「あいつはいつも警告する」は覚える。
+ * そこで族だけで同じ物差しを当てる。
+ */
+const famOf = (frame) => frame.replace(/\d+$/, '');
+const famByPerson = new Map();
+for (const [id, m] of people) {
+  const f = new Map();
+  for (const [frame, n] of m) f.set(famOf(frame), (f.get(famOf(frame)) ?? 0) + n);
+  famByPerson.set(id, f);
+}
+const famTop = [...famByPerson.values()].map((f) => {
+  const total = [...f.values()].reduce((a, b) => a + b, 0);
+  return Math.max(...f.values()) / total;
+});
+const avgFamTop = famTop.reduce((a, b) => a + b, 0) / Math.max(1, famTop.length);
+const famOwner = new Map();
+for (const fam of new Set([...famByPerson.values()].flatMap((f) => [...f.keys()]))) {
+  let best = null, bestShare = 0;
+  for (const [id, f] of famByPerson) {
+    const total = [...f.values()].reduce((a, b) => a + b, 0);
+    const share = (f.get(fam) ?? 0) / Math.max(1, total);
+    if (share > bestShare) { bestShare = share; best = id; }
+  }
+  if (best) famOwner.set(fam, best);
+}
+console.log(`  人ごとの一番使う族の割合    ${(avgFamTop * 100).toFixed(0)}%　（族は ${famOwner.size}種）`);
+console.log(`  人ごとの一番使う型の割合    ${(avgTop * 100).toFixed(0)}%（${people.length}人）`);
+console.log(`  口ぶりで話者を当てた率      ${((guessed / Math.max(1, guessable)) * 100).toFixed(0)}%　（でたらめなら ${(chance * 100).toFixed(0)}%）`);
+check(`${LOC}/${modeId}: 口ぶりで人が分かる（でたらめの2倍以上）`,
+  guessed / Math.max(1, guessable) >= chance * 2,
+  `${((guessed / Math.max(1, guessable)) * 100).toFixed(0)}% / でたらめ ${(chance * 100).toFixed(0)}%`);
+check(`${LOC}/${modeId}: 一人が同じ型ばかりではない（8割未満）`,
+  avgTop < 0.8, `${(avgTop * 100).toFixed(0)}%`);
 
 const tripled = repeats.filter((n) => n >= 3).length;
 const tripleRate = tripled / Math.max(1, repeats.length);

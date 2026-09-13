@@ -57,6 +57,7 @@ export const en: Strings = {
       'Mark someone as doubted and they are told. Their next line must name exactly one door — no hedging.',
       'The mark costs you. Their record hardens fast, but you lose their hesitation, and liars pile onto whoever is marked.',
       'The same twelve regulars come back every run. The ones who lie often carry it beside their name, as "lied 2/5".',
+      'Early in a block, though, the ones who lie most are the ones telling the truth. That mark pays off deeper in.',
     ],
     modes: {
       standard: [
