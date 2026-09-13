@@ -973,7 +973,8 @@ function renderChoices(
     const key = el('span', 'choice-key');
     key.textContent = KEYCAPS[i] ?? '';
     const img = document.createElement('img');
-    img.src = choiceArt(theme, roomId, choice.id, choice.image, i);
+    // 英語の札を渡す。形容（破れた・濡れた・取手のない…）から絵を組む
+    img.src = choiceArt(theme, roomId, choice.id, choice.image, i, choice.label.en);
     img.alt = '';
     img.loading = 'lazy';
     img.decoding = 'async';

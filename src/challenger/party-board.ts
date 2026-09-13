@@ -277,7 +277,7 @@ export class PartyBoard {
       const key = el('span', 'choice-key');
       key.textContent = KEYCAPS[i] ?? '';
       const img = document.createElement('img');
-      img.src = choiceArt(round.room.theme, round.room.id, choice.id, choice.image, i);
+      img.src = choiceArt(round.room.theme, round.room.id, choice.id, choice.image, i, choice.label.en);
       img.alt = '';
       img.loading = 'lazy';
       const label = el('span', 'choice-label');

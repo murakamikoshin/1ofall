@@ -619,7 +619,7 @@ function renderBoard(): void {
       for (const [i, choice] of view.choices.entries()) {
         const cell = el('div', 'cell');
         const img = el('img');
-        img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image, i);
+        img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image, i, choice.label.en);
         img.alt = '';
         const label = el('span');
         label.textContent = localized(choice.label);
@@ -691,7 +691,7 @@ function renderBoard(): void {
         });
       }
       const img = el('img');
-      img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image, cellIndex);
+      img.src = choiceArt(view.theme, view.roomId, choice.id, choice.image, cellIndex, choice.label.en);
       img.alt = '';
       img.decoding = 'async';
       const label = el('span');
