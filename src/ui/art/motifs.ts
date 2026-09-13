@@ -17,6 +17,14 @@ export interface Motif {
   base(p: Pen): string;
   detail?(p: Pen): string;
   marks?: ((p: Pen) => string)[];
+  /**
+   * 札の名前から形を引いてよい題材か。
+   *
+   * 「何を置いていく：帳面／銭／面／縄／名前」のように**選択肢が別々の物**の
+   * 部屋だけ立てる。既定は立てない——「澄んだ水」を水の形で描いてしまうと、
+   * 器の部屋（どれを空ける）に波が並ぶ。器の部屋の主役は器のほうなので。
+   */
+  nouns?: boolean;
 }
 
 function motif(
@@ -26,6 +34,13 @@ function motif(
 ): Motif {
   return detail ? { base, detail, marks } : { base, marks };
 }
+
+/** 選択肢が別々の物の部屋。札の名前から形を引く */
+const NOUN_THEMES = [
+  'ferry', 'last', 'leave', 'burn', 'cut', 'trade', 'discard', 'first',
+  'count', 'listen', 'signal', 'sound', 'trace', 'hide', 'breath', 'answer',
+  'shelf', 'food', 'vehicle', 'drum', 'stair', 'promise', 'hand',
+] as const;
 
 /**
  * どの形にも置ける当たり障りのない印。
@@ -57,12 +72,12 @@ export const MOTIFS: Record<string, Motif> = {
     [(p) => p.L('M44 88 H84'), (p) => p.C(64, 58, 8)],
   ),
   window: motif(
-    (p) => p.F('M34 32 H94 V96 H34 Z'),
+    (p) => p.G('M34 32 H94 V96 H34 Z'),
     (p) => p.L('M64 32 V96 M34 64 H94'),
     [(p) => p.L('M54 32 V96 M74 32 V96'), (p) => p.L('M34 54 H94')],
   ),
   exit: motif(
-    (p) => p.F('M34 104 V62 A30 30 0 0 1 94 62 V104'),
+    (p) => p.G('M34 104 V62 A30 30 0 0 1 94 62 V104'),
     undefined,
     [
       (p) => p.L('M52 104 V80 H76 V104'),
@@ -75,7 +90,7 @@ export const MOTIFS: Record<string, Motif> = {
   ),
   // 穴は「壁に空いた暗い口」に見せる（塗った丘に見えていた）
   tunnel: motif(
-    (p) => p.L('M22 100 H106') + p.F('M40 100 V66 A24 24 0 0 1 88 66 V100 Z'),
+    (p) => p.L('M22 100 H106') + p.G('M40 100 V66 A24 24 0 0 1 88 66 V100 Z'),
     undefined,
     [
       (p) => p.L('M50 96 Q64 74 78 96'),
@@ -88,7 +103,7 @@ export const MOTIFS: Record<string, Motif> = {
   ),
   // 鏡は面を空けて、映りの線だけ入れる（的に見えていた）
   mirror: motif(
-    (p) => p.C(64, 54, 26, true) + p.L('M64 80 V102 M52 102 H76'),
+    (p) => p.G('M38 54 A26 26 0 1 1 90 54 A26 26 0 1 1 38 54 Z') + p.L('M64 80 V102 M52 102 H76'),
     (p) => p.L('M50 62 Q60 44 74 40'),
     [(p) => p.L('M46 54 H82'), (p) => p.DOT(64, 54, 4)],
   ),
@@ -119,7 +134,7 @@ export const MOTIFS: Record<string, Motif> = {
     [(p) => p.L('M64 52 V100'), (p) => p.L('M32 70 H96'), (p) => p.L('M44 52 V100 M84 52 V100')],
   ),
   bowl: motif(
-    (p) => p.F('M32 54 C32 98 96 98 96 54 Z') + p.L('M28 54 H100'),
+    (p) => p.G('M32 54 C32 98 96 98 96 54 Z') + p.L('M28 54 H100'),
     (p) => p.L('M44 70 Q64 80 84 70'),
     [(p) => p.DOT(64, 74, 5), (p) => p.L('M40 64 Q64 76 88 64')],
   ),
@@ -129,7 +144,7 @@ export const MOTIFS: Record<string, Motif> = {
     [(p) => p.L('M88 56 Q104 66 86 78'), (p) => p.DOT(64, 72, 5)],
   ),
   well: motif(
-    (p) => p.F('M36 60 H92 V100 H36 Z') + p.L('M30 60 H98 M44 60 V34 M84 60 V34 M38 34 H90'),
+    (p) => p.G('M36 60 H92 V100 H36 Z') + p.L('M30 60 H98 M44 60 V34 M84 60 V34 M38 34 H90'),
     (p) => p.L('M56 78 H72 V92 H56 Z'),
     [(p) => p.L('M64 60 V100'), (p) => p.L('M44 84 H84')],
   ),
@@ -174,7 +189,7 @@ export const MOTIFS: Record<string, Motif> = {
     [(p) => p.L('M56 76 H72'), (p) => p.L('M64 38 V52')],
   ),
   lamp: motif(
-    (p) => p.F('M44 40 H84 L90 92 H38 Z') + p.L('M52 30 H76'),
+    (p) => p.G('M44 40 H84 L90 92 H38 Z') + p.L('M52 30 H76'),
     (p) => p.L('M44 66 H84'),
     [(p) => p.DOT(64, 66, 5), (p) => p.L('M64 40 V92')],
   ),
@@ -230,7 +245,7 @@ export const MOTIFS: Record<string, Motif> = {
     [(p) => p.L('M44 50 L54 60'), (p) => p.DOT(64, 40, 5)],
   ),
   seal: motif(
-    (p) => p.F('M36 36 H92 V92 H36 Z'),
+    (p) => p.G('M36 36 H92 V92 H36 Z'),
     (p) => p.C(64, 64, 14, true) + p.L('M56 64 H72'),
     [(p) => p.L('M36 52 H92'), (p) => p.L('M64 36 V92')],
   ),
@@ -556,7 +571,7 @@ export const MOTIFS: Record<string, Motif> = {
     ],
   ),
   clock: motif(
-    (p) => p.C(64, 66, 28, true) + p.L('M64 30 V38'),
+    (p) => p.G('M36 66 A28 28 0 1 1 92 66 A28 28 0 1 1 36 66 Z') + p.L('M64 30 V38'),
     (p) => p.L('M64 66 V46 M64 66 L82 74'),
     [(p) => p.L('M64 66 L48 78'), (p) => p.DOT(64, 66, 4)],
   ),
@@ -839,6 +854,11 @@ export const MOTIFS: Record<string, Motif> = {
  * 部屋がある。題材の形ひとつでは描けないので、名前から形を引く。
  * 値は題材の鍵（同じ形を使い回す）。
  */
+for (const theme of NOUN_THEMES) {
+  const m = MOTIFS[theme];
+  if (m) m.nouns = true;
+}
+
 export const NOUNS: Record<string, string> = {
   // 物
   bell: 'bell', drum: 'drum', lamp: 'lamp', lantern: 'lamp', candle: 'candle',

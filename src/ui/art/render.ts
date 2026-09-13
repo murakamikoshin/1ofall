@@ -1,4 +1,4 @@
-import { BOX, INK_PEN, PAPER, SHADOW_PEN, type Pen } from './style';
+import { BOX, FINE_PEN, INK_PEN, PAPER, SHADOW_FINE, SHADOW_PEN, type Pen } from './style';
 import { GENERIC_MARKS, MOTIFS, NOUNS } from './motifs';
 import { bodyTransform, overlay, treatsFor } from './modifiers';
 
@@ -32,6 +32,24 @@ export function hasMotif(theme: string): boolean {
 
 export const VARIANTS = 6;
 
+/**
+ * 題材そのものを指す語。札が題材の名前と違う言い方をすることがある。
+ *
+ * 「石段」は "Stone steps"。題材は `stair` なので `stair` の字が札に無く、
+ * **石の形で描かれていた**（段ではなく石が並ぶ）。言い換えをここに書く。
+ */
+const OWN_WORDS: Record<string, readonly string[]> = {
+  stair: ['steps', 'step', 'stairs'],
+  stairwell: ['steps', 'flight'],
+  step: ['threshold'],
+  exit: ['mouth'],
+  tunnel: ['hole'],
+  path: ['track'],
+  cloth: ['curtain', 'weave'],
+  person: ['man', 'woman', 'child', 'seller'],
+  guard: ['gatekeeper'],
+};
+
 /** 札の中の物の名前。長い語から当てる（「hand bell」を「hand」に取られないため） */
 const NOUN_KEYS = Object.keys(NOUNS).sort((a, b) => b.length - a.length);
 
@@ -53,7 +71,14 @@ export interface ArtSpec {
   key: string;
 }
 
-function compose(pen: Pen, spec: ArtSpec): { body: string; scale: number; spin: number } {
+/**
+ * 一枚ぶんを組む。**輪郭は太い筆、内側の印は細い筆。**
+ *
+ * 全部を同じ太さで引いていたら、印が輪郭と同じ重さで主張して形が読みにくかった。
+ * 段は二つだけで、どの絵でも同じ割り当て（規約 §5 の「線の太さが揃っている」は
+ * 絵ごとに変えないことを言っているので、役ごとの二段は外れない）。
+ */
+function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: number; spin: number } {
   const motif = MOTIFS[spec.theme] ?? MOTIFS['box'];
   const label = spec.labelEn ?? '';
   const treats = treatsFor(label);
@@ -61,16 +86,18 @@ function compose(pen: Pen, spec: ArtSpec): { body: string; scale: number; spin: 
    * 物の名前から形を引く。ただし**題材そのものの名前が札にあるときは題材の形**。
    * 「桶を吊るした井戸」で桶を描いてしまい、井戸の部屋に桶が並んでいた。
    */
-  const ownName = label.toLowerCase().includes(spec.theme.replace('_', ' '));
-  const noun = label && !ownName ? nounIn(label) : null;
+  const low = label.toLowerCase();
+  const ownName = low.includes(spec.theme.replace('_', ' '))
+    || (OWN_WORDS[spec.theme] ?? []).some((w) => low.includes(w));
+  const noun = label && !ownName && motif?.nouns ? nounIn(label) : null;
   const nounMotif = noun && NOUNS[noun] !== spec.theme ? MOTIFS[NOUNS[noun] as string] : undefined;
   const drawn = nounMotif ?? motif;
   if (!drawn) return { body: '', scale: 1, spin: 0 };
 
   let out = drawn.base(pen);
   const omitted = treats.includes('omit');
-  if (drawn.detail && !omitted) out += drawn.detail(pen);
-  for (const t of treats) out += overlay(pen, t);
+  if (drawn.detail && !omitted) out += drawn.detail(fine);
+  for (const t of treats) out += overlay(fine, t);
   /*
    * 形容が当たらなかったときだけ、順番で印を振る。
    * **物の名前で引いたときも振る**——「木の梯子」と「縄の梯子」はどちらも
@@ -81,15 +108,15 @@ function compose(pen: Pen, spec: ArtSpec): { body: string; scale: number; spin: 
   if (treats.length === 0) {
     const marks = [...(drawn.marks ?? []), ...GENERIC_MARKS].slice(0, 6);
     const mark = marks[spec.index % marks.length];
-    if (mark) out += mark(pen);
+    if (mark) out += mark(fine);
   }
   const { scale, spin } = bodyTransform(treats);
   return { body: out, scale, spin };
 }
 
 export function artSvg(spec: ArtSpec): string {
-  const top = compose(INK_PEN, spec);
-  const shade = compose(SHADOW_PEN, spec);
+  const top = compose(INK_PEN, FINE_PEN, spec);
+  const shade = compose(SHADOW_PEN, SHADOW_FINE, spec);
   // 手の揺れ。±2度だけ（余白の量は変わらない）
   const tilt = ((hash(spec.key) >> 5) % 5) - 2 + top.spin;
   const inner = (content: string): string =>
