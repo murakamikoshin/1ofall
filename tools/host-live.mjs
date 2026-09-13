@@ -219,6 +219,31 @@ if (ended) {
   if (OUT) await host.screenshot({ path: `${OUT}/host-again.png` });
 }
 
+/*
+ * 合言葉は覚えている。
+ *
+ * 開くたびに6文字を振り直していたので、配信の説明欄に固定で書けなかった
+ * （視聴者は毎回新しい6文字を聞き取って入れ直す）。同じ browser context で
+ * 開き直したときに同じ6文字が出るか、振り直したら変わるかを見る。
+ */
+await host.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
+await host.getByRole('button', { name: /賭場を開く/ }).click();
+await host.waitForSelector('.lobby-code', { timeout: 8000 });
+const again = (await host.locator('.lobby-code').textContent()).trim();
+check('次に開いても同じ合言葉', again === code, `${code} → ${again}`);
+const note = await host.evaluate(() => (document.querySelector('.lobby-code-note')?.textContent ?? '').trim());
+check('次も同じだと書いてある', note.length > 0, note);
+
+await host.getByRole('button', { name: '振り直す' }).click();
+await host.waitForSelector('.lobby-code', { timeout: 8000 });
+let rerolled = '';
+for (let t = 0; t < 20; t++) {
+  rerolled = (await host.locator('.lobby-code').textContent()).trim();
+  if (rerolled !== again) break;
+  await wait(200);
+}
+check('振り直すと変わる', /^[A-Z2-9]{6}$/.test(rerolled) && rerolled !== again, `${again} → ${rerolled}`);
+
 check('例外が出ていない', errors.length === 0, errors.join(' / '));
 console.log(`\n${pass} 通過 / ${fail} 失敗`);
 await b.close();

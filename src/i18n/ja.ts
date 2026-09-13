@@ -93,6 +93,13 @@ export const ja = {
 
   lobby: {
     heading: '合言葉',
+    /*
+     * 合言葉は覚えておく（次に開いても同じ）。
+     * 毎回振り直していたので、配信の説明欄に固定で書けなかった。
+     */
+    sameNext: '次に開いても同じ合言葉。配信の説明欄に書ける',
+    reroll: '振り直す',
+    rerollNote: '合言葉を新しくする。前の6文字は使えなくなる',
     where: (url: string) => `${url} を開いて、この合言葉を入れてもらう`,
     waiting: (n: number) => (n === 0 ? 'まだ誰も来ていない。AI だけでも始められる' : `${n}人が来ている`),
     whereParty: (url: string, label: string) => `${url} を開いて「${label}」から、この合言葉を入れてもらう`,

@@ -518,8 +518,37 @@ function newRoomCode(): string {
   return out;
 }
 
-function hostGame(): void {
-  const code = newRoomCode();
+const ROOM_CODE_KEY = 'room:code';
+
+/**
+ * 合言葉は**覚えておく。**
+ *
+ * ここまで賭場を開くたびに6文字を振り直していた。配信で使う道具なのに、
+ * **説明欄に固定で書けない**——視聴者は毎回新しい6文字を聞き取って入れ直す。
+ * 一周ごとに入れ直させない作りにしてある（連戦）のに、配信をまたぐと振り出しだった。
+ *
+ * 漏れたときに困るので、振り直す口は出す（`lobby.reroll`）。
+ */
+function rememberedRoomCode(): string | null {
+  try {
+    const saved = window.localStorage.getItem(ROOM_CODE_KEY);
+    return saved && /^[A-Z2-9]{6}$/.test(saved) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberRoomCode(code: string): void {
+  try {
+    window.localStorage.setItem(ROOM_CODE_KEY, code);
+  } catch {
+    /* 覚えられないだけ。開くのは開ける */
+  }
+}
+
+function hostGame(fresh = false): void {
+  const code = (fresh ? null : rememberedRoomCode()) ?? newRoomCode();
+  rememberRoomCode(code);
   engine?.dispose();
   engine = null;
   partyBoard?.dispose();
@@ -543,6 +572,22 @@ function renderLobby(code: string, remote: RemoteGame, socket: WebSocket): void 
 
   const codeBox = el('p', 'lobby-code');
   codeBox.textContent = code;
+
+  // 次に開いても同じ合言葉。配信の説明欄に書ける
+  const codeNote = el('p', 'lobby-code-note');
+  codeNote.textContent = T.lobby.sameNext;
+
+  const reroll = document.createElement('button');
+  reroll.className = 'lobby-reroll';
+  reroll.type = 'button';
+  reroll.textContent = T.lobby.reroll;
+  reroll.title = T.lobby.rerollNote;
+  reroll.addEventListener('click', () => {
+    // 古い線は畳んでから開き直す（同じ部屋に二本繋いだままにしない）
+    engine?.dispose();
+    engine = null;
+    hostGame(true);
+  });
 
   const where = el('p', 'lobby-where');
   // 助言者として入る（配信）のと、仲間として入る（全員挑戦者）のでは入口が違う
@@ -646,7 +691,7 @@ function renderLobby(code: string, remote: RemoteGame, socket: WebSocket): void 
     begin.disabled = status === 'connecting' || status === 'closed';
   });
 
-  screen.append(heading, codeBox, where, count, nameRow, modes, begin, back);
+  screen.append(heading, codeBox, codeNote, reroll, where, count, nameRow, modes, begin, back);
   app!.append(screen);
 }
 

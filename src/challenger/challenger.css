@@ -811,6 +811,38 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * 合言葉は次も同じ、という一行と振り直す口。
+ *
+ * 6文字の下に静かに置く。読み上げるのは6文字のほうなので、
+ * ここが目立つと読み上げの邪魔になる。
+ */
+.lobby-code-note {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  color: var(--paper-faint);
+  letter-spacing: 0.04em;
+}
+
+.lobby-reroll {
+  align-self: center;
+  margin-top: 0.3rem;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--paper-faint) 45%, transparent);
+  border-radius: 2px;
+  color: var(--paper-faint);
+  font-family: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  /* 指で押せる大きさを保つ */
+  min-height: 2rem;
+}
+
+.lobby-reroll:hover,
+.lobby-reroll:focus-visible { color: var(--paper-bright); border-color: var(--rust); }
+
 .lobby-where {
   font-size: 0.82rem;
   color: var(--paper-faint);

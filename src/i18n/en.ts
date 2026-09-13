@@ -83,6 +83,9 @@ export const en: Strings = {
 
   lobby: {
     heading: 'Room code',
+    sameNext: 'Same code next time. Put it in your stream description',
+    reroll: 'New code',
+    rerollNote: 'Draw a new code. The old six characters stop working',
     where: (url: string) => `Have them open ${url} and enter this code`,
     waiting: (n: number) => (n === 0 ? 'Nobody yet. You can start with machines alone' : `${n} here`),
     whereParty: (url: string, label: string) => `Have them open ${url}, pick "${label}", and enter this code`,
