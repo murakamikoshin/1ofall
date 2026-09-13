@@ -108,6 +108,8 @@ export class PartyBoard {
    * 区画の答え合わせで、置いた札と本当の役を突き合わせる。
    */
   private doubted = new Set<string>();
+  /** この周で自分を殺した者。信用を積んでいた者ほど覚えている */
+  private runKillers: { name: string; hit: number; miss: number }[] = [];
   /** 場に届いた名指しの覚え。部屋が変わると捨てる */
   private heardCalls = new Set<string>();
   /** 一周ぶんの読み。区画の答え合わせのたびに積んで、終わりの画面で出す */
@@ -511,6 +513,28 @@ export class PartyBoard {
       return;
     }
     const mine = verdict.results.find((r) => r.id === this.source.meId);
+    /*
+     * 誰に殺されたかを覚える。
+     *
+     * 押した扉を「そこが生きる」と言っていた者のうち、そのとき一番記録が
+     * 良かった者。全員挑戦者は自分の扉を自分で選ぶので、
+     * **道連れにされた相手の名前**がここで残る。
+     */
+    if (mine && !mine.survived && mine.chosenId) {
+      const label = state.round?.room.choices.find((c) => c.id === mine.chosenId)?.label;
+      const chosen = label ? localized(label) : '';
+      const avoid = strings().hints.avoidPattern;
+      const pushers = (state.round?.advice ?? [])
+        .filter((a) => (a.kind ?? 'door') === 'door' && a.memberId !== this.source.meId)
+        .filter((a) => chosen && a.text.includes(chosen))
+        .filter((a) => !avoid.test(a.text.split(chosen).join('　')));
+      const worst = pushers.sort(
+        (a, b) => (b.record.hit - b.record.miss) - (a.record.hit - a.record.miss) || b.record.hit - a.record.hit,
+      )[0];
+      if (worst) {
+        this.runKillers.push({ name: worst.memberName, hit: worst.record.hit, miss: worst.record.miss });
+      }
+    }
     this.refs.chosen = this.choicesHost.querySelector<HTMLElement>(
       `[data-choice-id="${CSS.escape(mine?.chosenId ?? '')}"]`,
     );
@@ -615,6 +639,23 @@ export class PartyBoard {
       : `${TA.readScore(this.runRead.caught, this.runRead.liars)}　${TA.readWrong(this.runRead.wrong)}`;
     readLine.hidden = this.runRead.marked === 0;
 
+    /*
+     * 「あいつに殺された」。周の終わりに一人だけ出す。
+     * 何人にやられていても、覚えているのは一番信用させてから崩した者。
+     */
+    const killer = [...this.runKillers].sort(
+      (a, b) => (b.hit - b.miss) - (a.hit - a.miss) || b.hit - a.hit,
+    )[0];
+    const killerLine = el('p', 'end-stat is-killer');
+    killerLine.hidden = !killer;
+    if (killer) {
+      const built = killer.hit >= 3 && killer.hit >= killer.miss * 2;
+      const line = killer.hit + killer.miss === 0
+        ? T.verdict.killerNoRecord(killer.name)
+        : T.verdict.killer(killer.name, killer.hit, killer.miss);
+      killerLine.textContent = `${line}${built ? `　${TA.builtCredit}` : ''}`;
+    }
+
     const traitors = el('div', 'end-reveal');
     const nameOf = (id: string): string =>
       id === this.source.meId ? T.party.you : (state.members.find((m) => m.id === id)?.name ?? id);
@@ -650,6 +691,7 @@ export class PartyBoard {
         this.dropEnd();
         // 次の周は読みの記録も白紙から
         this.runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+        this.runKillers = [];
         this.doubted.clear();
         this.onAgainHere?.();
       });
@@ -676,7 +718,7 @@ export class PartyBoard {
     buttons.push(again);
     tail.push(again);
 
-    screen.append(mark, stat, survivors, readLine, traitors, ...tail);
+    screen.append(mark, stat, survivors, readLine, killerLine, traitors, ...tail);
     this.endScreen = screen;
     this.root.append(screen);
     buttons[0]?.focus();

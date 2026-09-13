@@ -163,6 +163,8 @@ export const en: Strings = {
     followedCrowd: 'It was the door the most voices named',
     revealSection: (n: number, names: string) => `Liars in ${SECTION_NAMES[n - 1] ?? n}: ${names}`,
     revealNone: 'There were no liars',
+    killer: (name: string, hit: number, miss: number) => `${name} is the one who killed you (${hit} true, ${miss} false)`,
+    killerNoRecord: (name: string) => `${name} is the one who killed you`,
     regulars: (list: string) => `Regulars who lie most  ${list}`,
     regularOne: (name: string, liar: number, of: number) => `${name} (${liar}/${of})`,
     best: (n: number) => `Deepest run: ${n} rooms`,

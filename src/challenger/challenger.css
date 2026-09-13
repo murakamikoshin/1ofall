@@ -764,6 +764,18 @@
   letter-spacing: 0.16em;
 }
 
+/*
+ * 「あいつに殺された」。この一行だけは血の色で置く。
+ * 周の終わりで一番覚えて帰ってほしいのがここなので、記録や常連より前に立てる
+ */
+.end-stat.is-killer {
+  color: var(--blood-lit);
+  letter-spacing: 0.08em;
+}
+
+/* 常連の裏切り歴。周をまたいで積むものなので、静かに置く */
+.end-stat.is-regulars { color: var(--paper-faint); letter-spacing: 0.04em; }
+
 /* 客が主を待っている一行。押す口の代わりに置くので、静かに息をさせる */
 .end-stat.is-waiting {
   margin-top: 1.4rem;

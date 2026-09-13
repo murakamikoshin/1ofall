@@ -67,6 +67,19 @@ for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['崖っぷち', '
     console.log(`     [${end.actions.join('] [')}]`);
     check(`${mode}: 何部屋まで行ったかが出る`, end.stats.some((s) => /部屋|room/i.test(s)), end.stats.join(' / '));
     check(`${mode}: 嘘つきが誰だったか開く`, end.stats.some((s) => /嘘つき|裏切/.test(s)), end.stats.join(' / '));
+    /*
+     * 「あいつに殺された」。周の終わりに一人だけ出す
+     * （押した扉を推していた者のうち、そのとき一番記録が良かった者）。
+     * 誰も押していない扉で死んだ周には出ないので、出たときだけ形を見る。
+     */
+    const killer = end.stats.find((s) => /殺したのは/.test(s));
+    if (killer) {
+      console.log(`     ${killer}`);
+      check(`${mode}: 殺した相手の行に名前がある`, /殺したのは \S/.test(killer), killer);
+      check(`${mode}: 記録が無いときは「正0 嘘0」と書かない`, !/正0 嘘0/.test(killer), killer);
+    } else {
+      check(`${mode}: 誰も押していない扉で死んだ周だった（その行は出ない）`, true);
+    }
     // 卓を組み替えるたびに名前が増えて「ほぼ全員」になっていた
     const revealLines = end.stats.filter((s) => /嘘つき|裏切/.test(s));
     const worst = Math.max(0, ...revealLines.map((s) => (s.match(/、/g) ?? []).length + 1));

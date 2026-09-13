@@ -206,6 +206,10 @@ export const ja = {
      * 常連の裏切り歴。顔ぶれを周をまたいで固定したので、遊ぶほど溜まる。
      * ここだけが周を越えて残る読み。
      */
+    // 周の終わりに一人だけ出す。信用を積んでから崩した者を覚える
+    killer: (name: string, hit: number, miss: number) => `あなたを殺したのは ${name}（正${hit} 嘘${miss}）`,
+    // 区画の一部屋目で死ぬと記録が無い。「正0 嘘0」と出すと嘘に見えるので名前だけ
+    killerNoRecord: (name: string) => `あなたを殺したのは ${name}`,
     regulars: (list: string) => `よく裏切る常連　${list}`,
     regularOne: (name: string, liar: number, of: number) => `${name}（${liar}/${of}）`,
     best: (n: number) => `最高到達 ${n}部屋`,

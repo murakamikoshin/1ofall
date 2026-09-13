@@ -58,6 +58,14 @@ const doubted = new Set<string>();
  * 読み合いの遊びなのに、一周を通してどれだけ読めていたかが残らなかった。
  */
 let runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+/**
+ * この周で自分を殺した者。**信用を積んでいた者だけが覚えられる。**
+ *
+ * 死ぬ瞬間は演出で見せているが、周が終わると「何部屋まで行ったか」しか残らない。
+ * 配信で一番おいしいのは「あいつに殺された」で、それは名前と記録が要る。
+ * 押した扉を推していた者のうち、そのとき一番記録が良かった者を覚える。
+ */
+let runKillers: { name: string; hit: number; miss: number }[] = [];
 let lastTickSecond = -1;
 
 /* ────────────────────────────── 表題 ────────────────────────────── */
@@ -443,6 +451,7 @@ function startGame(modeId: ModeId): void {
   currentMode = modeId;
   // 周ごとに読みの記録を白紙に戻す。持ち越すと前の周の点が混ざる
   runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+  runKillers = [];
   doubted.clear();
   engine?.dispose();
   engine = null;
@@ -1309,6 +1318,27 @@ async function runResolution(): Promise<void> {
   shell.refs.answer =
     shell.choices.querySelector<HTMLElement>(`[data-choice-id="${CSS.escape(verdict.correctId)}"]`) ?? null;
 
+  /*
+   * 誰に殺されたかを覚える。
+   *
+   * 押した扉を「そこが生きる」と言っていた者のうち、そのとき一番記録が
+   * 良かった者。記録が良かった者ほど、信用を積んで崩した者なので。
+   */
+  if (!verdict.survived && verdict.chosenId) {
+    const label = settled?.round?.room.choices.find((c) => c.id === verdict.chosenId)?.label;
+    const chosen = label ? localized(label) : '';
+    const avoid = strings().hints.avoidPattern;
+    const pushers = (settled?.round?.advice ?? [])
+      .filter((a) => (a.kind ?? 'door') === 'door' && chosen && a.text.includes(chosen))
+      .filter((a) => !avoid.test(a.text.split(chosen).join('　')));
+    const worst = pushers.sort(
+      (a, b) => (b.record.hit - b.record.miss) - (a.record.hit - a.record.miss) || b.record.hit - a.record.hit,
+    )[0];
+    if (worst) {
+      runKillers.push({ name: worst.advisorName, hit: worst.record.hit, miss: worst.record.miss });
+    }
+  }
+
   markLosingLife(verdict);
   await playResolution(shell.refs, verdict, {
     advance: () => engine?.advancePresentation(),
@@ -1495,6 +1525,24 @@ function renderEnd(state: EngineState): void {
    * 遊ぶほど分かるが、覚えるのを全部こちらの頭に任せると
    * 「3周前のとんび」は残らない。よく裏切る三人だけ名前を出す。
    */
+  /*
+   * 「あいつに殺された」。周の終わりに一人だけ出す。
+   * 何人にやられていても、覚えているのは**一番信用させてから崩した**者。
+   */
+  const killer = [...runKillers].sort(
+    (a, b) => (b.hit - b.miss) - (a.hit - a.miss) || b.hit - a.hit,
+  )[0];
+  const killerLine = el('p', 'end-stat is-killer');
+  killerLine.hidden = !killer;
+  if (killer) {
+    const built = killer.hit >= 3 && killer.hit >= killer.miss * 2;
+    // 区画の一部屋目で死ぬと記録が無い。「正0 嘘0」と並べると嘘に見える
+    const line = killer.hit + killer.miss === 0
+      ? strings().verdict.killerNoRecord(killer.name)
+      : strings().verdict.killer(killer.name, killer.hit, killer.miss);
+    killerLine.textContent = `${line}${built ? `　${strings().answer.builtCredit}` : ''}`;
+  }
+
   const book = regulars();
   const known = Object.entries(book)
     .filter(([, r]) => r.sections >= REGULAR_MIN_SECTIONS && r.liarSections > 0)
@@ -1534,6 +1582,7 @@ function renderEnd(state: EngineState): void {
       resolving = false;
       // 次の周は読みの記録も白紙から（同じ部屋のまま続くので消えない）
       runRead = { caught: 0, liars: 0, wrong: 0, marked: 0 };
+  runKillers = [];
       doubted.clear();
       endRenewed = false;
       here(currentMode);
@@ -1575,7 +1624,7 @@ function renderEnd(state: EngineState): void {
   });
   buttons.push(again);
 
-  screen.append(mark, stat, best, readLine, regularLine, reveal, ...buttons);
+  screen.append(mark, stat, best, readLine, killerLine, regularLine, reveal, ...buttons);
   app!.append(screen);
   buttons[0]?.focus();
 }
