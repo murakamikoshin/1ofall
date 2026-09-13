@@ -880,4 +880,7 @@ export const NOUNS: Record<string, string> = {
   // かたちの無いもの
   name: 'name', shadow: 'shadow', voice: 'voice', breath: 'breath', song: 'song',
   year: 'clock', tomorrow: 'clock', hair: 'thread', eye: 'mirror',
+  // 札に出てくる言い方（「壁の字」「笛の音」「足音」「天井裏」）
+  wall: 'name', writing: 'name', scrawl: 'name', tag: 'name',
+  flute: 'song', footsteps: 'trace', ceiling: 'floor', queue: 'person',
 };
