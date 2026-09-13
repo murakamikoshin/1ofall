@@ -171,6 +171,15 @@ export interface EngineState {
    * 名前が増えて「ほぼ全員が嘘つき」という無意味な一覧になる。**
    */
   liarLog: readonly { roundId: string; sectionIndex: number; liarIds: readonly string[] }[];
+  /**
+   * 一周ぶんの助言者の成績（名誉の欄）。
+   *
+   * 記録（正n 嘘n）は区画ごとに捨てる——読み合いのためにはそれが正しいが、
+   * **一周終わったときに「今日よく当てた人」がどこにも残らない。**
+   * 配信で視聴者に返せるものが、自分の端末の通算しかなかった。
+   * 区画をまたいで積んだぶんをここに入れて、終わりの画面に三人だけ出す。
+   */
+  honours: readonly { id: string; name: string; hit: number; miss: number }[];
   /** 区画の答え合わせ。phase==='answer' のあいだだけ入る */
   sectionAnswer: SectionAnswer | null;
 }
@@ -233,6 +242,13 @@ export class GameEngine {
   private nextRoundPenaltyMs = 0;
   private advisors: readonly AdvisorInfo[] = [];
   private liarLog: { roundId: string; sectionIndex: number; liarIds: readonly string[] }[] = [];
+  /**
+   * 一周ぶんの記録。**区画をまたいで捨てない。**
+   *
+   * `records` は区画ごとに捨てる（読み合いは区画で切れるので）。
+   * そのせいで一周の終わりに「今日よく当てた人」を出せなかった。
+   */
+  private runRecords = new Map<string, { hit: number; miss: number; name: string }>();
   private nominated: string[] = [];
   private roundCounter = 0;
   private sectionAnswer: SectionAnswer | null = null;
@@ -337,6 +353,7 @@ export class GameEngine {
       canSilence: !!this.mode.canSilence,
       confirmedLiars: [...this.silencedThisSection],
       liarLog: this.liarLog,
+      honours: this.honourRoll(),
       sectionAnswer: this.sectionAnswer,
     };
   }
@@ -365,6 +382,7 @@ export class GameEngine {
     this.totalCleared = 0;
     this.muted.clear();
     this.records.clear();
+    this.runRecords.clear();
     this.resting.clear();
     this.sectionCasting = null;
     this.sectionAnswer = null;
@@ -572,6 +590,20 @@ export class GameEngine {
   doubt(advisorId: string, on: boolean): void {
     if (on) this.doubtedIds.add(advisorId);
     else this.doubtedIds.delete(advisorId);
+  }
+
+  /**
+   * 一周ぶんの成績から、上から三人。
+   *
+   * 並べるのは「当たり − 外し」。当たりの数だけで並べると、
+   * たくさん喋った人が常に上に来る（発言枠に何度も座った人）。
+   */
+  private honourRoll(): { id: string; name: string; hit: number; miss: number }[] {
+    return [...this.runRecords.entries()]
+      .map(([id, r]) => ({ id, name: r.name, hit: r.hit, miss: r.miss }))
+      .filter((r) => r.hit + r.miss > 0)
+      .sort((a, b) => (b.hit - b.miss) - (a.hit - a.miss) || b.hit - a.hit)
+      .slice(0, 3);
   }
 
   /** いま札が付いている者。賭場では助言者へ配るのに使う */
@@ -959,6 +991,16 @@ export class GameEngine {
       this.records.set(advisorId, {
         hit: rec.hit + (truthful ? 1 : 0),
         miss: rec.miss + (truthful ? 0 : 1),
+      });
+    }
+    for (const { id: advisorId, truthful } of truth) {
+      // 一周ぶんは区画をまたいで積む（終わりの画面の名誉の欄に使う）
+      const run = this.runRecords.get(advisorId)
+        ?? { hit: 0, miss: 0, name: this.advisors.find((a) => a.id === advisorId)?.name ?? advisorId };
+      this.runRecords.set(advisorId, {
+        name: run.name,
+        hit: run.hit + (truthful ? 1 : 0),
+        miss: run.miss + (truthful ? 0 : 1),
       });
     }
 

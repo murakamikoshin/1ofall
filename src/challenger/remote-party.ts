@@ -108,6 +108,8 @@ export class RemotePartySource implements PartySource {
         : null,
       // 押されている者（二人以上から疑いの札が付いた者）。落とすと札が飾りに戻る
       pressedIds: view.pressedIds ?? [],
+      // 一周ぶんの成績。終わりの画面が読む
+      honours: view.honours ?? [],
     };
     for (const l of this.listeners) l(this.state);
   }

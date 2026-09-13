@@ -168,6 +168,8 @@ export const en: Strings = {
     revealNone: 'There were no liars',
     killer: (name: string, hit: number, miss: number) => `${name} is the one who killed you (${hit} true, ${miss} false)`,
     killerNoRecord: (name: string) => `${name} is the one who killed you`,
+    honours: (list: string) => `Best advice this run  ${list}`,
+    honourOne: (name: string, hit: number, miss: number) => `${name} (${hit}/${hit + miss})`,
     regulars: (list: string) => `Regulars who lie most  ${list}`,
     regularOne: (name: string, liar: number, of: number) => `${name} (${liar}/${of})`,
     best: (n: number) => `Deepest run: ${n} rooms`,

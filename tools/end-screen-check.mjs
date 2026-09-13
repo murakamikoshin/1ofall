@@ -72,6 +72,19 @@ for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['崖っぷち', '
      * （押した扉を推していた者のうち、そのとき一番記録が良かった者）。
      * 誰も押していない扉で死んだ周には出ないので、出たときだけ形を見る。
      */
+    /*
+     * 名誉の欄（今周よく当てた三人）。記録は区画ごとに捨てるので、
+     * 一周ぶんを別に積んでいないと出ない。
+     */
+    const honours = end.stats.find((s) => /よく当てたのは/.test(s));
+    if (honours) {
+      console.log(`     ${honours}`);
+      check(`${mode}: 名誉の欄に記録が付いている`, /正\d+ 嘘\d+/.test(honours), honours);
+      check(`${mode}: 名誉の欄は三人まで`, (honours.match(/正\d+ 嘘\d+/g) ?? []).length <= 3, honours);
+    } else {
+      check(`${mode}: 名誉の欄が出る（一言も出ていない周だった）`, mode === 'party', end.stats.join(' / '));
+    }
+
     const killer = end.stats.find((s) => /殺したのは/.test(s));
     if (killer) {
       console.log(`     ${killer}`);

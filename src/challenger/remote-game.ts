@@ -41,7 +41,7 @@ const EMPTY: EngineState = {
   sectionIndex: 0, sectionCount: 1, clearedInSection: 0, roomsPerSection: 1,
   totalCleared: 0, totalRooms: 0, selectionMode: 'lottery',
   advisors: [], mutedIds: [], confirmedLiars: [], canSilence: false, liarLog: [],
-  sectionAnswer: null,
+  sectionAnswer: null, honours: [],
 };
 
 export type RoomStatus = 'connecting' | 'open' | 'playing' | 'closed';
@@ -57,6 +57,8 @@ export class RemoteGame implements GameHandle {
   private roster: EngineState['advisors'] = [];
   /** 一周の終わりに開かれた嘘つき。終わりの画面が読む */
   private liarLog: EngineState['liarLog'] = [];
+  /** 一周ぶんの成績。賭場ではサーバーしか積んでいないので、便から拾う */
+  private honours: EngineState['honours'] = [];
   /** サーバーとの時計のずれ。締切の表示をこれで直す */
   private skewMs = 0;
   private closed = false;
@@ -157,6 +159,7 @@ export class RemoteGame implements GameHandle {
       view?: ChallengerView;
       roster?: EngineState['advisors'];
       liarsBySection?: { sectionIndex: number; ids: string[] }[];
+      honours?: { id: string; name: string; hit: number; miss: number }[];
     };
     try {
       msg = JSON.parse(raw) as typeof msg;
@@ -182,7 +185,8 @@ export class RemoteGame implements GameHandle {
         sectionIndex: r.sectionIndex,
         liarIds: [...r.ids],
       }));
-      this.state = { ...this.state, liarLog: this.liarLog };
+      this.honours = (msg.honours ?? []).map((h) => ({ ...h }));
+      this.state = { ...this.state, liarLog: this.liarLog, honours: this.honours };
       for (const l of this.listeners) l(this.state);
       return;
     }
@@ -190,7 +194,10 @@ export class RemoteGame implements GameHandle {
 
     const view = msg.view;
     // 次の周が始まったら、前の周の開示は捨てる
-    if (view.phase === 'choosing' && view.totalCleared === 0 && this.liarLog.length) this.liarLog = [];
+    if (view.phase === 'choosing' && view.totalCleared === 0 && this.liarLog.length) {
+      this.liarLog = [];
+      this.honours = [];
+    }
     this.skewMs = view.serverNow - Date.now();
     this.state = {
       phase: view.phase as EngineState['phase'],
@@ -222,6 +229,8 @@ export class RemoteGame implements GameHandle {
       verdict: view.verdict,
       // 区画を離れる瞬間だけ届く。遊んでいるあいだは null
       sectionAnswer: view.sectionAnswer,
+      // 一周ぶんの成績も game/over でしか届かない
+      honours: this.honours,
     };
     if (view.phase !== 'title') this.setStatus('playing');
     for (const l of this.listeners) l(this.state);

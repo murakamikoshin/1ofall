@@ -220,6 +220,40 @@ if (speaker) {
   check('この部屋は AI だけだった（押す検査は飛ばす）', true);
 }
 
+/* ── 6.95 一周の終わりに名誉の欄が乗る ──────────────────────── */
+
+/*
+ * 記録（正n 嘘n）は区画ごとに捨てる。読み合いのためには正しいが、
+ * **一周終わったときに「よく当てた人」がどこにも残らなかった。**
+ * 賭場では挑戦者の画面がそれを読み上げる側なので、game/over に乗せる。
+ */
+{
+  // 命を使い切るまで外し続ける（時計を進めながら）
+  for (let i = 0; i < 40; i++) {
+    const view = inbox.get(CH).filter((m) => m.t === 'room/view').pop()?.view;
+    const round = view?.round;
+    if (!round) break;
+    const wrong = round.room.choices[round.room.choices.length - 1];
+    clock += 2000;
+    room.receive(CH, JSON.stringify({ t: 'challenger/choose', choiceId: wrong.id, roundId: round.roundId }));
+    for (let k = 0; k < 6; k++) room.receive(CH, JSON.stringify({ t: 'challenger/advance' }));
+    if (inbox.get(CH).some((m) => m.t === 'game/over')) break;
+  }
+  const over = inbox.get(CH).filter((m) => m.t === 'game/over').pop();
+  check('一周の終わりが届く', !!over, JSON.stringify(over ?? null));
+  if (over) {
+    const honours = over.honours ?? [];
+    check('名誉の欄が乗っている', honours.length > 0, JSON.stringify(honours));
+    check('名誉の欄に名前と記録がある',
+      honours.every((h) => h.name.length > 0 && Number.isInteger(h.hit) && Number.isInteger(h.miss)),
+      JSON.stringify(honours));
+    check('名誉の欄は三人まで', honours.length <= 3, `${honours.length}人`);
+    check('名誉の欄は当たりの多い順',
+      honours.every((h, i) => i === 0 || (honours[i - 1].hit - honours[i - 1].miss) >= (h.hit - h.miss)),
+      JSON.stringify(honours));
+  }
+}
+
 /* ── 7. 挑戦者が落ちたら畳む ────────────────────────────────── */
 
 room.disconnect(CH);

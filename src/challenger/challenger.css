@@ -776,6 +776,9 @@
 /* 常連の裏切り歴。周をまたいで積むものなので、静かに置く */
 .end-stat.is-regulars { color: var(--paper-faint); letter-spacing: 0.04em; }
 
+/* 名誉の欄。読み上げる行なので、記録と同じ明るさで置く */
+.end-stat.is-honours { color: var(--paper-bright); letter-spacing: 0.04em; }
+
 /* 客が主を待っている一行。押す口の代わりに置くので、静かに息をさせる */
 .end-stat.is-waiting {
   margin-top: 1.4rem;

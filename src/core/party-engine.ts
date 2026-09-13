@@ -126,6 +126,11 @@ export interface PartyState {
    * 誰が置いたかは載せない——吊し上げの名簿にしないため。
    */
   pressedIds?: readonly string[];
+  /**
+   * 一周ぶんの成績（名誉の欄）。上から三人。
+   * 記録は区画ごとに捨てるので、一周終わったときに残るのはここだけ。
+   */
+  honours?: readonly { id: string; name: string; hit: number; miss: number }[];
 }
 
 export interface PartyEngineConfig {
@@ -168,6 +173,12 @@ export class PartyEngine {
   private traitorIds: string[] = [];
   private traitorSection = -1;
   private records = new Map<string, { hit: number; miss: number }>();
+  /**
+   * 一周ぶんの記録。**区画をまたいで捨てない。**
+   * `records` は区画ごとに捨てる（読み合いが区画で切れるので）ため、
+   * 一周の終わりに「よく当てた人」を出せなかった。
+   */
+  private runRecords = new Map<string, { hit: number; miss: number }>();
   private sectionAnswer: PartySectionAnswer | null = null;
   private allTraitors = new Set<string>();
   private traitorLog: { sectionIndex: number; ids: readonly string[] }[] = [];
@@ -226,6 +237,7 @@ export class PartyEngine {
       sectionAnswer: this.sectionAnswer,
       // 押されている者。誰が札を置いたかは出さない（吊し上げの名簿にしない）
       pressedIds: this.pressedIds(),
+      honours: this.honourRoll(),
     };
   }
 
@@ -250,6 +262,7 @@ export class PartyEngine {
     this.allTraitors.clear();
     this.traitorLog = [];
     this.records.clear();
+    this.runRecords.clear();
     this.sectionAnswer = null;
     this.muted.clear();
     this.deck = shuffled(this.pack.rooms, this.rng);
@@ -365,6 +378,23 @@ export class PartyEngine {
     this.doubts.set(targetId, markers);
     // 押されているかどうかは盤面に出る（誰が置いたかは出さない）ので、配り直す
     this.emit();
+  }
+
+  /**
+   * 一周ぶんの成績から上三人。並べるのは「当たり − 外し」
+   * （当たりの数だけだと、たくさん喋った人が常に上に来る）。
+   */
+  private honourRoll(): { id: string; name: string; hit: number; miss: number }[] {
+    return [...this.runRecords.entries()]
+      .map(([id, r]) => ({
+        id,
+        name: this.members.find((m) => m.id === id)?.name ?? id,
+        hit: r.hit,
+        miss: r.miss,
+      }))
+      .filter((r) => r.hit + r.miss > 0)
+      .sort((a, b) => (b.hit - b.miss) - (a.hit - a.miss) || b.hit - a.hit)
+      .slice(0, 3);
   }
 
   /** 何枚で押されるか。人間が二人以上いる卓では合意が要る */
@@ -525,6 +555,12 @@ export class PartyEngine {
       round.room.choices,
     );
     for (const { id: memberId, truthful } of truth) {
+      // 一周ぶんも積む（終わりの画面の名誉の欄に使う）
+      const run = this.runRecords.get(memberId) ?? { hit: 0, miss: 0 };
+      this.runRecords.set(memberId, {
+        hit: run.hit + (truthful ? 1 : 0),
+        miss: run.miss + (truthful ? 0 : 1),
+      });
       const rec = this.records.get(memberId) ?? { hit: 0, miss: 0 };
       this.records.set(memberId, {
         hit: rec.hit + (truthful ? 1 : 0),

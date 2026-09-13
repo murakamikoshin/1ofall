@@ -464,6 +464,7 @@ export class RoomSession {
           : null,
         knowledge: this.party?.knowledgeFor(connectionId) ?? null,
         pressedIds: [...(state.pressedIds ?? [])],
+        honours: (state.honours ?? []).map((h) => ({ ...h })),
         serverNow: this.now(),
       },
     });
@@ -591,6 +592,8 @@ export class RoomSession {
           liarsBySection: [...bySection.entries()]
             .sort((a, b) => a[0] - b[0])
             .map(([sectionIndex, ids]) => ({ sectionIndex, ids })),
+          // 今日よく当てた三人。区画をまたいで積んだぶんから出す
+          honours: state.honours.map((h) => ({ ...h })),
         });
       }
     }

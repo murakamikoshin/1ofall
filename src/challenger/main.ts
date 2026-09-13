@@ -1588,6 +1588,23 @@ function renderEnd(state: EngineState): void {
     killerLine.textContent = `${line}${built ? `　${strings().answer.builtCredit}` : ''}`;
   }
 
+  /*
+   * 名誉の欄。**今日よく当てた三人。**
+   *
+   * 記録（正n 嘘n）は区画ごとに捨てる。読み合いのためにはそれが正しいが、
+   * 一周終わったときに「よく当てた人」がどこにも残らなかった。
+   * 配信でこれを読み上げれば、書いた人に返るものになる。
+   */
+  const honours = el('p', 'end-stat is-honours');
+  honours.hidden = state.honours.length === 0;
+  if (state.honours.length > 0) {
+    honours.textContent = strings().verdict.honours(
+      state.honours
+        .map((h) => strings().verdict.honourOne(h.name, h.hit, h.miss))
+        .join(strings().verdict.nameSeparator),
+    );
+  }
+
   const book = regulars();
   const known = Object.entries(book)
     .filter(([, r]) => r.sections >= REGULAR_MIN_SECTIONS && r.liarSections > 0)
@@ -1669,7 +1686,7 @@ function renderEnd(state: EngineState): void {
   });
   buttons.push(again);
 
-  screen.append(mark, stat, best, readLine, killerLine, regularLine, reveal, ...buttons);
+  screen.append(mark, stat, best, readLine, killerLine, honours, regularLine, reveal, ...buttons);
   app!.append(screen);
   buttons[0]?.focus();
 }

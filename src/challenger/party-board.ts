@@ -656,6 +656,21 @@ export class PartyBoard {
       killerLine.textContent = `${line}${built ? `　${TA.builtCredit}` : ''}`;
     }
 
+    /*
+     * 名誉の欄。今周よく当てた三人。
+     * 6〜8人で遊ぶ卓なので、ここが「また来る理由」になる。
+     */
+    const honours = el('p', 'end-stat is-honours');
+    const roll = state.honours ?? [];
+    honours.hidden = roll.length === 0;
+    if (roll.length > 0) {
+      honours.textContent = T.verdict.honours(
+        roll
+          .map((h) => T.verdict.honourOne(h.id === this.source.meId ? T.party.you : h.name, h.hit, h.miss))
+          .join(T.verdict.nameSeparator),
+      );
+    }
+
     const traitors = el('div', 'end-reveal');
     const nameOf = (id: string): string =>
       id === this.source.meId ? T.party.you : (state.members.find((m) => m.id === id)?.name ?? id);
@@ -718,7 +733,7 @@ export class PartyBoard {
     buttons.push(again);
     tail.push(again);
 
-    screen.append(mark, stat, survivors, readLine, killerLine, traitors, ...tail);
+    screen.append(mark, stat, survivors, readLine, killerLine, honours, traitors, ...tail);
     this.endScreen = screen;
     this.root.append(screen);
     buttons[0]?.focus();

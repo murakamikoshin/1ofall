@@ -217,6 +217,9 @@ export const ja = {
     killer: (name: string, hit: number, miss: number) => `あなたを殺したのは ${name}（正${hit} 嘘${miss}）`,
     // 区画の一部屋目で死ぬと記録が無い。「正0 嘘0」と出すと嘘に見えるので名前だけ
     killerNoRecord: (name: string) => `あなたを殺したのは ${name}`,
+    // 一周ぶんの成績。区画をまたいで積んだぶんから三人だけ
+    honours: (list: string) => `今周よく当てたのは　${list}`,
+    honourOne: (name: string, hit: number, miss: number) => `${name}（正${hit} 嘘${miss}）`,
     regulars: (list: string) => `よく裏切る常連　${list}`,
     regularOne: (name: string, liar: number, of: number) => `${name}（${liar}/${of}）`,
     best: (n: number) => `最高到達 ${n}部屋`,

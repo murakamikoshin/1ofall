@@ -353,6 +353,11 @@ export const PartyViewSchema = z.object({
    * 札を置く側が名前を晒されるのを嫌って誰も置かなくなる。
    */
   pressedIds: z.array(AdvisorIdSchema).optional(),
+  /** 一周ぶんの成績（名誉の欄）。終わりの画面が読む */
+  honours: z.array(z.object({
+    id: AdvisorIdSchema, name: AdvisorNameSchema,
+    hit: z.number().int().nonnegative(), miss: z.number().int().nonnegative(),
+  })).optional(),
   serverNow: z.number().int(),
 });
 
@@ -487,6 +492,16 @@ export const ServerMessageSchema = z.discriminatedUnion('t', [
     liarsBySection: z
       .array(z.object({ sectionIndex: z.number().int(), ids: z.array(AdvisorIdSchema) }))
       .optional(),
+    /**
+     * 一周ぶんの成績（名誉の欄）。上から三人だけ。
+     *
+     * 記録は区画ごとに捨てるので、一周終わったときに「今日よく当てた人」が
+     * どこにも残らなかった。配信で視聴者に返せるものがここに入る。
+     */
+    honours: z.array(z.object({
+      id: AdvisorIdSchema, name: AdvisorNameSchema,
+      hit: z.number().int().nonnegative(), miss: z.number().int().nonnegative(),
+    })).optional(),
   }),
   z.object({ t: z.literal('error'), code: z.string(), message: z.string() }),
 ]);
