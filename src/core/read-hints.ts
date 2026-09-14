@@ -20,11 +20,23 @@ export interface HintRow {
   record: { hit: number; miss: number };
 }
 
+/**
+ * 撃たれていることを、どちらに読むか。
+ *
+ * **向きは遊び方と区画のどこかで変わる**（実測は下の scoreChoices の註）。
+ * 既定は `'liar'`（撃たれた者を疑う）——この読み方を使っているのは
+ * 全員挑戦者の AI の仲間で、そこは -35〜-42pt で逆を向いているから。
+ * 崖っぷちの区画の二部屋目から先は `'truth'` のほうが当たる。
+ */
+export type ShotMeans = 'liar' | 'truth';
+
 export interface ReadInput {
   choices: readonly Choice[];
   rows: readonly HintRow[];
   /** 自分に配られたもの */
   own: Knowledge | null;
+  /** 撃たれている者をどちらに読むか。既定は 'liar'（疑う） */
+  shotMeans?: ShotMeans;
 }
 
 /** 当たり外れから見た、その人の信用（0.5 から始まる） */
@@ -41,7 +53,7 @@ export function trustOf(record: { hit: number; miss: number }): number {
  * の二つを入れてある。これは docs/RUBRIC.md でいう
  * 「迷いを信じ記録も見る」と同じ読み方。
  */
-export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, number> {
+export function scoreChoices({ choices, rows, own, shotMeans = 'liar' }: ReadInput): Map<string, number> {
   const T = strings();
   const score = new Map(choices.map((c) => [c.id, 0]));
   const bump = (id: string, by: number): void => {
@@ -74,8 +86,10 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
    * 裏切りの段取り（区画の前半は裏切り者も本当のことを言い、指す先も
    * 仲間と同じ側に立つ）を入れずに測ったものだった。入れて測ると向きが変わる。
    *
-   * 崖っぷちの奥だけは逆を向くので、**この読み方をそちらに繋ぐなら
-   * 向きを選び直すこと**（部屋番号で切り替える形になる）。
+   * 崖っぷちは二部屋目から相関が逆を向くので `shotMeans: 'truth'` を渡せるが、
+   * **渡すと読みは落ちた**（brink-probe で 1部屋あたり生存 71.2% → 67.5%）。
+   * 記録（正n 嘘n）が同じ手掛かりを先に拾っているので、撃たれ方でもう一度
+   * 重みを上げると二重に数えることになる。向きは口として残すが、既定のまま使う。
    */
   const people = rows.map((r) => ({ id: r.advisorId, name: r.advisorName }));
   const called = new Map<string, number>();
@@ -85,12 +99,13 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
     if (!call || call.targetId === row.advisorId) continue;
     // **撃った側の信用では重み付けしない。** 撃たれた事実そのものが手掛かりで、
     // 誰に撃たれたかまで数えると、記録の重みを二度掛けることになる
-    called.set(call.targetId, (called.get(call.targetId) ?? 0) + (call.doubt ? -1 : 0.5));
+    const sign = shotMeans === 'truth' ? 1 : -1;
+    called.set(call.targetId, (called.get(call.targetId) ?? 0) + sign * (call.doubt ? 1 : -0.5));
   }
 
   for (const row of rows) {
     const net = called.get(row.advisorId) ?? 0;
-    // 撃たれた者の声を小さく、庇われた者の声を大きく。振り切らせない
+    // 向きのぶん声を大きく／小さく。振り切らせない
     const weight = trustOf(row.record) * Math.max(0.2, Math.min(2.6, 1 + net * 0.9));
     const touched = choices.filter((c) => row.text.includes(localized(c.label)));
     if (touched.length === 0) continue;

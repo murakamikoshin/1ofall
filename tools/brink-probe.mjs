@@ -99,6 +99,16 @@ async function play(mode, useProbe, seed, usePress = false) {
     // 嘘つきは3割は本当のことを言うので、裏返すと逆に落ちた
     //（通常 81%→71%、崖っぷち 72%→57%）
     const rows = rowsOf().filter((r) => !known.has(r.advisorId));
+    /*
+     * 撃たれている者は、既定の「疑う」で読む。
+     *
+     * 崖っぷちの**相関だけ**を見ると、区画の二部屋目から向きが変わる
+     * （`tools/shot-probe.mjs`：1部屋目 -8.8pt、2部屋目 +4.7pt、5部屋目 +30.0pt）。
+     * そこで二部屋目から `shotMeans: 'truth'` に切り替えてみたが、
+     * **読みは落ちた**（1部屋あたり生存 71.2% → 67.5%）。
+     * 記録（正n 嘘n）が同じ手掛かりを先に拾っているので、
+     * 撃たれ方でもう一度重みを上げると二重に数えることになる。
+     */
     const score = C.scoreChoices({ choices: after.room.choices, rows, own: null });
     engine.choose(C.bestChoice(score, after.room.choices, rng));
     rooms++;
