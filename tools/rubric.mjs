@@ -62,11 +62,20 @@ if (process.env.DEBUG) process.on('exit', () => console.error(`[dbg] 読み手�
 function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6, marked = new Set()) {
   const said = [];
   const texts = [];
+  /*
+   * 「いまは本当のことを言う回か」は**一部屋につき一人一つ。**
+   * 扉の一言と、誰を指すかの両方がこれを見る（本体がそうなっている）。
+   * 別々に振ると、口では味方のふりをしながら真実を撃つ者が生まれて、
+   * 実装より読みやすい遊びを測ってしまう。
+   */
+  const honestNow = new Map(ids.map((id) => [
+    id, SCHED ? rng() < C.liarHonestyAt(id, roomInSection, roomsPer) : undefined,
+  ]));
   for (const id of ids) {
     const text = C.writeHint({
       choices: room.choices, knowledge: kn.get(id), rng,
       liarHonestyRate: mode.honesty(C.liarBias(id)), liarMimicRate: mode.mimic, voice: C.voiceOf(id),
-      liarHonest: SCHED ? rng() < C.liarHonestyAt(id, roomInSection, roomsPer) : undefined,
+      liarHonest: honestNow.get(id),
       pressed: marked.has(id),
     });
     said.push({ id, name: nameOf(id), text });
@@ -78,7 +87,9 @@ function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6, marked
   if (point > 0) {
     for (const id of ids) {
       if (rng() >= point) continue;
-      const call = C.chooseCall(kn.get(id), room.choices, said.filter((s) => s.id !== id), rng);
+      // 信用を作っている最中の裏切り者は仲間と同じ側に立つ（本体と同じ規則を読む）
+      const acting = C.actingKnowledge(kn.get(id), honestNow.get(id) === true);
+      const call = C.chooseCall(acting, room.choices, said.filter((s) => s.id !== id), rng);
       if (call) shots.push({ from: id, to: call.id, doubt: call.doubt });
     }
   }

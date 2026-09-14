@@ -77,19 +77,30 @@ for (const [label, mode] of Object.entries(MODES)) {
         const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
         const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, mode.brink, false);
         const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
+        /*
+         * 「いまは本当のことを言う回か」は**一部屋につき一人一つ。**
+         * 扉の一言と、誰を指すかの両方がこれを見る（本体がそうなっている）。
+         * 別々に振っていたので、信用を作っている最中の嘘つきも正直者を撃ち、
+         * **撃ち合いから読める量が実際より多く出ていた。**
+         */
+        const honestNow = new Map(speakerIds.map((id) => [
+          id, SCHEDULE ? rng() < C.liarHonestyAt(id, r, PER) : undefined,
+        ]));
         const said = speakerIds.map((id) => ({
           id, name: nameOf(id),
           text: C.writeHint({
             choices: room.choices, knowledge: kn.get(id), rng,
             liarHonestyRate: Math.max(0.05, Math.min(0.5, mode.m.liarHonesty * C.liarBias(id))),
             liarMimicRate: mode.m.liarMimic, voice: C.voiceOf(id),
-            liarHonest: SCHEDULE ? rng() < C.liarHonestyAt(id, r, PER) : undefined,
+            liarHonest: honestNow.get(id),
           }),
         }));
         const shots = [];
         for (const id of speakerIds) {
           if (rng() >= mode.m.nameCall) continue;
-          const call = C.chooseCall(kn.get(id), room.choices, said.filter((x) => x.id !== id), rng);
+          // 信用を作っている最中の裏切り者は仲間と同じ側に立つ（本体と同じ規則を読む）
+          const acting = C.actingKnowledge(kn.get(id), honestNow.get(id) === true);
+          const call = C.chooseCall(acting, room.choices, said.filter((x) => x.id !== id), rng);
           if (call) shots.push({ from: id, to: call.id, doubt: call.doubt });
         }
         const rows = said.map((x) => ({ ...x, rec: rec.get(x.id) ?? { hit: 0, miss: 0 } }));

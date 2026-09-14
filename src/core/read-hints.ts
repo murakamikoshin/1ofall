@@ -58,18 +58,24 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
    *
    * 「ノブは嘘だ」は扉に触れていないので、そのままでは点にならない。
    * **指された側の重みを動かす**という形で効かせる。
-   * 疑いは信用の高い者から出たものを重く見る。
    *
-   * **向きは「撃たれた者を信じる」。** 直感の逆だが実測がそう出ている
-   * （tools/name-call.mjs）。嘘つきは全員が同じ正解を知っているので、
-   * 真実を口にした者に群がるしかない。
+   * **向きは「撃たれた者を疑う」。** この読み方を使っているのは
+   * 全員挑戦者の AI の仲間だけで（`party-engine.aiPicks`）、
+   * そのモードでは裏切り者が正解を知らず**罠しか知らない**ので、
+   * 撃つ先が「罠を押している者」に揃う。実測（tools/shot-probe.mjs、
+   * 300種×4区画。撃たれた者が正解を口にしていた割合 − 撃たれていない者）。
    *
-   *   撃たれていない者が正解を口にしていた割合   28.2%
-   *   一度撃たれた者                          73.2%
-   *   二度撃たれた者                          97.7%   （崖っぷち）
+   *   全員挑戦者   1部屋目 -35.7pt  …  5部屋目 -42.5pt
+   *   通常         1部屋目 -33.9pt  …  5部屋目  -9.6pt
+   *   崖っぷち     1部屋目 -11.1pt  …  5部屋目 +21.0pt   ← ここだけ逆
    *
-   * 逆向き（撃たれた者を疑う）にすると、崖っぷちで 72.0%→45.1% まで落ちる。
-   * 「群れに従うと死ぬ」の裏返しで、**群れが撃つ者は信じられる。**
+   * **前は「撃たれた者を信じる」だった。** 裏付けにしていた
+   * tools/name-call.mjs の数字（一度撃たれた者 73.2% / 二度 97.7%）は、
+   * 裏切りの段取り（区画の前半は裏切り者も本当のことを言い、指す先も
+   * 仲間と同じ側に立つ）を入れずに測ったものだった。入れて測ると向きが変わる。
+   *
+   * 崖っぷちの奥だけは逆を向くので、**この読み方をそちらに繋ぐなら
+   * 向きを選び直すこと**（部屋番号で切り替える形になる）。
    */
   const people = rows.map((r) => ({ id: r.advisorId, name: r.advisorName }));
   const called = new Map<string, number>();
@@ -77,16 +83,14 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
     if (choices.some((c) => row.text.includes(localized(c.label)))) continue;
     const call = readCall(row.text, people);
     if (!call || call.targetId === row.advisorId) continue;
-    const w = trustOf(row.record);
-    // 疑った側の信用では重み付けしない。撃った事実そのものが手掛かりなので、
-    // 信用の無い者に撃たれたほうがむしろ強い
-    void w;
-    called.set(call.targetId, (called.get(call.targetId) ?? 0) + (call.doubt ? 1 : -0.5));
+    // **撃った側の信用では重み付けしない。** 撃たれた事実そのものが手掛かりで、
+    // 誰に撃たれたかまで数えると、記録の重みを二度掛けることになる
+    called.set(call.targetId, (called.get(call.targetId) ?? 0) + (call.doubt ? -1 : 0.5));
   }
 
   for (const row of rows) {
     const net = called.get(row.advisorId) ?? 0;
-    // 撃たれた者の声を大きく、庇われた者の声を小さく。振り切らせない
+    // 撃たれた者の声を小さく、庇われた者の声を大きく。振り切らせない
     const weight = trustOf(row.record) * Math.max(0.2, Math.min(2.6, 1 + net * 0.9));
     const touched = choices.filter((c) => row.text.includes(localized(c.label)));
     if (touched.length === 0) continue;

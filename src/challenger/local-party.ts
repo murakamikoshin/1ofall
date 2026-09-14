@@ -98,6 +98,20 @@ export class LocalPartySource implements PartySource {
       at += paced(700 + Math.random() * 900);
       this.timers.push(setTimeout(() => this.engine.hint(hint.memberId, hint.text), at));
     }
+    /*
+     * 助言が出そろってから、誰を指すかを決めて撃つ。
+     *
+     * **ここが抜けていた。** 部屋（通信）で遊ぶときは `room-session.ts` が
+     * `aiCalls()` を呼んでいるのに、手元だけで遊ぶこちらは呼んでいなかったので、
+     * 同じ「全員挑戦者」なのに手元では**撃ち合いが一度も起きない**。
+     * 読むものが一列ぶん少ない遊びになっていた。
+     */
+    this.timers.push(setTimeout(() => {
+      for (const call of this.engine.aiCalls()) {
+        this.engine.point(call.memberId, call.targetId, call.doubt);
+      }
+    }, at + paced(700)));
+
     // 助言が出そろってから決める。先に決められると読む意味が無くなる
     this.timers.push(setTimeout(() => this.aiPick(), at + paced(1200)));
   }

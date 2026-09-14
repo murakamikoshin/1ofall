@@ -67,6 +67,17 @@ for (const [label, mode] of Object.entries(MODES)) {
         const room = pack.rooms[Math.floor(rng() * pack.rooms.length)];
         const kn = C.dealKnowledge(room.choices, room.correct, { speakerIds, liarIds }, rng, mix, mode.brink, false);
         const labels = room.choices.map((c) => ({ id: c.id, label: C.localized(c.label) }));
+        /*
+         * 「いまは本当のことを言う回か」は**一部屋につき一人一つ。**
+         * 扉の一言と、誰を指すかの両方がこれを見る（本体がそうなっている）。
+         *
+         * 前は裏切りの段取り（区画の前半は本当のことを言う）を入れていなかったので、
+         * **信用を作っている最中の嘘つきも正直者を撃っていた。**
+         * 「撃たれた者を信じる」の裏付けがそのぶん良く出ていた。
+         */
+        const honestNow = new Map(speakerIds.map((id) => [
+          id, rng() < C.liarHonestyAt(id, r, 6),
+        ]));
         // 扉について言う口。ここでは人を指さない
         const said = [];
         for (const id of speakerIds) {
@@ -74,6 +85,7 @@ for (const [label, mode] of Object.entries(MODES)) {
             choices: room.choices, knowledge: kn.get(id), rng,
             liarHonestyRate: Math.max(0.05, Math.min(0.5, mode.honesty * C.liarBias(id))),
             liarMimicRate: mode.mimic, voice: C.voiceOf(id),
+            liarHonest: honestNow.get(id),
           });
           said.push({ id, name: nameOf(id), text });
         }
@@ -81,7 +93,9 @@ for (const [label, mode] of Object.entries(MODES)) {
         const shapes = C.strings().hints;
         for (const id of speakerIds) {
           if (rng() >= RATE) continue;
-          const call = C.chooseCall(kn.get(id), room.choices, said.filter((x) => x.id !== id), rng);
+          // 信用を作っている最中の裏切り者は仲間と同じ側に立つ（本体と同じ規則を読む）
+          const acting = C.actingKnowledge(kn.get(id), honestNow.get(id) === true);
+          const call = C.chooseCall(acting, room.choices, said.filter((x) => x.id !== id), rng);
           if (!call) continue;
           const forms = call.doubt ? shapes.doubt : shapes.back;
           const form = forms[Math.floor(rng() * forms.length)];

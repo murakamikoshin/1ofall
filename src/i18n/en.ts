@@ -53,7 +53,8 @@ export const en: Strings = {
       'The truth-and-lie record clears at every block. Credit does not carry over.',
       'Get two rooms into a block, and when you leave it, who was lying is revealed. That is where your read gets answered.',
       'Advisors can call each other out. "He is lying" lands in the same list as advice.',
-      'Liars want to bury whoever named the answer. The one being shot at is usually telling the truth.',
+      // 撃ち合いの向きは遊び方で違うので、共通の欄では言わない（ja 側の註を見よ）
+      'Why advisors shoot each other depends on the mode. Whether to trust or doubt the one being shot at is written under that mode.',
       'Mark someone as doubted and they are told. Their next line must name exactly one door — no hedging.',
       'The mark costs you. Their record hardens fast, but you lose their hesitation, and liars pile onto whoever is marked.',
       'The same twelve regulars come back every run. The ones who lie often carry it beside their name, as "lied 2/5".',
@@ -64,12 +65,15 @@ export const en: Strings = {
         `${STANDARD.lives} lives, ${STANDARD.sections} blocks.`,
         'The advisors, and who among them lies, are recast at every block.',
         'The deeper the block, the fewer advisors who can name the answer outright.',
+        'Whoever is shot at is usually pushing a wrong door. Honest advisors shoot at anyone naming a door outside their own read.',
       ],
       brink: [
         'Exactly one advisor can be trusted. Every other one is lying.',
         'That one knows the answer. Find them and they carry you to the end of the block.',
         `${BRINK.lives} lives. Room to probe, but not forever.`,
         'One advisor per room can be silenced. Hit a liar and they are gone; miss and the next room is shorter. That is how you search.',
+        'Deep in a block, whoever is shot at is telling the truth — the liars have only the one honest advisor to swarm.',
+        'Early in a block it points the other way. A liar still building credit shoots with an ally’s face, so whoever is shot at there is pushing the trap.',
       ],
       party: [
         'Your companions walk the same rooms. Every one of them is betting their own life.',
@@ -77,6 +81,7 @@ export const en: Strings = {
         'A traitor is among them. Traitors die too, but they want to take you with them.',
         'A doubt mark needs two of you. Whoever two people mark must name exactly one door next.',
         'Press too often and you lose. Hesitation means they narrowed it down, so silencing it leaves you less to read.',
+        'Whoever is shot at is usually pushing the trap. A traitor never learns the answer, only the trap.',
       ],
     },
   },

@@ -94,6 +94,27 @@ export interface CallBias {
   pileOn?: number;
 }
 
+/**
+ * 信用を作っている最中の裏切り者が、**誰を指すか**を決めるときの見かけの立場。
+ *
+ * 口では味方のふりをしながら真実を撃つ形にすると、見分けやすすぎる
+ * （「よく当てているのに、正解を口にした者だけを撃つ」で一発で割れる）。
+ * 裏切る点までは、仲間と同じ側に立って同じ相手を指す。
+ *
+ * **この読み替えを本体だけに書いていたので、物差し（rubric / arc-probe）は
+ * 実装と違う遊びを測っていた。**あちらでは信用を作っている最中の嘘つきも
+ * 正直者を撃つので、撃ち合いから読める量が実際より多く出ていた。
+ * 規則はここ一箇所に置いて、本体も物差しも同じものを読む。
+ */
+export function actingKnowledge(knowledge: Knowledge, honestNow: boolean): Knowledge {
+  if (!honestNow) return knowledge;
+  // 正解を知っている嘘つき（一人／崖っぷち）は、協力者として正解を押す側に回る
+  if (knowledge.kind === 'liar') return { kind: 'honest', candidates: [knowledge.correct] };
+  // 罠しか知らない裏切り者（全員挑戦者）は、「そこは死ぬ」を知る者として振る舞う
+  if (knowledge.kind === 'trapper') return { kind: 'doomed', doomed: knowledge.trap };
+  return knowledge;
+}
+
 export function chooseCall(
   knowledge: Knowledge,
   choices: readonly Choice[],

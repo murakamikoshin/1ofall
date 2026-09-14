@@ -2,7 +2,7 @@ import type { AdvisorInfo, Hint } from './schema';
 import type { AdvisorCall, AdvisorGateway, RoundBriefing, Unsubscribe } from './advisor-gateway';
 import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
-import { chooseCall, type Said } from './name-calling';
+import { actingKnowledge, chooseCall, type Said } from './name-calling';
 import type { Choice } from './schema';
 import { liarBias, liarHonestyAt } from './casting';
 import type { Knowledge } from './schema';
@@ -177,14 +177,9 @@ export class AiAdvisorGateway implements AdvisorGateway {
       if (this.rng() >= this.mode.nameCall) continue;
       const knowledge = briefing.knowledge.get(id);
       if (!knowledge) continue;
-      // 信用を作っている最中の嘘つきは、協力者と同じ振る舞いをする。
-      // 正解を知っているので、正解を押していない者を撃つ側に回る。
-      // ここを揃えないと、口では味方のふりをしながら真実を撃つ、という
-      // 見分けやすすぎる形になる
-      const acting =
-        knowledge.kind === 'liar' && honestNow(id)
-          ? ({ kind: 'honest' as const, candidates: [knowledge.correct] })
-          : knowledge;
+      // 信用を作っている最中の嘘つきは、協力者と同じ振る舞いをする
+      // （規則は actingKnowledge に一箇所だけ置いてある）
+      const acting = actingKnowledge(knowledge, honestNow(id));
       const call = chooseCall(
         acting,
         briefing.room.choices,

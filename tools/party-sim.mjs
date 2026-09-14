@@ -116,11 +116,20 @@ function runOnce(reader, seed) {
 
     // AI が助言を書く
     for (const h of engine.aiHints()) engine.hint(h.memberId, h.text);
+    /*
+     * そのあと誰を指すかを決めて撃つ。**ここが抜けていた。**
+     * 本体（room-session）は文面が出そろってから `aiCalls()` を呼んでいるので、
+     * これを呼ばずに測っていたぶん、**撃ち合いの一列が無い遊びを測っていた。**
+     */
+    for (const c of engine.aiCalls()) engine.point(c.memberId, c.targetId, c.doubt);
     const round = engine.snapshot().round;
     const choices = round.room.choices;
+    // 名前も渡す。**誰を指したかは名前で読む**ので、無いと読み方が落ちる
+    // （JS なので型で捕まらず、撃ち合いを入れた瞬間に落ちて気づいた）
+    const nameOf = (id) => members.find((m) => m.id === id)?.name ?? '';
     const rows = round.advice
       .filter((a) => a.memberId !== 'me')
-      .map((a) => ({ advisorId: a.memberId, text: a.text, record: a.record }));
+      .map((a) => ({ advisorId: a.memberId, advisorName: nameOf(a.memberId), text: a.text, record: a.record }));
 
     const alive = engine.snapshot().members.find((m) => m.id === 'me');
     if (alive && !alive.out) {

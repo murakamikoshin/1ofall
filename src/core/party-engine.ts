@@ -10,7 +10,7 @@ import { createRng, shuffled, type Rng } from './rng';
 import { writeHint, voiceOf, unique } from './hint-writer';
 import { liarBias } from './casting';
 import { scoreChoices, bestChoice, type HintRow } from './read-hints';
-import { chooseCall, resolveTruth, type Said } from './name-calling';
+import { actingKnowledge, chooseCall, resolveTruth, type Said } from './name-calling';
 
 /**
  * 全員挑戦者モードの本体。
@@ -743,10 +743,8 @@ export class PartyEngine {
       if (!knowledge) continue;
       if (this.rng() >= this.mode.nameCall) continue;
       // 信用を作っている最中の裏切り者は、仲間と同じ振る舞いをする
-      const acting =
-        knowledge.kind === 'trapper' && this.honestNow(member.id)
-          ? ({ kind: 'doomed' as const, doomed: knowledge.trap })
-          : knowledge;
+      // （規則は actingKnowledge に一箇所だけ置いてある）
+      const acting = actingKnowledge(knowledge, this.honestNow(member.id));
       const call = chooseCall(acting, round.room.choices, said.filter((s) => s.id !== member.id && s.text), this.rng);
       if (call) out.push({ memberId: member.id, targetId: call.id, doubt: call.doubt });
     }
