@@ -1,5 +1,5 @@
 import { BOX, FINE_PEN, INK_PEN, PAPER, SHADOW_FINE, SHADOW_PEN, type Pen } from './style';
-import { GENERIC_MARKS, MOTIFS, NOUNS } from './motifs';
+import { GENERIC_MARKS, MOTIFS, NONE_MOTIF, NOUNS } from './motifs';
 import { bodyTransform, overlay, treatsFor } from './modifiers';
 
 /**
@@ -88,6 +88,17 @@ function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: num
    */
   const low = label.toLowerCase();
   /*
+   * 選ばない札。部屋の物を描くと**選ぶ札と同じ絵になる。**
+   * 「隠れない（You do not hide）」が樽の絵で、「樽の中」と並んでいた。
+   * 物が別々の部屋（nouns）だけで見る（同じ物の形容が違う部屋には出てこない）。
+   */
+  const refuses = /^(nothing|nobody|none|neither)\b|^(you )?do not\b|^say nothing$|^not at all$/.test(low);
+  if (motif?.nouns && refuses) {
+    const marks = NONE_MOTIF.marks ?? [];
+    const mark = marks.length > 0 ? marks[spec.index % marks.length] : undefined;
+    return { body: NONE_MOTIF.base(pen) + (mark ? mark(fine) : ''), scale: 1, spin: 0 };
+  }
+  /*
    * 題材の名前が**場所として**出ているだけなら、それは題材の名指しではない。
    *
    * 「上段の壺（Jar on the top shelf）」は棚の絵で出ていた。棚の部屋で
@@ -127,8 +138,13 @@ function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: num
 export function artSvg(spec: ArtSpec): string {
   const top = compose(INK_PEN, FINE_PEN, spec);
   const shade = compose(SHADOW_PEN, SHADOW_FINE, spec);
-  // 手の揺れ。±2度だけ（余白の量は変わらない）
-  const tilt = ((hash(spec.key) >> 5) % 5) - 2 + top.spin;
+  /*
+   * 手の揺れ。±2度だけ（余白の量は変わらない）。
+   *
+   * `>> 5`（符号つき）で引いていたので、鍵が 2^31 を超えると負になり、
+   * 揺れが -6〜+2 度になっていた。**どの絵も左へ寄っていた**（平均 -2度）。
+   */
+  const tilt = ((hash(spec.key) >>> 5) % 5) - 2 + top.spin;
   const inner = (content: string): string =>
     `<g transform="rotate(${tilt} 64 64) scale(${top.scale}) translate(${(64 * (1 - top.scale)) / top.scale} ${(64 * (1 - top.scale)) / top.scale})">${content}</g>`;
   return (

@@ -903,6 +903,21 @@ for (const theme of NOUN_THEMES) {
   if (m) m.nouns = true;
 }
 
+/*
+ * 「何も」「誰も」「隠れない」「黙る」——**選ばない選択肢。**
+ *
+ * これまでは題材の形（樽・手・帳面）に落ちていた。
+ * 「隠れない」が**樽の絵**で出ていて、樽に隠れる札と同じ絵だった。
+ * 選ばないことを選ぶ札は、部屋の物ではないので、部屋の物を描いてはいけない。
+ */
+const NONE_MOTIF: Motif = motif(
+  (p) => p.C(64, 64, 36) + p.L('M40 88 L88 40'),
+  undefined,
+  [(p) => p.DOT(64, 64, 5), (p) => p.L('M46 64 H82'), (p) => p.L('M64 46 V82')],
+);
+
+export { NONE_MOTIF };
+
 export const NOUNS: Record<string, string> = {
   // 物
   bell: 'bell', drum: 'drum', lamp: 'lamp', lantern: 'lamp', candle: 'candle',
