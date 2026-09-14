@@ -67,9 +67,8 @@ for (const [label, mode] of Object.entries(MODES)) {
     const rng = C.createRng(9000 + seed * 613);
     for (let section = 0; section < 4; section++) {
       const speakerIds = C.castSpeakers({ advisors: ADV, slots: mode.slots, mode: 'lottery', rng });
-      const liarIds = mode.brink
-        ? speakerIds.filter((_, i) => i !== Math.floor(rng() * speakerIds.length))
-        : C.castLiars(speakerIds, rng);
+      // 崖っぷちの「正直者はただ一人」も本体から引く（写すとずれる）
+      const liarIds = C.castLiars(speakerIds, rng, !!mode.brink);
       const mix = C.RUN.knowledgeBySection[section];
       const rec = new Map();
 

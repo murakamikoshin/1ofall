@@ -33,30 +33,10 @@ const inBand = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
 /* ── 通常と崖っぷち：7項目すべて満たすか ───────────────────────── */
 
 const rubric = run('rubric.mjs', { LOCALE: 'ja', RUNS: '400' });
-{
-  const block = rubric.split('【通常】')[1] ?? '';
+for (const [label, want] of [['通常', 7], ['崖っぷち', 7]]) {
+  const block = rubric.split(`【${label}】`)[1] ?? '';
   const score = num(block, /→ (\d) \/ 7/);
-  check('通常: 7/7 項目', score === 7, `${score}/7\n${block.split('\n').filter((l) => l.includes('×')).join('\n')}`);
-}
-/*
- * 崖っぷちは**生存率だけこの物差しで見ない。**
- *
- * ルーブリックの生存率は「助言を読むだけの打ち手」の1部屋あたりの当たり率で、
- * このモードの道具（黙らせる）を使っていない。使わない打ち手の生存は 48.8% で、
- * そもそも成立していない遊びを測ることになる（limits.ts の崖っぷちの項に
- * 「難易度はこのモードの道具を使った数字で見る」と書いてある）。
- * 道具を使った数字は下の brink-probe（65〜82%）で見る。
- *
- * **長らく 7/7 で通っていたのは物差しのほうが間違っていたから。**
- * rubric は「信用を作っている最中の裏切り者は仲間と同じ側に立つ」という
- * 本体の規則を写していなかったので、撃ち合いから読める量が実際より多く出ていて、
- * 生存率が 73.0% に見えていた（本当は 68.9%）。規則を本体から読むように直した。
- */
-{
-  const block = rubric.split('【崖っぷち】')[1] ?? '';
-  const failed = block.split('\n').filter((l) => l.includes('×')).map((l) => l.trim());
-  const onlySurvival = failed.length === 0 || (failed.length === 1 && failed[0].includes('生存率'));
-  check('崖っぷち: 生存率以外の6項目', onlySurvival, failed.join(' / '));
+  check(`${label}: ${want}/7 項目`, score === want, `${score}/7\n${block.split('\n').filter((l) => l.includes('×')).join('\n')}`);
 }
 
 /* ── 全員挑戦者：命が人ごとなので別の物差し ─────────────────────── */

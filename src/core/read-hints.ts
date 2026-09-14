@@ -67,7 +67,7 @@ export function scoreChoices({ choices, rows, own }: ReadInput): Map<string, num
    *
    *   全員挑戦者   1部屋目 -35.7pt  …  5部屋目 -42.5pt
    *   通常         1部屋目 -33.9pt  …  5部屋目  -9.6pt
-   *   崖っぷち     1部屋目 -11.1pt  …  5部屋目 +21.0pt   ← ここだけ逆
+   *   崖っぷち     1部屋目  -8.8pt  …  5部屋目 +30.0pt   ← ここだけ途中で逆を向く
    *
    * **前は「撃たれた者を信じる」だった。** 裏付けにしていた
    * tools/name-call.mjs の数字（一度撃たれた者 73.2% / 二度 97.7%）は、

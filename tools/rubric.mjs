@@ -25,6 +25,7 @@ const out = join(tmpdir(), `rub-${process.pid}-${Date.now()}.mjs`);
 await build({ stdin: { contents: `export * from './src/core/casting';
   export * from './src/core/hint-writer'; export * from './src/core/limits';
   export * from './src/core/name-calling';
+  export { wasTruthful } from './src/core/moderation';
   export * from './src/core/rng'; export { setLocale, strings, localized } from './src/i18n';`, resolveDir: root, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent' });
 const C = await import(pathToFileURL(out).href);
@@ -83,6 +84,7 @@ function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6, marked
   }
   // 別の道で指す。文面はそのまま扉の話なので、指しても情報は減らない
   const shots = [];
+  const calls = [];
   const point = pointFor(mode);
   if (point > 0) {
     for (const id of ids) {
@@ -90,10 +92,22 @@ function writeRound(ids, room, kn, mode, roomInSection = 0, roomsPer = 6, marked
       // 信用を作っている最中の裏切り者は仲間と同じ側に立つ（本体と同じ規則を読む）
       const acting = C.actingKnowledge(kn.get(id), honestNow.get(id) === true);
       const call = C.chooseCall(acting, room.choices, said.filter((s) => s.id !== id), rng);
-      if (call) shots.push({ from: id, to: call.id, doubt: call.doubt });
+      if (call) {
+        shots.push({ from: id, to: call.id, doubt: call.doubt });
+        /*
+         * 文面も作る。**名指しにも正誤が付く**ので、記録に入れないと
+         * 本体と違う記録を見せることになる（外した名指しは本体では傷として残る）。
+         * 入れると通常の腕の差が 14.9 → 15.4pt、最良の打ち手が
+         * 「罠だと言われた扉を採る」から「迷いを信じ記録も見る」に変わった。
+         */
+        const forms = call.doubt ? C.strings().hints.doubt : C.strings().hints.back;
+        const form = forms[Math.floor(rng() * forms.length)];
+        calls.push({ id, name: nameOf(id), text: form(call.name), kind: 'call' });
+      }
     }
   }
   texts.shots = shots;
+  texts.calls = calls;
   return texts;
 }
 const nameOf = (id) => ADV.find((a) => a.id === id)?.name ?? '';
@@ -101,13 +115,15 @@ const nameOf = (id) => ADV.find((a) => a.id === id)?.name ?? '';
 /** 記録付け。人を指した助言は指した相手の正誤で決まる（本体と同じ） */
 function bumpRecords(ids, texts, room, labels, rec) {
   const cl = labels.find((c) => c.id === room.correct).label;
-  const doorTruth = (t) => {
-    const mc = t.includes(cl);
-    const mw = labels.some((c) => c.label !== cl && t.includes(c.label));
-    return AVOID.test(t) ? !mc && mw : mc;
-  };
+  // 扉の正誤は本体（moderation.wasTruthful）から読む。写すとずれる
+  const all = labels.map((c) => c.label);
+  const doorTruth = (t) => C.wasTruthful(t, cl, all);
   const truth = C.resolveTruth(
-    ids.map((id, i) => ({ id, name: nameOf(id), text: texts[i] })),
+    [
+      ...ids.map((id, i) => ({ id, name: nameOf(id), text: texts[i], kind: 'door' })),
+      // 名指しの正誤も積む（指した相手の扉についての言が嘘だったかで決まる）
+      ...(texts.calls ?? []),
+    ],
     doorTruth,
     room.choices,
   );
@@ -329,9 +345,8 @@ const top = (s) => { const m = Math.max(...s.values()); return pick([...s].filte
 
 function playSection(slots, mix, mode, players, acc, per) {
   const speakerIds = C.castSpeakers({ advisors: ADV, slots, mode: 'lottery', rng });
-  const liarIds = mode.brink
-    ? speakerIds.filter((_, i) => i !== Math.floor(rng() * speakerIds.length))
-    : C.castLiars(speakerIds, rng);
+  // 崖っぷちの「正直者はただ一人」も本体から引く（写すとずれる）
+  const liarIds = C.castLiars(speakerIds, rng, !!mode.brink);
   const recs = new Map(players.map((p) => [p, new Map()]));
   const alive = new Map(players.map((p) => [p, 0]));
   /*
@@ -413,9 +428,8 @@ function fullRun(mode, player) {
     const slots = mode.slots ?? C.RUN.slotsBySection[section];
     const mix = C.RUN.knowledgeBySection[section];
     const speakerIds = C.castSpeakers({ advisors: ADV, slots, mode: 'lottery', rng });
-    const liarIds = mode.brink
-      ? speakerIds.filter((_, i) => i !== Math.floor(rng() * speakerIds.length))
-      : C.castLiars(speakerIds, rng);
+    // 崖っぷちの「正直者はただ一人」も本体から引く（写すとずれる）
+    const liarIds = C.castLiars(speakerIds, rng, !!mode.brink);
     const rec = new Map();
     const shotHist = new Map();
     const muted = new Set();
