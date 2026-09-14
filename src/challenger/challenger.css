@@ -209,10 +209,19 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background-color: var(--wood-lit);
+  /* 絵は正方形。札は横長なので左右に地が出る。紙と同色にして札を一枚の紙にする */
+  background-color: var(--art-paper);
   border: 1px solid var(--dim);
-  /* 非選択時は彩度を下げる。暗がりの中を一つずつ照らして確かめる状態にする */
-  filter: saturate(0.25) brightness(0.62);
+  /*
+   * 非選択時も少し落とす。**落としすぎない。**
+   *
+   * saturate(0.25) brightness(0.62) まで落としていたときは、
+   * 選んでいない札が灰色の板になって、絵に入れた濃淡二段と
+   * 札の言葉から引いた印（濡れ・欠け・封）が全部つぶれていた。
+   * 配信を見ている側と助言者は札に触れないので、
+   * **暗い側しか見ない。** 触れて初めて読めるのでは絵が働かない。
+   */
+  filter: saturate(0.72) brightness(0.88);
   transition: filter 200ms;
 }
 

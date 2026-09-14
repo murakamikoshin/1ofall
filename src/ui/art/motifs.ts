@@ -138,6 +138,12 @@ export const MOTIFS: Record<string, Motif> = {
     (p) => p.L('M44 70 Q64 80 84 70'),
     [(p) => p.DOT(64, 74, 5), (p) => p.L('M40 64 Q64 76 88 64')],
   ),
+  /* 棚の部屋の「傾いた皿」。椀に寄せていたので、同じ椀が二枚並んでいた */
+  plate: motif(
+    (p) => p.F('M22 58 L36 78 H92 L106 58 Z') + p.L('M18 58 H110'),
+    (p) => p.L('M44 68 H84'),
+    [(p) => p.DOT(64, 68, 4), (p) => p.L('M64 58 V78')],
+  ),
   cup: motif(
     (p) => p.F('M42 44 L50 100 H80 L88 44 Z'),
     (p) => p.L('M46 62 H84'),
@@ -221,6 +227,29 @@ export const MOTIFS: Record<string, Motif> = {
     (p) => p.L('M46 60 Q64 44 82 60'),
     [(p) => p.DOT(64, 82, 5), (p) => p.L('M44 82 H84')],
   ),
+  /*
+   * 焼いた魚とパン。**同じ椀が並んでいたので足した。**
+   *
+   * 「腹は減っている。どれに手を出す」の部屋は、粥・スープ・果実・パン・魚で、
+   * 名前から形を引く題材（food）なのに魚とパンが表に無く、
+   * 焼いた魚と白いパンが**椀の絵**で出ていた（遊んで気づいた）。
+   */
+  fish: motif(
+    (p) => p.F('M22 64 C36 40 78 40 92 64 C78 88 36 88 22 64 Z')
+      + p.F('M92 64 L112 46 L108 64 L112 82 Z'),
+    (p) => p.DOT(38, 58, 4) + p.L('M52 48 Q58 64 52 80'),
+    [
+      (p) => p.L('M62 54 Q72 64 62 74'),
+      (p) => p.DOT(64, 64, 4),
+      (p) => p.L('M56 40 L64 30'),
+      (p) => p.L('M56 88 L64 98'),
+    ],
+  ),
+  bread: motif(
+    (p) => p.F('M30 86 C30 46 98 46 98 86 Z') + p.L('M26 86 H102'),
+    (p) => p.L('M48 62 L56 54 M64 60 L72 52 M80 62 L88 54'),
+    [(p) => p.DOT(64, 74, 5), (p) => p.L('M42 74 H86'), (p) => p.L('M64 46 V86')],
+  ),
   medicine: motif(
     (p) => p.F('M48 36 H80 V52 L88 96 H40 L48 52 Z'),
     (p) => p.L('M44 74 H84'),
@@ -253,6 +282,12 @@ export const MOTIFS: Record<string, Motif> = {
     (p) => p.F('M28 40 H100 V92 H28 Z') + p.L('M28 40 L64 68 L100 40'),
     (p) => p.C(64, 82, 8, true),
     [(p) => p.L('M40 84 H88'), (p) => p.L('M28 92 H100')],
+  ),
+  /* 棚の部屋の「奥の巻物」。文が封筒の絵で出ていた */
+  scroll: motif(
+    (p) => p.F('M42 36 H86 V92 H42 Z') + p.L('M30 36 H98') + p.L('M30 92 H98'),
+    (p) => p.L('M52 56 H76 M52 70 H76'),
+    [(p) => p.DOT(64, 64, 4), (p) => p.L('M64 44 V84'), (p) => p.L('M52 82 H76')],
   ),
   ledger: motif(
     (p) => p.F('M32 32 H96 V100 H32 Z') + p.L('M64 32 V100'),
@@ -715,6 +750,15 @@ export const MOTIFS: Record<string, Motif> = {
     (p) => p.L('M40 66 H82'),
     [(p) => p.DOT(60, 66, 4), (p) => p.L('M28 54 L40 40 H84')],
   ),
+  /*
+   * 軌道の台車。荷車に寄せていたので、**同じ荷車が二枚並んでいた**
+   * （「荷車」と「軌道の台車」）。板と車輪と、下に軌道の一本。
+   */
+  trolley: motif(
+    (p) => p.F('M26 52 H102 V68 H26 Z') + p.C(44, 82, 10) + p.C(84, 82, 10),
+    (p) => p.L('M18 100 H110'),
+    [(p) => p.L('M40 60 H88'), (p) => p.DOT(64, 60, 4), (p) => p.L('M64 34 V52')],
+  ),
   boat: motif(
     (p) => p.F('M24 66 Q64 104 104 66 Z') + p.L('M20 66 H108'),
     (p) => p.L('M64 66 V30 M64 40 Q84 48 64 56'),
@@ -880,6 +924,16 @@ export const NOUNS: Record<string, string> = {
   // かたちの無いもの
   name: 'name', shadow: 'shadow', voice: 'voice', breath: 'breath', song: 'song',
   year: 'clock', tomorrow: 'clock', hair: 'thread', eye: 'mirror',
+  /*
+   * 名前から形を引く部屋で**引けていなかった言い方**。
+   *
+   * 食べ物の部屋（魚・パン）、乗り物の部屋（荷車・駕籠・台車）、
+   * 棚の部屋（壺・皿・巻物）、板の部屋。
+   * 引けないと題材の形（椀・棚）に落ちて、皿も巻物も棚の絵になっていた。
+   */
+  fish: 'fish', bread: 'bread', loaf: 'bread',
+  jar: 'cup', plate: 'plate', scroll: 'scroll', board: 'plank',
+  handcart: 'cart', trolley: 'trolley', palanquin: 'seat',
   // 札に出てくる言い方（「壁の字」「笛の音」「足音」「天井裏」）
   wall: 'name', writing: 'name', scrawl: 'name', tag: 'name',
   flute: 'song', footsteps: 'trace', ceiling: 'floor', queue: 'person',

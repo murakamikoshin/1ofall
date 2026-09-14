@@ -87,9 +87,19 @@ function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: num
    * 「桶を吊るした井戸」で桶を描いてしまい、井戸の部屋に桶が並んでいた。
    */
   const low = label.toLowerCase();
-  const ownName = low.includes(spec.theme.replace('_', ' '))
-    || (OWN_WORDS[spec.theme] ?? []).some((w) => low.includes(w));
-  const noun = label && !ownName && motif?.nouns ? nounIn(label) : null;
+  /*
+   * 題材の名前が**場所として**出ているだけなら、それは題材の名指しではない。
+   *
+   * 「上段の壺（Jar on the top shelf）」は棚の絵で出ていた。棚の部屋で
+   * 「shelf」が札に入っているので「札が題材そのものを名指している」と読み、
+   * 壺を引くのをやめていた。棚は置き場所で、選ぶのは壺。
+   * 英語は前置詞より前が中身なので、**前置詞の手前だけ**で名指しを見る。
+   * （「水の匂う穴（Hole smelling of water）」は手前に hole が残るので穴のまま）
+   */
+  const head = low.split(/ (?:on|in|at|of|from|behind|under|near|by|inside|beneath) /)[0] ?? low;
+  const ownName = head.includes(spec.theme.replace('_', ' '))
+    || (OWN_WORDS[spec.theme] ?? []).some((w) => head.includes(w));
+  const noun = label && !ownName && motif?.nouns ? (nounIn(head) ?? nounIn(label)) : null;
   const nounMotif = noun && NOUNS[noun] !== spec.theme ? MOTIFS[NOUNS[noun] as string] : undefined;
   const drawn = nounMotif ?? motif;
   if (!drawn) return { body: '', scale: 1, spin: 0 };

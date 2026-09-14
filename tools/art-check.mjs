@@ -88,6 +88,18 @@ for (const room of pack.rooms) {
 }
 check('絵が枠から出ていない', out_of_box === null, out_of_box ?? '');
 
+/*
+ * 紙の色を二か所に書いているので、ずれていないかを見る。
+ *
+ * 絵は正方形で札は横長なので、札の地に紙と同じ色を敷いて一枚の紙に見せている。
+ * 片方だけ変えると、札の真ん中に色違いの正方形が浮く。
+ */
+const style = readFileSync(resolve(root, 'src/ui/art/style.ts'), 'utf8');
+const tokens = readFileSync(resolve(root, 'src/ui/tokens.css'), 'utf8');
+const paperTs = /export const PAPER = '([^']+)'/.exec(style)?.[1];
+const paperCss = /--art-paper:\s*([^;]+);/.exec(tokens)?.[1]?.trim();
+check('札の地の色が紙の色と同じ', !!paperTs && paperTs === paperCss, `style.ts=${paperTs} tokens.css=${paperCss}`);
+
 // 部屋ごとに並び順が変わっているか（いつも同じ順だと部屋の違いが出ない）
 const firsts = new Set(pack.rooms.map((r) => C.choiceArt(r.theme, r.id, r.choices[0].id, undefined, 0, r.choices[0].label.en)));
 check('部屋ごとに始まりの絵が違う', firsts.size >= 6, `${firsts.size}種`);
