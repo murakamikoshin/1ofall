@@ -105,6 +105,19 @@ check('客にも部屋を出る口はある', guestActions.some((t) => t.include
 const guestNote = await guest.evaluate(() => (document.querySelector('.end-stat.is-waiting')?.textContent ?? '').trim());
 check('客には待っていると書いてある', guestNote.includes('待っている'), `「${guestNote}」`);
 
+/*
+ * 終わりの画面に、区画の答え合わせの紙が残っていないか。
+ *
+ * 残していたことがある。紙は `aria-modal` の膜なので**押す口を食べる**し、
+ * 消し役（サーバーの刻み／自分の timer）は周が終わったところで止まるので
+ * 消える当ても無い。ここが落ちると下の click が 30 秒待って死ぬだけで
+ * 何が起きたか分からないので、先に名前を付けて見る。
+ */
+for (const [who, page] of [['主', host], ['客', guest]]) {
+  const veil = await page.evaluate(() => !!document.querySelector('.answer-veil'));
+  check(`${who}の終わりの画面に答え合わせの紙が残っていない`, !veil);
+}
+
 // 主が押す
 await host.getByRole('button', { name: '同じ賭場でもう一度' }).click();
 let hostBack = false;

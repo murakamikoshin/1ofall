@@ -176,6 +176,16 @@ export class PartyBoard {
 
   private render(state: PartyState): void {
     if (state.phase === 'gameover' || state.phase === 'cleared') {
+      /*
+       * **答え合わせの紙を先に下ろす。**
+       *
+       * 下ろしていなかったので、区画の答え合わせが出ているあいだに周が終わると
+       * 紙が終わりの画面の上に残り、`aria-modal` の膜が押す口を食べていた。
+       * 紙は猶予で自分で消えるが、消し役（サーバーの刻み／自分の timer）は
+       * 周が終わったところで止まるので、**消える当てが無い。**
+       * 通しの検査（party-again-live）が「同じ賭場でもう一度」を押せずに落ちた。
+       */
+      this.dropAnswer();
       // 状態が届くたびに呼ばれる。二度描くと終わりの画面が二枚重なる
       if (!this.ended) {
         this.ended = true;
