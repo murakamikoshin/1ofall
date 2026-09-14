@@ -24,19 +24,14 @@ const pack = JSON.parse(readFileSync(resolve(root, 'data/rooms.core.json'), 'utf
 let pass = 0, fail = 0;
 const check = (n, ok, d = '') => { ok ? pass++ : fail++; console.log(`${ok ? '✓' : '✗'} ${n}${ok ? '' : `  ${d}`}`); };
 
-let worst = null;
-let biggest = 0;
-const themes = new Set();
-for (const room of pack.rooms) {
-  themes.add(room.theme);
-  const uris = room.choices.map((c, i) => C.choiceArt(room.theme, room.id, c.id, c.image, i, c.label.en));
-  const distinct = new Set(uris).size;
-  if (room.choices.length - distinct > biggest) {
-    biggest = room.choices.length - distinct;
-    worst = `${room.id}（${room.choices.length}択のうち${distinct}種）`;
-  }
-}
-check('どの部屋も選択肢ぶんの絵が全部違う', biggest === 0, worst ?? '');
+/*
+ * 同じ部屋に同じ絵が並んでいないかは **tools/art-same.mjs** で見る。
+ *
+ * ここでは書き出し（data: URI）を比べていたが、手の揺れ（±2度）を
+ * 札ごとの鍵から引いているので、**形が同じでも必ず全部違うと出ていた。**
+ * 通っていても何も保証していない検査だったので、こちらからは外した。
+ */
+const themes = new Set(pack.rooms.map((r) => r.theme));
 
 /*
  * 題材が族に載っていないと、既定の「手に持つもの」に落ちる。
@@ -100,16 +95,26 @@ const paperTs = /export const PAPER = '([^']+)'/.exec(style)?.[1];
 const paperCss = /--art-paper:\s*([^;]+);/.exec(tokens)?.[1]?.trim();
 check('札の地の色が紙の色と同じ', !!paperTs && paperTs === paperCss, `style.ts=${paperTs} tokens.css=${paperCss}`);
 
-// 部屋ごとに並び順が変わっているか（いつも同じ順だと部屋の違いが出ない）
-const firsts = new Set(pack.rooms.map((r) => C.choiceArt(r.theme, r.id, r.choices[0].id, undefined, 0, r.choices[0].label.en)));
-check('部屋ごとに始まりの絵が違う', firsts.size >= 6, `${firsts.size}種`);
+/*
+ * 部屋ごとに始まりの絵が違うか。**鍵を揃えて比べる。**
+ * 鍵を変えると手の揺れだけで全部違う値になるので、揺れを揃えて形だけを見る。
+ */
+const firsts = new Set(pack.rooms.map((r) => C.artSvg({
+  theme: r.theme, index: 0, key: 'same', labelEn: r.choices[0].label.en,
+})));
+// 96題材あるので、ほぼ全部が違うはず（6種で通していたのは緩すぎた）
+check('部屋ごとに始まりの絵が違う', firsts.size >= 90, `${firsts.size}種 / ${pack.rooms.length}部屋`);
 
 // 番号を渡さなくても落ちない（渡していない呼び出しが残っていても壊れない）
 const legacy = C.choiceArt('door', 'room_001', 'a');
 check('番号なしでも絵が出る', typeof legacy === 'string' && legacy.startsWith('data:image/svg'));
 
-// 最大8択でも被らない
-const eight = Array.from({ length: 8 }, (_, i) => C.choiceArt('door', 'room_001', `c${i}`, undefined, i));
+/*
+ * 最大8択でも被らないか。**ここも鍵を揃える。**
+ * 鍵（部屋:札）ごとに揺れが変わるので、鍵を変えて比べると
+ * 印が2種しか無くても8種と出てしまう（印の数を数えていなかった）。
+ */
+const eight = Array.from({ length: 8 }, (_, i) => C.artSvg({ theme: 'door', index: i, key: 'same' }));
 check('8択でも全部違う', new Set(eight).size === 8, `${new Set(eight).size}種`);
 
 console.log(`\n${pass} 通過 / ${fail} 失敗`);

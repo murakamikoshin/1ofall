@@ -1,9 +1,13 @@
 /**
- * 同じ部屋に**同じ絵**が並んでいないかを、傾きと大きさを除いて見る。
+ * 同じ部屋に**同じ絵**が並んでいないかを見る。
  *
  * art-check の「全部違う」は書き出し（data: URI）を比べていたので、
- * 手の揺れ（±2度）と縮尺が札ごとに違うぶんで必ず全部違う判定になっていた。
- * 遊んでいる側に見えるのは**形**なので、形だけで比べる。
+ * 手の揺れ（±2度）が札ごとに違うぶんで**必ず全部違う判定になっていた。**
+ * 遊んでいる側に見えるのは形なので、揺れだけ落として、
+ * 札の言葉から来る傾き（tilt）と大小（small/big）は残して比べる。
+ *
+ *   node tools/art-same.mjs          並んでいる組を見る（SHOW=30 で本数）
+ *   LIMIT=0 node tools/art-same.mjs  一組でもあれば落とす（npm test）
  */
 import { build } from 'esbuild';
 import { resolve, dirname, join } from 'node:path';
@@ -14,8 +18,7 @@ import { readFileSync } from 'node:fs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(tmpdir(), `artsame-${process.pid}.mjs`);
 await build({
-  stdin: { contents: `export * from './src/ui/placeholder';
-    export { treatsFor } from './src/ui/art/modifiers';`, resolveDir: root, loader: 'ts' },
+  stdin: { contents: `export * from './src/ui/placeholder';`, resolveDir: root, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent',
 });
 const C = await import(pathToFileURL(out).href);
@@ -89,4 +92,7 @@ rows.sort();
 for (const r of rows.slice(0, Number(process.env.SHOW ?? 12))) console.log('  ' + r);
 console.log(`\n同じ絵が並ぶ部屋 ${roomsWithDup}/${pack.rooms.length}　同じに見える組 ${dupPairs}（札 ${allCards}枚）　最悪 ${worst ?? 'なし'}`);
 const LIMIT = process.env.LIMIT === undefined ? null : Number(process.env.LIMIT);
-if (LIMIT !== null && dupPairs > LIMIT) { console.error(`✗ ${dupPairs}組 > ${LIMIT}組`); process.exit(1); }
+if (LIMIT === null) process.exit(0);
+const ok = dupPairs <= LIMIT;
+console.log(`${ok ? '✓' : '✗'} 同じ部屋に同じ絵が並んでいない（${dupPairs}組 / 許容 ${LIMIT}組）`);
+process.exit(ok ? 0 : 1);

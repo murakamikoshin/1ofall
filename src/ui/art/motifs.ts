@@ -56,6 +56,9 @@ export const GENERIC_MARKS: ((p: Pen) => string)[] = [
   (p) => p.DOT(54, 70, 4) + p.DOT(76, 70, 4),
   (p) => p.C(64, 64, 9),
   (p) => p.L('M54 54 L76 76'),
+  // 8択の部屋でも被らないだけの数を置く（6種で止めていたので7枚目が1枚目に戻っていた）
+  (p) => p.L('M76 54 L54 76'),
+  (p) => p.L('M64 46 V82'),
 ];
 
 export const MOTIFS: Record<string, Motif> = {
@@ -910,13 +913,11 @@ for (const theme of NOUN_THEMES) {
  * 「隠れない」が**樽の絵**で出ていて、樽に隠れる札と同じ絵だった。
  * 選ばないことを選ぶ札は、部屋の物ではないので、部屋の物を描いてはいけない。
  */
-const NONE_MOTIF: Motif = motif(
+export const NONE_MOTIF: Motif = motif(
   (p) => p.C(64, 64, 36) + p.L('M40 88 L88 40'),
   undefined,
   [(p) => p.DOT(64, 64, 5), (p) => p.L('M46 64 H82'), (p) => p.L('M64 46 V82')],
 );
-
-export { NONE_MOTIF };
 
 export const NOUNS: Record<string, string> = {
   // 物

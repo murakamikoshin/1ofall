@@ -30,7 +30,7 @@ export function hasMotif(theme: string): boolean {
   return theme in MOTIFS;
 }
 
-export const VARIANTS = 6;
+export const VARIANTS = 8;
 
 /**
  * 題材そのものを指す語。札が題材の名前と違う言い方をすることがある。
@@ -127,7 +127,7 @@ function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: num
    * （2種しか無い題材では 0番と2番が同じ絵になっていた）。
    */
   if (treats.length === 0) {
-    const marks = [...(drawn.marks ?? []), ...GENERIC_MARKS].slice(0, 6);
+    const marks = [...(drawn.marks ?? []), ...GENERIC_MARKS].slice(0, VARIANTS);
     const mark = marks[spec.index % marks.length];
     if (mark) out += mark(fine);
   }
