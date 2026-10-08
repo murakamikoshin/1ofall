@@ -193,7 +193,7 @@ for (const [label, mode] of Object.entries(MODES)) {
   const liarShare = mode.brink ? (mode.slots - 1) / mode.slots : C.liarCountFor(mode.slots) / mode.slots;
   console.log(`\n【${label}】  指す率 ${RATE}　${acc.rooms}部屋　扉について${acc.hints}件　名指し${acc.calls}件`);
   console.log(`  疑いが嘘つきに当たった率        ${pct(acc.doubtLiar, acc.doubts)}   （でたらめに指すと ${(liarShare * 100).toFixed(1)}%）`);
-  console.log(`  庇った相手が嘘つきだった率       ${pct(acc.backLiar, acc.backs)}`);
+  console.log(`  庇った相手が嘘つきだった率       ${pct(acc.backLiar, acc.backs)}　（疑い${acc.doubts}件 / 庇い${acc.backs}件）`);
   console.log(`  信用のある者の疑いの当たり率      ${pct(acc.hiTrustLiar, acc.hiTrust)}   （${acc.hiTrust}件）`);
   console.log(`  信用の無い者の疑いの当たり率      ${pct(acc.loTrustLiar, acc.loTrust)}   （${acc.loTrust}件）`);
   console.log(`  正解を口にした者が撃たれた部屋     ${pct(acc.doubtRooms, acc.rooms)}`);

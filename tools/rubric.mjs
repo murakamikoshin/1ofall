@@ -232,6 +232,34 @@ const PLAYERS = {
   },
   '記録＋撃たれた者を疑う': (a) => shotRead(a, -1),
   '記録＋撃たれた者を信じる': (a) => shotRead(a, 1),
+  /*
+   * **撃った側の信用で重み付けする**打ち手。
+   *
+   * name-call.mjs を読むと、通常では疑いの当たりが撃った側で大きく割れている。
+   *
+   *   信用のある者の疑いが嘘つきに当たった率   50.4%（260件）
+   *   信用の無い者の疑い                   23.5%（ 51件）
+   *
+   * 本体の読み方（read-hints）は「撃った事実そのものが手掛かり」として
+   * 撃った側の信用を見ていない。見たほうが当たるなら、手引きに書くものが増える。
+   */
+  '信用のある者の疑いだけ聞く': ({ labels, rows, own, shots }) => {
+    const trust = new Map(rows.map((r) => [r.id, (r.rec.hit + 1) / (r.rec.hit + r.rec.miss + 2)]));
+    const called = new Map();
+    for (const sh of shots ?? []) {
+      // 撃った側の信用が 0.5 より上なら効かせ、下なら逆に取る
+      const w = (trust.get(sh.from) ?? 0.5) - 0.5;
+      called.set(sh.to, (called.get(sh.to) ?? 0) + (sh.doubt ? -w : w) * 4);
+    }
+    const s = new Map(labels.map((c) => [c.id, 0]));
+    for (const id of own ?? []) s.set(id, (s.get(id) ?? 0) + 2.5);
+    for (const r of rows) {
+      const net = called.get(r.id) ?? 0;
+      const w = (trust.get(r.id) ?? 0.5) * Math.max(0.2, Math.min(2.6, 1 + net));
+      for (const c of labels) if (r.text.includes(c.label)) s.set(c.id, s.get(c.id) + w);
+    }
+    return top(s);
+  },
 };
 
 /** 記録で重み付けしたうえで、撃たれた者の声を sign の向きに動かす */
