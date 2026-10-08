@@ -223,16 +223,37 @@ for (let run = 1; run <= RUNS; run++) {
       if (await btn.count()) { await btn.first().click().catch(() => {}); }
     }
 
-    // 崖っぷちの黙らせる。一番崩れている者を狙う
+    /*
+     * 崖っぷちの黙らせる。一番崩れている者を狙う。
+     *
+     * **記録が白紙のときも黙らせる。** 狙いを「記録が崩れている者」だけにしていたので、
+     * 区画の一部屋目（記録が白紙）では一度も使っていなかった——つまり
+     * **道具が一番効く部屋だけ道具を使わない記録**を読んでいた
+     * （実測では当てずっぽうで黙らせるだけで 41.0% → 55.2%。
+     *  四人のうち三人が嘘つきなので的を選べなくても四分の三は当たる）。
+     */
     let silenced = null;
-    if (MODE === 'brink' && suspects.length > 0) {
-      const row = p.locator('.hint-row', { hasText: suspects[0].name }).first();
-      const btn = row.locator('.hint-silence:not([disabled])');
-      if (await btn.count()) {
-        await btn.first().click().catch(() => {});
-        await wait(400);
-        const notice = await p.evaluate(() => (document.querySelector('.hud-notice')?.textContent ?? '').trim());
-        silenced = `${suspects[0].name}（正${suspects[0].hit} 嘘${suspects[0].miss}）→ ${notice}`;
+    if (MODE === 'brink') {
+      /*
+       * 当てずっぽうで撃つのは**記録が一枚も無いとき**だけ。
+       * 「崩れている者がいない」ときまで当てずっぽうにすると、
+       * 記録が読める部屋で記録を捨てることになる。
+       */
+      const blankBoard = board.hints.every((h) => h.call || !/正\d/.test(h.record));
+      const blind = blankBoard;
+      const target = blind
+        ? (board.hints.find((h) => !h.call)?.name ?? null)
+        : (suspects[0]?.name ?? null);
+      if (target) {
+        const row = p.locator('.hint-row', { hasText: target }).first();
+        const btn = row.locator('.hint-silence:not([disabled])');
+        if (await btn.count()) {
+          await btn.first().click().catch(() => {});
+          await wait(400);
+          const notice = await p.evaluate(() => (document.querySelector('.hud-notice')?.textContent ?? '').trim());
+          const how = blind ? '記録は白紙／当てずっぽう' : `正${suspects[0].hit} 嘘${suspects[0].miss}`;
+          silenced = `${target}（${how}）→ ${notice}`;
+        }
       }
     }
 
