@@ -15,7 +15,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(tmpdir(), `art-${process.pid}-${Date.now()}.mjs`);
 await build({
   stdin: { contents: `export * from './src/ui/placeholder';
-    export { treatsFor } from './src/ui/art/modifiers';`, resolveDir: root, loader: 'ts' },
+    export { MOTIFS, NOUNS } from './src/ui/art/motifs';`, resolveDir: root, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent',
 });
 const C = await import(pathToFileURL(out).href);
@@ -53,11 +53,44 @@ let matched = 0, all = 0;
 for (const room of pack.rooms) {
   for (const c of room.choices) {
     all++;
-    if (C.treatsFor(c.label.en).length > 0) matched++;
+    // **本体と同じ引き方を読む。** treatsFor を直に呼ぶと、
+    // 題材の名前を外すぶんだけ実装と違う数字が出る（render.ts の treatsOf）
+    if (C.treatsOf(room.theme, c.label.en).length > 0) matched++;
   }
 }
 check('半分以上の札が形容から描かれている', matched / all >= 0.5, `${((matched / all) * 100).toFixed(0)}%`);
 console.log(`   形容から描けている札 ${matched}/${all}`);
+
+/*
+ * 並び順の印だけで区別される札。
+ *
+ * 遊んでいて庭の部屋を見たら、五枚が同じ丘二つで**並び順の印だけが違った**
+ * （手入れされた／荒れた／石の／水のある／花の多い）。札に書いてあることが
+ * 絵に出ていないので、絵を見る意味がその部屋だけ消える。
+ * 形容も物の名前も引けない札が3枚以上ある部屋を数える（21部屋 → 6部屋）。
+ *
+ * 残っている6部屋は「自分の影／柱の影」「右手／左手」「本名／偽名」のように
+ * **関係や持ち主の違い**で、形に起こすと札ごとに別の絵を描くことになる
+ * （規約 §5 の「描き込みの量が揃っている」と噛み合わない）。そこは触らない。
+ */
+const nounKeys = Object.keys(C.NOUNS).sort((a, b) => b.length - a.length);
+const nounOf = (l) => {
+  const t = ` ${l.toLowerCase().replace(/[^a-z\- ]/g, ' ')} `;
+  return nounKeys.find((k) => t.includes(` ${k} `) || t.includes(` ${k}s `)) ?? null;
+};
+let flatRooms = 0;
+let flatWorst = null;
+for (const room of pack.rooms) {
+  const nouns = !!C.MOTIFS[room.theme]?.nouns;
+  const plain = room.choices.filter((c) =>
+    C.treatsOf(room.theme, c.label.en).length === 0 && !(nouns && nounOf(c.label.en)));
+  if (plain.length >= 3) {
+    flatRooms++;
+    if (!flatWorst) flatWorst = `${room.theme}/${room.id}（${plain.length}枚）`;
+  }
+}
+check('印だけで区別される札が3枚以上ある部屋が8部屋以内', flatRooms <= 8, `${flatRooms}部屋　例 ${flatWorst}`);
+console.log(`   印だけの部屋 ${flatRooms}/${pack.rooms.length}`);
 
 /*
  * 絵が枠から出ていないか。

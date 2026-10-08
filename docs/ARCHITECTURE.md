@@ -154,6 +154,7 @@ zod は `schema.ts` にあるが、助言者ページは `limits.ts`（定数の
 | `tools/point-live.mjs` | 場に出ている言葉と、指す手を本物の線で | `npm run party` + `npm run preview` |
 | `tools/name-call.mjs` | 名指しが情報なのか雑音なのか | 不要 |
 | `tools/shot-probe.mjs` | 「撃たれている者ほど本当」がどの遊び方・どの部屋で本当か | 不要 |
+| `tools/first-room-probe.mjs` | 記録が白紙の部屋（区画の一部屋目）に手があるか | 不要 |
 | `tools/slot-check.mjs` | 発言枠へ上がる道（立候補・賭けの重み） | 不要 |
 | `tools/arc-probe.mjs` | 区画の中で、部屋番号ごとの読みしろ | 不要 |
 | `tools/soak-live.mjs` | **繋ぎ目**（区画の変わり目・死んだ直後）を二つのブラウザで | `npm run party` + `npm run preview` |

@@ -1041,7 +1041,16 @@ function renderHints(state: EngineState, s: Shell): void {
   // 顔ぶれが入れ替わった部屋では、それを先に言う。
   // 記録が黙って白紙に戻ると不具合に見えるし、
   // 「前の区画の信用は持ち越せない」という規則そのものが伝わらない
-  note.textContent = round.freshCast ? T.challenger.freshCast : T.challenger.liarUnknown;
+  /*
+   * 崖っぷちの白紙の部屋では、知らせに手を添える。
+   * この部屋は読み方では数えるだけに勝てず、勝てるのは道具（黙らせる）のほう
+   * （`tools/first-room-probe.mjs`：41.0% → 55.2%）。手引きで一度読んだだけでは
+   * 思い出せないので、効く一瞬にその場で出す。使ったあとは出さない
+   */
+  const nudgeSilence = round.freshCast && state.canSilence && !round.silenceUsed;
+  note.textContent = round.freshCast
+    ? (nudgeSilence ? T.challenger.freshCastBrink : T.challenger.freshCast)
+    : T.challenger.liarUnknown;
   note.classList.toggle('is-fresh', round.freshCast);
   head.append(count, note);
   s.hints.append(head);

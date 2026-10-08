@@ -19,8 +19,8 @@ const check = (name, ok, detail = '') => {
   ok ? pass++ : fail++;
   console.log(`${ok ? '✓' : '✗'} ${name}${ok ? '' : `  ${detail}`}`);
 };
-const run = (file, env) =>
-  execFileSync('node', [resolve(root, 'tools', file)], {
+const run = (file, env, args = []) =>
+  execFileSync('node', [resolve(root, 'tools', file), ...args], {
     cwd: root, encoding: 'utf8', env: { ...process.env, ...env },
   });
 
@@ -86,6 +86,48 @@ check('全員挑戦者: 札を絞れば得になる',
 check('全員挑戦者: 札を振り回すと損をする',
   !!pressMany && !!pressOne && pressMany.toEnd < pressOne.toEnd,
   `二枚 ${pressMany?.toEnd}% / 一枚 ${pressOne?.toEnd}%`);
+
+/* ── 区画の一部屋目：記録が白紙の部屋に手があるか ───────────────── */
+
+/*
+ * 一部屋目は記録（正n 嘘n）が白紙で、区画の頭では嘘つきもまだ本当のことを
+ * 言っている（`liarHonestyAt`）。**どの読み方も数えるだけに負ける部屋**だった。
+ *
+ * 崖っぷちには手がある——当てずっぽうで黙らせて、確定した者の一言を外す。
+ * 四人のうち三人が嘘つきなので、的を選べなくても当たる。
+ * 手引きのこのモードの欄にそう書いたので、**書いたことが本当であり続けるか**を見張る。
+ */
+const first = run(
+  'first-room-probe.mjs',
+  { ONLY: '数えるだけ|迷いを信じる|黙らせて確定した者を外す' },
+  ['1200'],
+);
+const firstRow = (label, needle) => {
+  const block = first.split(`【${label}】`)[1] ?? '';
+  const line = block.split('\n').find((l) => l.includes(needle));
+  return line ? Number(/([\d.]+)%/.exec(line)?.[1]) : NaN;
+};
+const bCount = firstRow('崖っぷち', '数えるだけ');
+const bSilence = firstRow('崖っぷち', '黙らせて確定した者を外す');
+/*
+ * 部屋数と種を固定しているので、この二つは**揺れない**（毎回同じ数字が出る）。
+ * 実測は 40.0% → 57.7%（+17.7pt）なので、しきいは余裕を取って +10pt。
+ * 400部屋で回していたときは差の標準誤差が 3.5pt あり、
+ * 真の差（+14pt）でも +8pt のしきいを割ることがあった。
+ */
+check('崖っぷち: 一部屋目に数えるだけを超える手がある（+10pt以上）',
+  Number.isFinite(bCount) && Number.isFinite(bSilence) && bSilence - bCount >= 10,
+  `数えるだけ ${bCount}% → 黙らせて外す ${bSilence}%`);
+const sCount = firstRow('通常', '数えるだけ');
+const sHedge = firstRow('通常', '迷いを信じる');
+/*
+ * 通常は「迷いを信じる」が一部屋目でも効く（1200部屋で 69.5% → 73.0%）。
+ * 2000部屋で測ると +4.9pt（68.3% → 73.2%）。
+ * 見張りたいのは「読むと損をする部屋に戻っていないか」なので、向きだけを見る。
+ */
+check('通常: 一部屋目に迷いを信じるほうが当たる',
+  Number.isFinite(sCount) && Number.isFinite(sHedge) && sHedge >= sCount,
+  `数えるだけ ${sCount}% → 迷いを信じる ${sHedge}%`);
 
 /* ── 崖っぷち：道具を使ったときの数字 ───────────────────────────── */
 

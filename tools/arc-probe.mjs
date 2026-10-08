@@ -33,10 +33,16 @@ const nameOf = (id) => ADV.find((a) => a.id === id).name;
 const AVOID = C.strings().hints.avoidPattern;
 const HEDGE = C.strings().hints.hedgePattern;
 
-/** 本体と同じ読み方（迷いを重く見て、記録で重みを変え、撃たれた者を信じる） */
-function read(labels, rows, shots, rng) {
+/**
+ * 読み方。`shotSign` で撃たれ方の向きを選ぶ。
+ *
+ * +1 なら「撃たれた者を信じる」、-1 なら「撃たれた者を疑う」。
+ * 手引きに書いた向きは遊び方と部屋番号で変わる（tools/shot-probe.mjs）ので、
+ * **向きを知っている打ち手**と、ひとつの向きで押し通す打ち手を分けて測る。
+ */
+function read(labels, rows, shots, rng, shotSign = 1) {
   const called = new Map();
-  for (const sh of shots) called.set(sh.to, (called.get(sh.to) ?? 0) + (sh.doubt ? 1 : -0.5));
+  for (const sh of shots) called.set(sh.to, (called.get(sh.to) ?? 0) + shotSign * (sh.doubt ? 1 : -0.5));
   const s = new Map(labels.map((c) => [c.id, 0]));
   for (const r of rows) {
     const net = called.get(r.id) ?? 0;
@@ -61,7 +67,7 @@ const MODES = {
 
 for (const [label, mode] of Object.entries(MODES)) {
   const PER = mode.m.roomsPerSection;
-  const byRoom = Array.from({ length: PER }, () => ({ n: 0, hit: 0, naive: 0, regular: 0, gap: 0, gapN: 0 }));
+  const byRoom = Array.from({ length: PER }, () => ({ n: 0, hit: 0, naive: 0, regular: 0, aware: 0, gap: 0, gapN: 0 }));
 
   for (let seed = 0; seed < SEEDS; seed++) {
     const rng = C.createRng(9000 + seed * 613);
@@ -107,18 +113,27 @@ for (const [label, mode] of Object.entries(MODES)) {
         const b = byRoom[r];
         b.n++;
         if (read(labels, rows, shots, rng) === room.correct) b.hit++;
+        /*
+         * 向きを知っている打ち手。
+         *
+         * 撃たれ方の相関は、通常では全部屋で「撃たれた者＝外れを押している」、
+         * 崖っぷちでは区画の一部屋目だけ同じ向きで、二部屋目から逆になる。
+         * 手引きにそう書いたので、**その通りに読める人**がどこまで行けるかを見る。
+         */
+        const awareSign = mode.brink ? (r === 0 ? -1 : 1) : -1;
+        if (read(labels, rows, shots, rng, awareSign) === room.correct) b.aware++;
         // 素朴な打ち手（名前を数えるだけ）との差が、その部屋の「読みしろ」
         const tally = new Map(labels.map((c) => [c.id, 0]));
         for (const x of said) for (const c of labels) if (x.text.includes(c.label)) tally.set(c.id, tally.get(c.id) + 1);
         const tm = Math.max(...tally.values());
         const tops = [...tally].filter(([, v]) => v === tm).map(([id]) => id);
         if (tops[Math.floor(rng() * tops.length)] === room.correct) b.naive++;
-
         /*
          * 常連の裏切り歴を知っている打ち手。
          *
-         * 死ぬと区画の頭から引き直すので、**区画の一部屋目は記録が白紙**で、
-         * そこだけは読むものが無い（実測でも読みしろは +2pt しか無い）。
+         * 死ぬと区画の頭から引き直すので、**区画の一部屋目は記録が白紙**になる。
+         * そこで何が読めるかは `tools/first-room-probe.mjs` のほうで測っている
+         * （崖っぷちは「当てずっぽうで黙らせて確定した者の一言を外す」が +19pt）。
          * 27回目に顔ぶれを周をまたいで固定して「裏切2/5」を出したので、
          * **白紙の部屋にだけは残る手掛かり**になっているはず。そこを見る。
          */
@@ -176,11 +191,11 @@ for (const [label, mode] of Object.entries(MODES)) {
   }
 
   console.log(`\n【${label}】  ${SEEDS}種 × 4区画　裏切りの段取り ${SCHEDULE ? 'あり' : 'なし'}`);
-  console.log('  部屋   読める   数えるだけ   読みしろ   常連の癖も見る   記録の割れ');
+  console.log('  部屋   読める   数えるだけ   読みしろ   向きを知る   常連の癖   記録の割れ');
   for (const [i, b] of byRoom.entries()) {
     const pc = (x) => `${((x / b.n) * 100).toFixed(1)}%`;
     const gap = b.gapN ? (b.gap / b.gapN).toFixed(3) : '—';
     console.log(`   ${i + 1}    ${pc(b.hit).padStart(6)}   ${pc(b.naive).padStart(8)}   ${
-      (((b.hit - b.naive) / b.n) * 100).toFixed(1).padStart(6)}pt   ${pc(b.regular).padStart(10)}   ${gap}`);
+      (((b.hit - b.naive) / b.n) * 100).toFixed(1).padStart(6)}pt   ${pc(b.aware).padStart(8)}   ${pc(b.regular).padStart(8)}   ${gap}`);
   }
 }

@@ -8,4 +8,4 @@
  * 描くほうが**守るのではなく外せなくなる**ので、絵そのものをコードにした。
  * 経緯と判断は同文書の §7。
  */
-export { choiceArt, artSvg, artImage, hasMotif, VARIANTS, type ArtSpec } from './art/render';
+export { choiceArt, artSvg, artImage, hasMotif, treatsOf, VARIANTS, type ArtSpec } from './art/render';

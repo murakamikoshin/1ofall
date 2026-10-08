@@ -39,6 +39,38 @@ for (const [label, mode] of [['一人で遊ぶ', 'standard'], ['全員挑戦者'
   check(`${mode}: 例外なし`, errors.length === 0, errors.join(' / '));
   await p.close();
 }
+
+/*
+ * 崖っぷちだけ、白紙の知らせに手が添わるか。
+ *
+ * この部屋は読み方では数えるだけに勝てず、勝てるのは道具（黙らせる）のほうだった
+ * （`tools/first-room-probe.mjs`：41.0% → 55.2%）。手引きで一度読んだだけでは
+ * 思い出せないので、効く一瞬にその場で出している。**使ったあとは出さない。**
+ */
+{
+  const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.addInitScript(() => { for (const m of ['standard','brink','party']) localStorage.setItem(`briefed:${m}`, '1'); });
+  await p.goto('http://127.0.0.1:4173/?lang=ja', { waitUntil: 'networkidle' });
+  await p.getByRole('button', { name: /^崖っぷち/ }).click();
+  await p.waitForSelector('.choice', { timeout: 10000 });
+  await wait(6000);
+  const noteOf = () => p.locator('.hints-note.is-fresh').textContent().catch(() => '');
+  const before = (await noteOf()) ?? '';
+  check('崖っぷち: 白紙の部屋に「黙らせて一つ作れ」が添う', before.includes('黙らせて'), `「${before}」`);
+  const btn = p.getByRole('button', { name: /^黙らせる$/ }).first();
+  const had = await btn.count();
+  check('崖っぷち: 一部屋目に黙らせる口がある', had > 0);
+  if (had > 0) {
+    await btn.click();
+    await wait(900);
+    const after = (await noteOf()) ?? '';
+    check('崖っぷち: 使ったあとは添わない', !after.includes('黙らせて') && after.length > 0, `「${after}」`);
+  }
+  check('崖っぷち: 例外なし', errors.length === 0, errors.join(' / '));
+  await p.close();
+}
 console.log(`\n${pass} 通過 / ${fail} 失敗`);
 await b.close();
 process.exit(fail ? 1 : 0);

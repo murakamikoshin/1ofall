@@ -50,6 +50,27 @@ const OWN_WORDS: Record<string, readonly string[]> = {
   guard: ['gatekeeper'],
 };
 
+/**
+ * その札の描き分け。**題材そのものの名前を外してから**形容を引く。
+ *
+ * 部屋の札は全部が同じ物の名前を含む（糸の部屋は五枚とも「thread」）。
+ * その語が形容の表に載っていると（thread → 紐の形容）五枚が同じ形容に落ちて、
+ * **違いを描かない重ねが全部に乗る。** 糸・煙・石の部屋がそうなっていた。
+ * 題材の名前は全員が共有しているので、定義上「違い」ではない。
+ *
+ * 道具（art-check / 当たりの数え方）もここを読む。
+ * `treatsFor` を直に呼ぶと、この外しのぶんだけ実装と違う数字が出る。
+ */
+export function treatsOf(theme: string, labelEn: string): ReturnType<typeof treatsFor> {
+  const own = [theme.replace('_', ' '), ...(OWN_WORDS[theme] ?? [])];
+  let text = labelEn;
+  for (const w of own) {
+    if (w.length === 0) continue;
+    text = text.replace(new RegExp(`\\b${w}s?\\b`, 'gi'), ' ');
+  }
+  return treatsFor(text);
+}
+
 /** 札の中の物の名前。長い語から当てる（「hand bell」を「hand」に取られないため） */
 const NOUN_KEYS = Object.keys(NOUNS).sort((a, b) => b.length - a.length);
 
@@ -81,7 +102,7 @@ export interface ArtSpec {
 function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: number; spin: number } {
   const motif = MOTIFS[spec.theme] ?? MOTIFS['box'];
   const label = spec.labelEn ?? '';
-  const treats = treatsFor(label);
+  const treats = treatsOf(spec.theme, label);
   /*
    * 物の名前から形を引く。ただし**題材そのものの名前が札にあるときは題材の形**。
    * 「桶を吊るした井戸」で桶を描いてしまい、井戸の部屋に桶が並んでいた。
@@ -120,13 +141,19 @@ function compose(pen: Pen, fine: Pen, spec: ArtSpec): { body: string; scale: num
   if (drawn.detail && !omitted) out += drawn.detail(fine);
   for (const t of treats) out += overlay(fine, t);
   /*
-   * 形容が当たらなかったときだけ、順番で印を振る。
+   * 形容が一つ以下のときは、順番で印も振る。
    * **物の名前で引いたときも振る**——「木の梯子」と「縄の梯子」はどちらも
    * 梯子なので、印が無いと同じ絵になる。
    * 題材ごとの印が6種に足りないぶんは当たり障りのない印で埋める
    * （2種しか無い題材では 0番と2番が同じ絵になっていた）。
+   *
+   * **一つ以下、にしたのは形容が被るから。** 別の語が同じ重ねに落ちることがある
+   * （「切れかけた糸（fraying）」と「結ばれた糸（knotted）」はどちらも紐の形容）。
+   * 形容が一つだと印が付かないので、その二枚が**まったく同じ絵**になっていた。
+   * 重ねるものの数は最大二つのまま（形容二つ、または形容一つ＋印一つ）なので、
+   * 「描き込みの量が揃っている」（規約 §5）は保たれる。
    */
-  if (treats.length === 0) {
+  if (treats.length <= 1) {
     const marks = [...(drawn.marks ?? []), ...GENERIC_MARKS].slice(0, VARIANTS);
     const mark = marks[spec.index % marks.length];
     if (mark) out += mark(fine);

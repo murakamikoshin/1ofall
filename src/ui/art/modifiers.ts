@@ -95,6 +95,38 @@ const WORDS: Record<string, Treat> = {
   log: 'grain', timber: 'grain',
   paper: 'fold',
   red: 'corner', 'red-painted': 'corner', 'red-ink': 'corner', painted: 'corner',
+  /*
+   * 材のつづき。**「○○の」が物の名前で書かれている群**（石の庭・水のある舟・
+   * 鎖の手袋・布の人形…）。遊んでいて庭の部屋を見たら、五枚が同じ丘二つで
+   * 並び順の印だけが違った（手入れされた／荒れた／石の／水のある／花の多い）。
+   * 測ると、**並び順の印だけで区別される札が3枚以上ある部屋が 21/96** あった。
+   */
+  stone: 'speck', pebbled: 'speck', gravel: 'speck',
+  water: 'drip', watery: 'drip', 'water-filled': 'drip',
+  chain: 'cord', chained: 'cord', rope: 'cord', thread: 'cord', hair: 'cord',
+  cloth: 'drape', canvas: 'drape', linen: 'drape', silk: 'drape',
+  smoke: 'heat', smoky: 'heat', misty: 'heat', steam: 'heat',
+  // 曇りは「白い」と分ける（同じ部屋に並ぶ：曇った硝子と白い〜）
+  cloudy: 'speck', clouded: 'speck',
+  // 片方だけ＝対の片側が無い
+  single: 'omit', odd: 'omit', lone: 'omit',
+  // 荒れた庭・伸びた草は、木目と同じ筋で出す
+  overgrown: 'grain', grassy: 'grain', weedy: 'grain', tended: 'corner',
+  /*
+   * 残っていた群。**遊んで気づいた「並び順の印だけで違う部屋」**を一つずつ見て、
+   * 形に起こせるものだけ足した（21部屋 → 9部屋）。
+   * 残りは「自分の影／柱の影」「右手／左手」のように関係や持ち主の違いで、
+   * 形に起こすと札ごとに別の絵を描くことになるので触らない。
+   */
+  caged: 'notch', barred: 'notch', stairs: 'notch', 'fine-toothed': 'notch',
+  draught: 'heat', windy: 'heat', breezy: 'heat',
+  queue: 'twin', row: 'twin',
+  corner: 'corner', touched: 'trail', fingered: 'trail',
+  sleepy: 'sleep', drowsy: 'sleep', resting: 'sleep',
+  young: 'small', powder: 'speck', powdered: 'speck',
+  vial: 'drip', liquid: 'drip', ointment: 'fill', salve: 'fill',
+  drinking: 'drip', blunted: 'mute', blunt: 'mute',
+  'half-filled': 'drape', roof: 'corner',
   // 刻み
   latticed: 'notch', ruled: 'notch',
   // 彫り・縫い目は線二本で足りる（格子を丸い物に重ねると潰れる）
